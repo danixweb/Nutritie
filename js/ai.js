@@ -9,36 +9,22 @@ export const AI = {
         const apiKey = key || Storage.getApiKey();
         if (!apiKey) throw new Error("Lipsă cheie API.");
 
-        const endpoints = [
-            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-            `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
-        ];
-
-        let lastErr = null;
-        for (const url of endpoints) {
-            try {
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.models && Array.isArray(data.models)) {
-                        return data.models
-                            .filter(m => m.supportedGenerationMethods?.includes("generateContent"))
-                            .map(m => ({
-                                id: m.name.replace('models/', ''),
-                                displayName: m.displayName || m.name.replace('models/', ''),
-                                description: m.description || ''
-                            }));
-                    }
-                } else {
-                    const errData = await response.json().catch(() => null);
-                    lastErr = new Error(errData?.error?.message || `HTTP ${response.status}`);
-                }
-            } catch (e) {
-                lastErr = e;
-            }
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!response.ok) {
+            const errData = await response.json().catch(() => null);
+            throw new Error(errData?.error?.message || `HTTP ${response.status}`);
         }
 
-        throw new Error(lastErr ? lastErr.message : "Nu s-a putut obține lista de modele de la Google.");
+        const data = await response.json();
+        if (!data.models || !Array.isArray(data.models)) return [];
+
+        return data.models
+            .filter(m => m.supportedGenerationMethods?.includes("generateContent"))
+            .map(m => ({
+                id: m.name.replace('models/', ''),
+                displayName: m.displayName || m.name.replace('models/', ''),
+                description: m.description || ''
+            }));
     },
 
     async getWorkingModel(key) {
@@ -54,10 +40,11 @@ export const AI = {
             const modelIds = models.map(m => m.id);
 
             const priorities = [
+                'gemini-flash-latest',
+                'gemini-flash-lite-latest',
                 'gemini-2.5-flash',
                 'gemini-2.0-flash',
-                'gemini-1.5-flash',
-                'gemini-2.5-pro'
+                'gemini-1.5-flash'
             ];
 
             for (const p of priorities) {
@@ -76,7 +63,7 @@ export const AI = {
             console.warn("Could not list models dynamically:", e);
         }
 
-        const fallback = 'gemini-2.5-flash';
+        const fallback = 'gemini-flash-latest';
         Storage.saveActiveModel(fallback);
         return fallback;
     },
@@ -85,63 +72,56 @@ export const AI = {
         const key = Storage.getApiKey();
         if (!key) throw new Error("Lipsă Cheie API Google Gemini. Configureaz-o în Setări.");
 
-        const selectedType = Storage.getSelectedModelType();
         let targetModel = Storage.getTargetModel();
-
         if (!targetModel || targetModel === 'auto') {
             targetModel = await this.getWorkingModel(key);
         }
 
-        // Build list of models to try (target first)
+        // Candidates: selected target first, then proven reliable aliases
         const modelsToTry = [
             targetModel,
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
-            'gemini-1.5-flash'
+            'gemini-flash-latest',
+            'gemini-flash-lite-latest'
         ];
         const uniqueModels = [...new Set(modelsToTry.filter(Boolean))];
 
         let lastError = null;
         for (const model of uniqueModels) {
-            // Try v1beta then v1
-            const apiVersions = ['v1beta', 'v1'];
-            for (const ver of apiVersions) {
-                try {
-                    console.log(`Calling ${model} via ${ver}...`);
-                    const response = await fetch(`https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${key}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: prompt }] }]
-                        })
-                    });
+            try {
+                console.log(`Sending request to: ${model}`);
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-                            Storage.saveActiveModel(model);
-                            return data.candidates[0].content.parts[0].text;
-                        }
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+                        Storage.saveActiveModel(model);
+                        return data.candidates[0].content.parts[0].text;
                     }
-
-                    const errData = await response.json().catch(() => null);
-                    const errMsg = errData?.error?.message || `HTTP ${response.status}`;
-                    lastError = new Error(`[${model}] ${errMsg}`);
-                    console.warn(`Model ${model} (${ver}) failed:`, errMsg);
-
-                    if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid")) {
-                        throw new Error("Cheia API introdusă este invalidă. Verifică cheia în Google AI Studio.");
-                    }
-                } catch (e) {
-                    if (e.message.includes("API_KEY_INVALID") || e.message.includes("Cheia API")) {
-                        throw e;
-                    }
-                    lastError = e;
                 }
+
+                const errData = await response.json().catch(() => null);
+                const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+                lastError = new Error(`[${model}] ${errMsg}`);
+                console.warn(`Model ${model} failed (${response.status}):`, errMsg);
+
+                if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid")) {
+                    throw new Error("Cheia API introdusă este invalidă. Verifică cheia în Google AI Studio.");
+                }
+            } catch (e) {
+                if (e.message.includes("API_KEY_INVALID") || e.message.includes("Cheia API")) {
+                    throw e;
+                }
+                lastError = e;
             }
         }
 
-        throw new Error(lastError ? lastError.message : `Modelul ${targetModel} nu a răspuns. Deschide Setări și apasă 'Detectează live'.`);
+        throw new Error(lastError ? lastError.message : `Nu s-a primit răspuns de la modelul ${targetModel}.`);
     },
 
     async callVision(prompt, base64Data, mimeType) {
@@ -150,48 +130,46 @@ export const AI = {
 
         let targetModel = Storage.getTargetModel();
         if (!targetModel || targetModel === 'auto') {
-            targetModel = 'gemini-2.0-flash';
+            targetModel = 'gemini-flash-latest';
         }
 
-        const modelsToTry = [targetModel, 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        const modelsToTry = [targetModel, 'gemini-flash-latest', 'gemini-flash-lite-latest'];
         const uniqueModels = [...new Set(modelsToTry.filter(Boolean))];
 
         let lastError = null;
         for (const m of uniqueModels) {
-            for (const ver of ['v1beta', 'v1']) {
-                try {
-                    const response = await fetch(`https://generativelanguage.googleapis.com/${ver}/models/${m}:generateContent?key=${key}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [
-                                    { text: prompt },
-                                    { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64Data } }
-                                ]
-                            }]
-                        })
-                    });
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        return data.candidates[0].content.parts[0].text;
-                    }
-
-                    const errData = await response.json().catch(() => null);
-                    const errMsg = errData?.error?.message || `HTTP ${response.status}`;
-                    lastError = new Error(`[${m}] ${errMsg}`);
-
-                    if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid")) {
-                        throw new Error("Cheia API introdusă este invalidă.");
-                    }
-                } catch (e) {
-                    if (e.message.includes("Cheia API")) throw e;
-                    lastError = e;
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.candidates[0].content.parts[0].text;
                 }
+
+                const errData = await response.json().catch(() => null);
+                const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+                lastError = new Error(`[${m}] ${errMsg}`);
+
+                if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid")) {
+                    throw new Error("Cheia API introdusă este invalidă.");
+                }
+            } catch (e) {
+                if (e.message.includes("Cheia API")) throw e;
+                lastError = e;
             }
         }
 
-        throw new Error(lastError ? lastError.message : "Nu s-a putut analiza imaginea cu modelele disponibile.");
+        throw new Error(lastError ? lastError.message : "Nu s-a putut analiza imaginea.");
     }
 };
