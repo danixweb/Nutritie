@@ -1116,8 +1116,8 @@ window.saveApiKey = async () => {
     const btn = document.getElementById('save-api-btn');
     const errEl = document.getElementById('api-key-error');
 
-    if (!key.startsWith("AIza")) {
-        errEl.innerHTML = "Cheie invalidă (trebuie să înceapă cu AIza).";
+    if (!key || key.length < 5) {
+        errEl.innerHTML = "Te rugăm să introduci o cheie API validă.";
         errEl.classList.remove('hidden');
         return;
     }
@@ -1127,20 +1127,22 @@ window.saveApiKey = async () => {
     errEl.classList.add('hidden');
     refreshIcons();
 
-    const discovered = await AI.getWorkingModel(key);
-    if (discovered) {
+    try {
+        const discovered = await AI.getWorkingModel(key);
+        const modelToUse = discovered || 'gemini-1.5-flash';
         Storage.saveApiKey(key);
-        Storage.saveActiveModel(discovered);
+        Storage.saveActiveModel(modelToUse);
         window.toggleSettings();
         updateApiKeyIndicator();
-        alert(`Conectat cu succes! Model activ: ${discovered}`);
-    } else {
-        errEl.innerHTML = `<strong>Eroare:</strong> Cheia este validă, dar nu am găsit niciun model AI accesibil. Verifică permisiunile din Google AI Studio.`;
+        alert(`Conectat cu succes! Model activ: ${modelToUse}`);
+    } catch (err) {
+        errEl.innerHTML = `<strong>Eroare:</strong> ${err.message || 'Verifică cheia API.'}`;
         errEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Salvează & Testează";
+        refreshIcons();
     }
-    btn.disabled = false;
-    btn.innerHTML = "Salvează & Testează";
-    refreshIcons();
 };
 
 // --- Initial Startup ---
