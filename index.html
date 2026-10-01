@@ -12,6 +12,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js CDN for direct PDF downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <!-- Custom Stylesheet -->
     <link rel="stylesheet" href="css/style.css">
@@ -29,11 +31,16 @@
             </div>
             <div>
                 <h1 class="text-base md:text-lg font-bold tracking-tight text-white leading-tight">Nutriție <span class="text-indigo-400">Pro</span></h1>
-                <p class="text-[10px] text-slate-400 font-medium hidden md:block">Stocare Locală & AI Contextual</p>
+                <p class="text-[10px] text-slate-400 font-medium hidden md:block">Stocare Locală & Rapoarte PDF</p>
             </div>
         </div>
 
         <div class="flex items-center gap-1.5 md:gap-2">
+            <!-- Monthly PDF Report Button -->
+            <button onclick="openPDFModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-950/60 hover:bg-indigo-900/80 rounded-lg border border-indigo-700/60 text-xs text-indigo-300 font-medium transition-all active:scale-95" title="Generează Raport Lunar PDF Landscape">
+                <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i> <span class="hidden sm:inline">Raport PDF</span>
+            </button>
+
             <!-- Shopping List Button -->
             <button onclick="generateShoppingList()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-900/30 hover:bg-emerald-800/50 rounded-lg border border-emerald-800/60 text-xs text-emerald-300 transition-colors" title="Generează Lista de Cumpărături">
                 <i data-lucide="shopping-cart" class="w-4 h-4"></i> <span class="hidden sm:inline">Listă</span>
@@ -366,6 +373,82 @@
                     <button onclick="toggleSettings()" class="text-slate-400 text-xs sm:text-sm px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">Închide</button>
                     <button id="save-api-btn" onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-4 sm:px-5 rounded-lg transition-all shadow-md flex items-center gap-1.5">
                         Salvează
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Report Modal -->
+    <div id="pdf-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-5 sm:p-6 border border-slate-800">
+            <div class="flex justify-between items-start mb-3 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i> Raport Lunar PDF Landscape
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Tabel 7 coloane pe zile, mese suprapuse, sumare nutriționale și raport necesar vs consumat.</p>
+                </div>
+                <button onclick="closePDFModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <!-- Month & Year Selectors -->
+            <div class="grid grid-cols-2 gap-3 my-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Luna</label>
+                    <select id="pdf-month-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
+                        <option value="0">Ianuarie</option>
+                        <option value="1">Februarie</option>
+                        <option value="2">Martie</option>
+                        <option value="3">Aprilie</option>
+                        <option value="4">Mai</option>
+                        <option value="5">Iunie</option>
+                        <option value="6">Iulie</option>
+                        <option value="7">August</option>
+                        <option value="8">Septembrie</option>
+                        <option value="9">Octombrie</option>
+                        <option value="10">Noiembrie</option>
+                        <option value="11">Decembrie</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Anul</label>
+                    <select id="pdf-year-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Features Summary List -->
+            <div class="bg-indigo-950/30 rounded-xl p-3.5 border border-indigo-900/50 mb-5 text-xs text-indigo-200/90 space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
+                    <span>Orientare <strong>Landscape A4</strong> optimizată pentru print și PDF.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
+                    <span><strong>7 coloane</strong> (Luni - Duminică) cu toate mesele și alimentele zilei.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
+                    <span>Sumar nutrienți per masă + <strong>Total zilnic de nutrienți</strong>.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
+                    <span><strong>Raport final Necesar vs Consumat</strong> (procente DZR / RDA).</span>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-slate-800">
+                <button onclick="previewMonthlyPDF()" class="text-xs sm:text-sm text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5">
+                    <i data-lucide="eye" class="w-4 h-4"></i> Previzualizare
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="closePDFModal()" class="text-slate-400 text-xs sm:text-sm px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors">Închide</button>
+                    <button id="download-pdf-btn" onclick="downloadMonthlyPDF()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-4 sm:px-5 rounded-lg transition-all shadow-md flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> Descarcă PDF
                     </button>
                 </div>
             </div>

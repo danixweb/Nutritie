@@ -3,6 +3,7 @@
 // ==========================================
 import { Storage, localFoodDB } from './storage.js';
 import { AI } from './ai.js';
+import { PDFReport } from './pdf.js';
 
 // Application State
 let currentMeal = { id: null, date: '', name: '', foods: [] };
@@ -1246,6 +1247,60 @@ window.saveApiKey = async () => {
     }
 };
 
+// --- PDF Report Controllers ---
+window.openPDFModal = () => {
+    const modal = document.getElementById('pdf-modal');
+    if (!modal) return;
+    const now = new Date();
+    const monthSelect = document.getElementById('pdf-month-select');
+    const yearSelect = document.getElementById('pdf-year-select');
+    if (monthSelect) monthSelect.value = now.getMonth();
+    if (yearSelect) yearSelect.value = now.getFullYear();
+    modal.classList.remove('hidden');
+    refreshIcons();
+};
+
+window.closePDFModal = () => {
+    const modal = document.getElementById('pdf-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.downloadMonthlyPDF = async () => {
+    const monthSelect = document.getElementById('pdf-month-select');
+    const yearSelect = document.getElementById('pdf-year-select');
+    const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
+    const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
+    const btn = document.getElementById('download-pdf-btn');
+    const origHTML = btn ? btn.innerHTML : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Generare PDF...`;
+        refreshIcons();
+    }
+
+    try {
+        await PDFReport.exportToPDF(year, month);
+        window.closePDFModal();
+    } catch (e) {
+        alert("Eroare la exportul PDF: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            refreshIcons();
+        }
+    }
+};
+
+window.previewMonthlyPDF = () => {
+    const monthSelect = document.getElementById('pdf-month-select');
+    const yearSelect = document.getElementById('pdf-year-select');
+    const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
+    const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
+    PDFReport.previewReport(year, month);
+};
+
 // --- Initial Startup ---
 function initApp() {
     document.getElementById('meal-datetime').value = getTodayDateTimeLocal();
@@ -1255,7 +1310,7 @@ function initApp() {
     renderCurrentMeal();
     updateAnalysis();
     refreshIcons();
-    console.log("Nutriție Pro 2.1 Ready with Custom Gemini Model Selector & 100% Local Storage.");
+    console.log("Nutriție Pro 2.1 Ready with Landscape Monthly PDF Reports & 100% Local Storage.");
 }
 
 // Start once DOM is ready
