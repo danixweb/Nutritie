@@ -128,7 +128,7 @@ export const Storage = {
 
     // User Model Preferences (Specific selection or Custom typed string)
     getSelectedModelType() {
-        return localStorage.getItem(STORAGE_KEYS.SELECTED_MODEL_TYPE) || 'gemini-2.0-flash';
+        return localStorage.getItem(STORAGE_KEYS.SELECTED_MODEL_TYPE) || 'gemini-2.5-flash';
     },
 
     saveSelectedModelType(type) {
@@ -153,7 +153,7 @@ export const Storage = {
         if (type && type !== 'auto') {
             return type;
         }
-        return this.getActiveModel() || 'gemini-2.0-flash';
+        return this.getActiveModel() || 'gemini-2.5-flash';
     },
 
     // --- Export / Import ---

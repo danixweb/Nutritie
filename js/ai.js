@@ -54,10 +54,10 @@ export const AI = {
             const modelIds = models.map(m => m.id);
 
             const priorities = [
+                'gemini-2.5-flash',
                 'gemini-2.0-flash',
                 'gemini-1.5-flash',
-                'gemini-2.0-flash-exp',
-                'gemini-1.5-pro'
+                'gemini-2.5-pro'
             ];
 
             for (const p of priorities) {
@@ -76,7 +76,7 @@ export const AI = {
             console.warn("Could not list models dynamically:", e);
         }
 
-        const fallback = 'gemini-2.0-flash';
+        const fallback = 'gemini-2.5-flash';
         Storage.saveActiveModel(fallback);
         return fallback;
     },
@@ -95,6 +95,7 @@ export const AI = {
         // Build list of models to try (target first)
         const modelsToTry = [
             targetModel,
+            'gemini-2.5-flash',
             'gemini-2.0-flash',
             'gemini-1.5-flash'
         ];
