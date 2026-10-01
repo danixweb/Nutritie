@@ -2,746 +2,352 @@
 <html lang="ro" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nutriție Pro 2.1 - Contextual Features</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        .loader-dots::after { content: " ."; animation: dots 1.5s steps(5, end) infinite; }
-        @keyframes dots { 0%, 20% { content: " ."; } 40% { content: " .."; } 60% { content: " ..."; } 100% { content: " ."; } }
-        #analysis-sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        #chat-window { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
-        .chat-enter { transform: translateY(20px); opacity: 0; }
-        .chat-visible { transform: translateY(0); opacity: 1; }
-        input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #1e293b inset !important; -webkit-text-fill-color: white !important; }
-        
-        .ai-content h1, .ai-content h2, .ai-content h3 { color: #818cf8; font-weight: 800; margin-top: 1rem; margin-bottom: 0.5rem; }
-        .ai-content strong { color: #fbbf24; font-weight: 700; }
-        .ai-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #cbd5e1; }
-        .ai-content li { margin-bottom: 0.25rem; }
-        .ai-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Nutriție Pro - Jurnal & AI Nutriție</title>
 
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-        .mic-active { 
-            animation: pulse-red 1.5s infinite; 
-            background-color: #dc2626 !important;
-            border-color: #ef4444 !important;
-        }
-    </style>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-200">
+<body class="h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-200 select-none">
 
     <!-- Header -->
-    <header class="bg-slate-900 border-b border-slate-800 px-4 py-4 flex justify-between items-center shadow-md z-30 relative">
-        <div class="flex items-center gap-3">
-            <button onclick="toggleSidebar()" class="p-2 text-white hover:bg-slate-800 rounded-lg transition-colors mr-1">
+    <header class="bg-slate-900 border-b border-slate-800 px-3 md:px-6 py-3 flex justify-between items-center shadow-md z-30 relative">
+        <div class="flex items-center gap-2 md:gap-3">
+            <button onclick="toggleSidebar()" class="p-2 text-white hover:bg-slate-800 active:scale-95 rounded-lg transition-all" title="Meniu & Analiză">
                 <i data-lucide="menu" class="w-6 h-6"></i>
             </button>
-            <div class="bg-indigo-600 p-2 rounded-lg shadow-lg hidden md:block">
-                <i data-lucide="message-square" class="w-5 h-5 text-white"></i>
+            <div class="bg-indigo-600 p-2 rounded-lg shadow-lg hidden sm:block">
+                <i data-lucide="utensils" class="w-5 h-5 text-white"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold tracking-tight text-white leading-tight">Nutriție <span class="text-indigo-400">Pro</span></h1>
-                <p class="text-[10px] text-slate-400 font-medium hidden md:block">Context Aware AI v2.1</p>
+                <h1 class="text-base md:text-lg font-bold tracking-tight text-white leading-tight">Nutriție <span class="text-indigo-400">Pro</span></h1>
+                <p class="text-[10px] text-slate-400 font-medium hidden md:block">Stocare Locală & AI Contextual</p>
             </div>
         </div>
-        <div class="flex items-center gap-3">
-            <!-- NEW SHOPPING LIST BUTTON -->
-            <button onclick="generateShoppingList()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/30 hover:bg-emerald-800/50 rounded border border-emerald-800 text-xs text-emerald-300 transition-colors" title="Generează Lista de Cumpărături">
-                <i data-lucide="shopping-cart" class="w-4 h-4"></i> <span class="hidden md:inline">Listă</span>
+
+        <div class="flex items-center gap-1.5 md:gap-2">
+            <!-- Shopping List Button -->
+            <button onclick="generateShoppingList()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-900/30 hover:bg-emerald-800/50 rounded-lg border border-emerald-800/60 text-xs text-emerald-300 transition-colors" title="Generează Lista de Cumpărături">
+                <i data-lucide="shopping-cart" class="w-4 h-4"></i> <span class="hidden sm:inline">Listă</span>
             </button>
-            <button onclick="exportFullJson()" class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-xs text-slate-300 transition-colors" title="Exportă JSON"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
-            <div id="auth-status" class="text-[10px] font-mono bg-slate-800 px-2 py-1 rounded text-slate-400 border border-slate-700 flex items-center gap-1"><i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> <span class="hidden sm:inline">Conectare...</span></div>
-            <button onclick="toggleSettings()" class="relative p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="settings" class="w-5 h-5"></i><span id="api-key-indicator" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-slate-900"></span></button>
+            
+            <!-- Export / Backup Button -->
+            <button onclick="exportFullJson()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-xs text-slate-300 transition-colors" title="Exportă Datele / Backup">
+                <i data-lucide="download" class="w-4 h-4"></i> <span class="hidden md:inline">Export</span>
+            </button>
+
+            <!-- Import Backup Button -->
+            <input type="file" id="import-input" accept=".json" class="hidden" onchange="handleImportBackup(this)">
+            <button onclick="document.getElementById('import-input').click()" class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-xs text-slate-300 transition-colors" title="Importă Date / Backup">
+                <i data-lucide="upload" class="w-4 h-4"></i> Import
+            </button>
+
+            <!-- Local Storage Status Pill -->
+            <div id="auth-status" class="text-[10px] font-mono bg-emerald-950/40 text-emerald-400 px-2 py-1 rounded-lg border border-emerald-800/60 flex items-center gap-1.5" title="Datele sunt salvate 100% pe acest dispozitiv">
+                <i data-lucide="hard-drive" class="w-3 h-3 text-emerald-400"></i>
+                <span class="hidden sm:inline font-medium">Local</span>
+            </div>
+
+            <!-- Settings Button -->
+            <button onclick="toggleSettings()" class="relative p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-full transition-colors" title="Setări & API Key">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span id="api-key-indicator" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-900"></span>
+            </button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden relative">
         
-        <!-- SIDEBAR -->
-        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity opacity-0"></div>
-        <aside id="analysis-sidebar" class="fixed top-0 left-0 h-full w-80 bg-slate-900 border-r border-slate-800 shadow-2xl z-50 transform -translate-x-full flex flex-col pt-16">
-            <button onclick="toggleSidebar()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-6 h-6"></i></button>
-            <div class="p-6 border-b border-slate-800">
-                <h2 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="microscope" class="w-5 h-5 text-purple-400"></i> Analiză Nutrienți</h2>
-                <p class="text-xs text-slate-500 mt-1">Totaluri cumulative pentru masă.</p>
+        <!-- SIDEBAR (Analysis & Health Profile) -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity opacity-0 backdrop-blur-xs"></div>
+        <aside id="analysis-sidebar" class="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-slate-900 border-r border-slate-800 shadow-2xl z-50 transform -translate-x-full flex flex-col pt-16">
+            <button onclick="toggleSidebar()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <div class="p-5 border-b border-slate-800">
+                <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-2"><i data-lucide="microscope" class="w-5 h-5 text-purple-400"></i> Analiză Nutrienți</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Calcul cantitativ și procent DZR pentru masă.</p>
             </div>
             
             <!-- Health Profile Section -->
-            <div class="px-6 py-4 border-b border-slate-800 bg-slate-900/50">
-                <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i data-lucide="activity" class="w-3 h-3"></i> Profil Medical</h3>
+            <div class="px-5 py-3 border-b border-slate-800 bg-slate-900/50">
+                <div class="flex justify-between items-center mb-1.5">
+                    <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="activity" class="w-3.5 h-3.5"></i> Profil Medical
+                    </h3>
+                </div>
                 <div id="health-tags" class="flex flex-wrap gap-1">
                     <span class="text-[10px] text-slate-500 italic">Nicio analiză încărcată.</span>
                 </div>
             </div>
 
-            <div id="nutrients-list" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
-                <div class="flex flex-col items-center justify-center h-40 text-slate-600"><i data-lucide="pie-chart" class="w-12 h-12 mb-3 opacity-50"></i><p class="text-sm">Adaugă alimente...</p></div>
+            <!-- Nutrients List -->
+            <div id="nutrients-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                <div class="flex flex-col items-center justify-center h-40 text-slate-600">
+                    <i data-lucide="pie-chart" class="w-12 h-12 mb-3 opacity-50"></i>
+                    <p class="text-sm">Adaugă alimente...</p>
+                </div>
             </div>
-            <div id="macro-summary" class="hidden grid grid-cols-3 gap-2 p-4 bg-slate-950 border-t border-slate-800">
-                <div class="text-center p-2 bg-slate-900 rounded border border-slate-800"><div class="text-[9px] text-slate-400 uppercase font-bold">PRO</div><div class="font-mono text-white font-bold text-sm" id="total-pro">0g</div></div>
-                <div class="text-center p-2 bg-slate-900 rounded border border-slate-800"><div class="text-[9px] text-slate-400 uppercase font-bold">CARB</div><div class="font-mono text-white font-bold text-sm" id="total-carb">0g</div></div>
-                <div class="text-center p-2 bg-slate-900 rounded border border-slate-800"><div class="text-[9px] text-slate-400 uppercase font-bold">FAT</div><div class="font-mono text-white font-bold text-sm" id="total-fat">0g</div></div>
+
+            <!-- Macro Summary footer in sidebar -->
+            <div id="macro-summary" class="hidden grid grid-cols-3 gap-2 p-3 bg-slate-950 border-t border-slate-800">
+                <div class="text-center p-2 bg-slate-900 rounded-lg border border-slate-800">
+                    <div class="text-[9px] text-slate-400 uppercase font-bold">PRO</div>
+                    <div class="font-mono text-white font-bold text-sm" id="total-pro">0g</div>
+                </div>
+                <div class="text-center p-2 bg-slate-900 rounded-lg border border-slate-800">
+                    <div class="text-[9px] text-slate-400 uppercase font-bold">CARB</div>
+                    <div class="font-mono text-white font-bold text-sm" id="total-carb">0g</div>
+                </div>
+                <div class="text-center p-2 bg-slate-900 rounded-lg border border-slate-800">
+                    <div class="text-[9px] text-slate-400 uppercase font-bold">FAT</div>
+                    <div class="font-mono text-white font-bold text-sm" id="total-fat">0g</div>
+                </div>
             </div>
         </aside>
 
-        <!-- MAIN -->
-        <main class="w-full p-4 md:p-6 overflow-y-auto custom-scrollbar relative bg-slate-950">
-            <div id="meal-editor" class="bg-slate-900 rounded-xl shadow-lg border border-slate-800 p-5 mb-6 transition-all duration-300 max-w-3xl mx-auto">
-                <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-                    <h2 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="utensils-crossed" class="w-5 h-5 text-indigo-400"></i> <span id="editor-title">Editor Masă</span></h2>
-                    <button id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-1 text-xs font-bold text-red-400 bg-red-900/20 hover:bg-red-900/30 rounded border border-red-900/50">Anulează</button>
+        <!-- MAIN SCROLLABLE AREA -->
+        <main class="w-full p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative bg-slate-950">
+            <div id="meal-editor" class="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-4 sm:p-6 mb-6 transition-all duration-300 max-w-3xl mx-auto">
+                <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
+                    <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="utensils-crossed" class="w-5 h-5 text-indigo-400"></i> 
+                        <span id="editor-title">Editor Masă</span>
+                    </h2>
+                    <button id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-1 text-xs font-bold text-red-400 bg-red-900/20 hover:bg-red-900/30 rounded-lg border border-red-900/50 transition-colors">Anulează</button>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Dată & Timp</label><input type="datetime-local" id="meal-datetime" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-5">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dată & Timp</label>
+                        <input type="datetime-local" id="meal-datetime" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                    </div>
                     
                     <!-- AI Generator + Camera Button -->
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Generează Meniu sau Foto</label>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nume Preparat sau Poză</label>
                         <div class="flex gap-2">
-                            <input type="text" id="meal-name" placeholder="Nume (ex: Omletă)..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none">
+                            <input type="text" id="meal-name" placeholder="Ex: Omletă cu ciuperci..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
                             
-                            <!-- Buton Text Generator -->
-                            <button onclick="generateMealFromTitle()" id="gen-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1 transition-all whitespace-nowrap border border-purple-500" title="Generează din text">
-                                <i data-lucide="sparkles" class="w-3 h-3"></i>
+                            <!-- Generator Button -->
+                            <button onclick="generateMealFromTitle()" id="gen-btn" class="bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-purple-500" title="Generează automat din text">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
                             </button>
 
-                            <!-- Buton Cameră (Ascuns input file) -->
+                            <!-- Camera Button -->
                             <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(this)">
-                            <button onclick="document.getElementById('camera-input').click()" id="cam-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1 transition-all whitespace-nowrap border border-emerald-500" title="Fă o poză mâncării">
-                                <i data-lucide="camera" class="w-3 h-3"></i>
+                            <button onclick="document.getElementById('camera-input').click()" id="cam-btn" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-emerald-500" title="Fă o poză farfuriei">
+                                <i data-lucide="camera" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-indigo-900/20 rounded-xl p-4 border border-indigo-900/50 mb-6 relative">
-                    <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 block flex justify-between">
+                <!-- Manual Component Input -->
+                <div class="bg-indigo-950/30 rounded-xl p-3.5 sm:p-4 border border-indigo-900/50 mb-5 relative">
+                    <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 flex justify-between items-center">
                         <span>Adaugă Componentă Manual</span>
-                        <span id="edit-mode-indicator" class="text-orange-400 hidden animate-pulse">Mod Editare</span>
+                        <span id="edit-mode-indicator" class="text-orange-400 hidden animate-pulse font-semibold">● Mod Editare</span>
                     </label>
-                    <div class="grid grid-cols-12 gap-3 items-end">
-                        <div class="col-span-12 md:col-span-5"><input type="text" id="food-name" placeholder="Aliment (ex: Orez)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"></div>
-                        <div class="col-span-6 md:col-span-3"><input type="number" id="food-qty" placeholder="Cant." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"></div>
-                        <div class="col-span-6 md:col-span-2"><select id="food-unit" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"><option value="grame">g</option><option value="ml">ml</option><option value="bucati">buc</option></select></div>
-                        <div class="col-span-12 md:col-span-2"><button onclick="processFoodItem()" id="add-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i><span class="md:hidden">Adaugă</span></button></div>
+                    <div class="grid grid-cols-12 gap-2 sm:gap-3 items-end">
+                        <div class="col-span-12 sm:col-span-5">
+                            <input type="text" id="food-name" placeholder="Aliment (ex: Piept de pui)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                        </div>
+                        <div class="col-span-6 sm:col-span-3">
+                            <input type="number" id="food-qty" placeholder="Cantitate" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                        </div>
+                        <div class="col-span-6 sm:col-span-2">
+                            <select id="food-unit" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                                <option value="g">g</option>
+                                <option value="ml">ml</option>
+                                <option value="buc">buc</option>
+                            </select>
+                        </div>
+                        <div class="col-span-12 sm:col-span-2">
+                            <button onclick="processFoodItem()" id="add-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white py-2 rounded-lg font-bold text-sm transition-all shadow-md flex items-center justify-center gap-1.5">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>Adaugă</span>
+                            </button>
+                        </div>
                     </div>
                     <div id="data-source-msg" class="mt-2 text-right text-xs h-4 font-mono"></div>
                 </div>
 
                 <!-- AI Smart Actions Panel -->
-                <div id="ai-actions-panel" class="mb-4">
+                <div id="ai-actions-panel" class="mb-5">
                     <div class="grid grid-cols-3 gap-2">
-                        <button onclick="generateRecipe()" id="btn-chef" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-indigo-200 p-3 rounded-lg flex flex-col items-center justify-center gap-1 transition-all group">
-                            <i data-lucide="chef-hat" class="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform"></i>
+                        <button onclick="generateRecipe()" id="btn-chef" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-indigo-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
+                            <i data-lucide="chef-hat" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
                             <span class="text-[10px] font-bold">Chef Mode</span>
                         </button>
-                        <button onclick="analyzeHealth()" id="btn-coach" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-200 p-3 rounded-lg flex flex-col items-center justify-center gap-1 transition-all group">
-                            <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform"></i>
+                        <button onclick="analyzeHealth()" id="btn-coach" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-emerald-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
+                            <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
                             <span class="text-[10px] font-bold">Nutri Coach</span>
                         </button>
-                        <!-- NEW HEALTH MENU BUTTON -->
-                        <button onclick="generateMedicalMenu()" id="btn-med-menu" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-rose-200 p-3 rounded-lg flex flex-col items-center justify-center gap-1 transition-all group">
-                            <i data-lucide="stethoscope" class="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform"></i>
+                        <button onclick="generateMedicalMenu()" id="btn-med-menu" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-rose-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
+                            <i data-lucide="stethoscope" class="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
                             <span class="text-[10px] font-bold">Meniu Medical</span>
                         </button>
                     </div>
                 </div>
 
-                <div id="current-meal-list" class="space-y-3 mb-6"><div class="text-center py-8 text-slate-600 text-sm border-2 border-dashed border-slate-800 rounded-xl">Masa este goală.</div></div>
-                <div class="flex justify-end pt-4 border-t border-slate-800"><button onclick="saveMealToCloud()" id="save-meal-btn" class="bg-white text-slate-900 hover:bg-slate-200 font-bold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95" disabled><i data-lucide="save" class="w-4 h-4"></i> Salvează Masa</button></div>
+                <!-- Current Meal Items List -->
+                <div id="current-meal-list" class="space-y-2 mb-5">
+                    <div class="text-center py-6 text-slate-600 text-sm border-2 border-dashed border-slate-800 rounded-xl">Masa este goală.</div>
+                </div>
+
+                <!-- Save Meal Button -->
+                <div class="flex justify-end pt-3 border-t border-slate-800">
+                    <button onclick="saveMealToLocal()" id="save-meal-btn" class="w-full sm:w-auto bg-white hover:bg-slate-200 active:scale-95 text-slate-900 font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i data-lucide="save" class="w-4 h-4"></i> Salvează Masa
+                    </button>
+                </div>
             </div>
 
-            <div class="mt-8 pb-10 max-w-3xl mx-auto"><h3 class="text-lg font-bold text-white mb-4 px-1 flex items-center gap-2"><i data-lucide="history" class="w-5 h-5 text-slate-500"></i> Jurnal Salvat</h3><div id="meal-history" class="space-y-4"><div class="flex flex-col items-center justify-center py-10 text-slate-500"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-2 text-indigo-500"></i><span class="text-sm">Se încarcă istoricul...</span></div></div></div>
+            <!-- Saved Journal Section -->
+            <div class="mt-8 pb-16 max-w-3xl mx-auto">
+                <div class="flex justify-between items-center mb-4 px-1">
+                    <h3 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="history" class="w-5 h-5 text-slate-400"></i> Jurnal Salvat pe Dispozitiv
+                    </h3>
+                </div>
+                <div id="meal-history" class="space-y-3">
+                    <div class="flex flex-col items-center justify-center py-8 text-slate-500">
+                        <i data-lucide="loader-2" class="w-7 h-7 animate-spin mb-2 text-indigo-500"></i>
+                        <span class="text-sm">Se încarcă istoricul...</span>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
     <!-- Floating Chat Button -->
-    <button onclick="toggleChat()" class="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95 flex items-center justify-center border-2 border-indigo-400">
-        <i data-lucide="message-circle" class="w-7 h-7"></i>
+    <button onclick="toggleChat()" class="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-3.5 sm:p-4 rounded-full shadow-2xl z-40 transition-transform hover:scale-105 active:scale-95 flex items-center justify-center border-2 border-indigo-400">
+        <i data-lucide="message-circle" class="w-6 h-6 sm:w-7 sm:h-7"></i>
     </button>
 
     <!-- Chat Window -->
-    <div id="chat-window" class="fixed bottom-24 right-6 w-96 max-w-[90vw] h-[500px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col hidden chat-enter origin-bottom-right">
-        <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900 rounded-t-2xl">
-            <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i> Asistent Vocal</h3>
-            <button onclick="toggleChat()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    <div id="chat-window" class="fixed bottom-20 sm:bottom-24 right-3 sm:right-6 w-96 max-w-[94vw] h-[520px] max-h-[80vh] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col hidden chat-enter">
+        <div class="flex justify-between items-center p-3.5 border-b border-slate-800 bg-slate-900 rounded-t-2xl">
+            <h3 class="font-bold text-white flex items-center gap-2 text-sm sm:text-base">
+                <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i> Asistent Vocal & Analize
+            </h3>
+            <button onclick="toggleChat()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950 custom-scrollbar">
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-3 bg-slate-950 custom-scrollbar">
             <div class="flex justify-start">
                 <div class="bg-slate-800 text-slate-300 p-3 rounded-2xl rounded-tl-none max-w-[85%] text-sm border border-slate-700">
-                    Salut! Pot interpreta analize medicale. Încarcă un CSV cu rezultatele tale.
+                    Salut! Sunt asistentul tău nutrițional. Poți vorbi cu mine sau poți încărca fișierul cu analize medicale (CSV) folosind butonul cu agrafă.
                 </div>
             </div>
         </div>
         <div class="p-3 border-t border-slate-800 bg-slate-900 rounded-b-2xl flex gap-2 items-center">
-            
-            <!-- Upload Button -->
+            <!-- Medical CSV Upload -->
             <input type="file" id="csv-upload" accept=".csv,.txt" class="hidden" onchange="handleMedicalCSV(this)">
-            <button onclick="document.getElementById('csv-upload').click()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 transition-colors" title="Încarcă Analize CSV">
+            <button onclick="document.getElementById('csv-upload').click()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-lg border border-slate-700 transition-colors" title="Încarcă Analize CSV">
                 <i data-lucide="paperclip" class="w-4 h-4"></i>
             </button>
 
-            <input type="text" id="chat-input" placeholder="Scrie sau vorbește..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" onkeypress="if(event.key==='Enter') sendChatMessage()">
-            <button id="mic-btn" onclick="toggleVoiceInput()" class="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg border border-slate-600 transition-all relative"><i data-lucide="mic" class="w-4 h-4"></i></button>
-            <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg"><i data-lucide="send" class="w-4 h-4"></i></button>
+            <input type="text" id="chat-input" placeholder="Scrie sau vorbește..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors" onkeypress="if(event.key==='Enter') sendChatMessage()">
+            <button id="mic-btn" onclick="toggleVoiceInput()" class="bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-lg border border-slate-600 transition-all relative" title="Microfon Vocal">
+                <i data-lucide="mic" class="w-4 h-4"></i>
+            </button>
+            <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-lg active:scale-95 transition-all" title="Trimite">
+                <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
         </div>
     </div>
 
     <!-- Nutrient Modal -->
-    <div id="nutrient-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh] border border-slate-800">
-            <div class="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-start"><div><h4 id="modal-n-name" class="text-2xl font-bold text-white"></h4><span id="modal-n-type" class="inline-block bg-indigo-900/50 text-indigo-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded mt-1 border border-indigo-900"></span></div><button onclick="document.getElementById('nutrient-modal').classList.add('hidden')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button></div>
-            <div class="p-6 overflow-y-auto custom-scrollbar">
-                <div class="flex items-center justify-between mb-6"><div><div class="text-sm text-slate-400">Total</div><div id="modal-n-qty" class="text-2xl font-bold text-white font-mono">-</div></div><div class="text-right"><div class="text-sm text-slate-400">Din DZR</div><div id="modal-n-perc" class="text-xl font-bold text-indigo-400">-</div></div></div>
-                <div class="w-full bg-slate-800 rounded-full h-3 mb-6"><div id="modal-n-bar" class="h-3 rounded-full transition-all duration-700" style="width: 0%"></div></div>
+    <div id="nutrient-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] border border-slate-800">
+            <div class="bg-slate-950 p-5 border-b border-slate-800 flex justify-between items-start">
+                <div>
+                    <h4 id="modal-n-name" class="text-xl font-bold text-white"></h4>
+                    <span id="modal-n-type" class="inline-block bg-indigo-900/50 text-indigo-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded mt-1 border border-indigo-900"></span>
+                </div>
+                <button onclick="document.getElementById('nutrient-modal').classList.add('hidden')" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto custom-scrollbar">
+                <div class="flex items-center justify-between mb-5">
+                    <div>
+                        <div class="text-xs text-slate-400">Total în masă</div>
+                        <div id="modal-n-qty" class="text-2xl font-bold text-white font-mono">-</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">Din DZR</div>
+                        <div id="modal-n-perc" class="text-xl font-bold text-indigo-400 font-mono">-</div>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2.5 mb-5 overflow-hidden">
+                    <div id="modal-n-bar" class="h-2.5 rounded-full transition-all duration-700" style="width: 0%"></div>
+                </div>
                 
-                <!-- NEW AI CONTEXT BUTTON -->
-                <div class="mb-6">
-                    <button onclick="explainNutrientWithAI()" id="btn-explain-nutrient" class="w-full bg-indigo-900/40 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-200 py-3 rounded-xl flex items-center justify-center gap-2 transition-all group mb-2">
+                <!-- AI Context Button -->
+                <div class="mb-5">
+                    <button onclick="explainNutrientWithAI()" id="btn-explain-nutrient" class="w-full bg-indigo-900/40 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-200 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all">
                         <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
-                        <span class="text-xs font-bold">De ce am nevoie de asta?</span>
+                        <span class="text-xs font-bold">De ce am nevoie de acest nutrient?</span>
                     </button>
-                    <p id="nutrient-ai-explanation" class="text-sm text-indigo-200/80 italic hidden p-3 bg-indigo-950/30 rounded-lg border border-indigo-900/50"></p>
+                    <p id="nutrient-ai-explanation" class="text-xs text-indigo-200/90 italic hidden mt-2.5 p-3 bg-indigo-950/40 rounded-xl border border-indigo-900/50 leading-relaxed"></p>
                 </div>
 
-                <div class="mb-6"><h5 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">Surse</h5><ul id="modal-sources-list" class="space-y-2 text-sm text-slate-300"></ul></div>
-                <div class="bg-blue-900/20 p-4 rounded-xl border border-blue-900/40"><p id="modal-n-role" class="text-sm text-slate-300 italic"></p></div>
+                <div class="mb-5">
+                    <h5 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">Surse din masă</h5>
+                    <ul id="modal-sources-list" class="space-y-1.5 text-xs text-slate-300"></ul>
+                </div>
+                <div class="bg-blue-950/30 p-3.5 rounded-xl border border-blue-900/40">
+                    <p id="modal-n-role" class="text-xs text-slate-300 leading-relaxed"></p>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- NEW AI RESULTS MODAL -->
-    <div id="ai-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+    <!-- AI Results Modal -->
+    <div id="ai-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[60] hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-800">
-            <div class="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center">
-                <h4 id="ai-modal-title" class="text-xl font-bold text-white flex items-center gap-2">AI Result</h4>
-                <button onclick="document.getElementById('ai-result-modal').classList.add('hidden')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <div class="bg-slate-950 p-4 sm:p-5 border-b border-slate-800 flex justify-between items-center">
+                <h4 id="ai-modal-title" class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">AI Result</h4>
+                <button onclick="document.getElementById('ai-result-modal').classList.add('hidden')" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div class="p-6 overflow-y-auto custom-scrollbar bg-slate-900/50">
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-900/50">
                 <div id="ai-modal-content" class="ai-content text-sm text-slate-300"></div>
             </div>
         </div>
     </div>
 
-    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-800">
-            <h3 class="text-xl font-bold text-white mb-2">Configurare API</h3>
-            <p class="text-sm text-slate-400 mb-4">Introdu cheia pentru a verifica conexiunea.</p>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-5 sm:p-6 border border-slate-800">
+            <h3 class="text-lg sm:text-xl font-bold text-white mb-1">Configurare Google Gemini API</h3>
+            <p class="text-xs sm:text-sm text-slate-400 mb-4">Cheia este salvată exclusiv în browserul tău pentru apeluri AI directe.</p>
             <div class="mb-4">
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Google Gemini API Key</label>
-                <input type="password" id="api-key-input" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-indigo-500 transition-colors" placeholder="AIzaSy...">
-                <p id="api-key-error" class="text-red-400 bg-red-900/20 p-2 rounded mt-2 text-xs hidden border border-red-900/50 font-mono"></p>
-                <p class="text-[10px] text-slate-500 mt-2">Dacă ești PRO, asigură-te că folosești cheia din <strong>Google AI Studio</strong>, nu cheia Firebase.</p>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Google Gemini API Key</label>
+                <input type="password" id="api-key-input" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors" placeholder="AIzaSy...">
+                <p id="api-key-error" class="text-red-400 bg-red-900/20 p-2.5 rounded-lg mt-2 text-xs hidden border border-red-900/50 font-mono"></p>
+                <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">Obține gratuit o cheie din <strong>Google AI Studio</strong> (ai.google.dev).</p>
             </div>
-            <div class="flex justify-between items-center">
-                <button onclick="clearApiKey()" class="text-red-400 text-xs hover:text-red-300 flex items-center gap-1 border border-red-900/30 px-2 py-1 rounded hover:bg-red-900/20"><i data-lucide="trash-2" class="w-3 h-3"></i> Șterge Cheia</button>
+            <div class="flex justify-between items-center pt-2">
+                <button onclick="clearApiKey()" class="text-red-400 text-xs hover:text-red-300 flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg hover:bg-red-900/20 transition-colors">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Șterge Cheia
+                </button>
                 <div class="flex gap-2">
-                    <button onclick="toggleSettings()" class="text-slate-400 text-sm px-4">Închide</button>
-                    <button id="save-api-btn" onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2">Salvează & Testează</button>
+                    <button onclick="toggleSettings()" class="text-slate-400 text-xs sm:text-sm px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">Închide</button>
+                    <button id="save-api-btn" onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-4 sm:px-5 rounded-lg transition-all shadow-md flex items-center gap-1.5">
+                        Salvează
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, deleteDoc, onSnapshot, collection, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global State & Definitions
-        const firebaseConfig = { apiKey: "AIzaSyBI3AeJbwGglD7mJCUqh1azEwDlQyPoAl8", authDomain: "timing-81f98.firebaseapp.com", projectId: "timing-81f98", storageBucket: "timing-81f98.firebasestorage.app", messagingSenderId: "1037606536679", appId: "1:1037606536679:web:0c9542f9a4cbf96cd16942" };
-        let db, auth, userId; 
-        const COLLECTION = 'meal_entries_v2'; 
-        let currentMeal = { id: null, date: '', name: '', foods: [] };
-        let historyData = [], geminiKey = localStorage.getItem('gemini_api_key') || '', editingFoodIndex = -1; 
-        let recognition;
-        let isLoopActive = false;
-        let activeModel = localStorage.getItem('gemini_active_model') || null;
-        let currentOpenNutrient = null; // Track current nutrient for AI context
-        
-        // --- NEW HEALTH PROFILE STATE ---
-        let healthProfile = JSON.parse(localStorage.getItem('health_profile') || '[]');
-
-        // Local Fallback Data
-        const localFoodDB = {
-            "mar": { cal: 52, pro: 0.3, carb: 14, fat: 0.2, vitC: 4.6, pot: 107 }, "banan": { cal: 89, pro: 1.1, carb: 22.8, fat: 0.3, vitC: 8.7, mag: 27 },
-            "paine": { cal: 265, pro: 9, carb: 49, fat: 3.2, iron: 3.6 }, "ou": { cal: 155, pro: 13, carb: 1.1, fat: 11, vitA: 160, vitB12: 0.89 },
-            "pui": { cal: 165, pro: 31, carb: 0, fat: 3.6, vitB12: 0.3 }, "cartof": { cal: 77, pro: 2, carb: 17, fat: 0.1, vitC: 19.7 },
-            "default": { cal: 100, pro: 5, carb: 10, fat: 5 }
-        };
-
-        // --- GLOBAL FUNCTIONS DEFINED FIRST ---
-        
-        window.toggleSidebar = () => {
-            const sb = document.getElementById('analysis-sidebar');
-            const ov = document.getElementById('sidebar-overlay');
-            if (sb.classList.contains('-translate-x-full')) {
-                sb.classList.remove('-translate-x-full');
-                ov.classList.remove('hidden');
-                setTimeout(() => ov.classList.remove('opacity-0'), 10);
-            } else {
-                sb.classList.add('-translate-x-full');
-                ov.classList.add('opacity-0');
-                setTimeout(() => ov.classList.add('hidden'), 300);
-            }
-        };
-
-        window.toggleChat = () => {
-            const win = document.getElementById('chat-window');
-            if(win.classList.contains('hidden')) {
-                win.classList.remove('hidden');
-                setTimeout(() => win.classList.add('chat-visible'), 10);
-            } else {
-                win.classList.remove('chat-visible');
-                setTimeout(() => win.classList.add('hidden'), 300);
-            }
-        };
-
-        window.showAIModal = (title, content, iconName = 'sparkles') => {
-            const m = document.getElementById('ai-result-modal');
-            const t = document.getElementById('ai-modal-title');
-            const c = document.getElementById('ai-modal-content');
-            
-            t.innerHTML = `<i data-lucide="${iconName}" class="w-6 h-6 text-indigo-400"></i> ${title}`;
-            let formatted = content
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                .replace(/^\* (.*$)/gim, '<ul><li>$1</li></ul>')
-                .replace(/\n/g, '<br>');
-            formatted = formatted.replace(/<\/ul><br><ul>/g, '');
-            c.innerHTML = formatted;
-            m.classList.remove('hidden');
-            lucide.createIcons();
-        };
-
-        // --- GEMINI CORE LOGIC WITH AUTO-DISCOVERY ---
-        async function getWorkingModel(key) {
-            if(activeModel) return activeModel;
-            try {
-                console.log("Discovering models for key...");
-                const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-                if(r.ok) {
-                    const data = await r.json();
-                    if(data.models) {
-                        const valid = data.models.find(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent") && !m.name.includes('vision')); 
-                        if(valid) {
-                            const name = valid.name.replace('models/', '');
-                            console.log("Found model:", name);
-                            return name;
-                        }
-                    }
-                }
-            } catch(e) { console.warn("Discovery failed, using fallback list."); }
-            return 'gemini-1.5-flash';
-        }
-
-        async function callGeminiText(prompt) {
-            if(!geminiKey) throw new Error("Lipsă Cheie API");
-            if(!activeModel) {
-                activeModel = await getWorkingModel(geminiKey);
-                localStorage.setItem('gemini_active_model', activeModel);
-            }
-            const fallbacks = [activeModel, 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
-            let lastErr;
-            for(const m of [...new Set(fallbacks)]) { 
-                try {
-                    console.log(`Calling ${m}...`);
-                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`, {
-                        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                    });
-                    if(r.ok) {
-                        const d = await r.json();
-                        return d.candidates[0].content.parts[0].text;
-                    }
-                    if(r.status === 404 || r.status === 400) continue;
-                } catch(e) { lastErr = e; }
-            }
-            throw new Error("Niciun model AI nu a răspuns. Verifică cheia în setări.");
-        }
-
-        // --- NEW FEATURES 2.1: SHOPPING LIST & NUTRIENT CONTEXT ---
-
-        window.generateShoppingList = async () => {
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            if(currentMeal.foods.length === 0) return alert("Masa este goală! Adaugă ingrediente întâi.");
-
-            const btn = document.querySelector('button[title="Generează Lista de Cumpărături"]');
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>`;
-            lucide.createIcons();
-
-            const ingredients = currentMeal.foods.map(f => `${f.quantity}${f.unit} ${f.name}`).join(', ');
-            
-            // Intelligent Prompting for categorization and merging
-            const prompt = `Ești un asistent de cumpărături inteligent.
-            Am lista aceasta de ingrediente: ${ingredients}.
-            
-            Te rog să:
-            1. Cumulezi cantitățile pentru ingredientele identice (ex: 2x 100g Orez -> 200g Orez).
-            2. Le organizezi logic pe raioane de supermarket (ex: Legume/Fructe, Carne, Lactate, Băcănie, Altele).
-            3. Returnezi rezultatul direct în format HTML curat (fără \`\`\`html), folosind <h3> pentru categorii și <ul><li> pentru produse.
-            4. Adaugă emoji-uri relevante la fiecare categorie.`;
-
-            try {
-                const txt = await callGeminiText(prompt);
-                window.showAIModal("Listă de Cumpărături", txt, "shopping-cart");
-            } catch(e) { alert("Eroare AI: " + e.message); }
-            finally { btn.innerHTML = originalHTML; lucide.createIcons(); }
-        };
-
-        window.explainNutrientWithAI = async () => {
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            if(!currentOpenNutrient) return;
-
-            const btn = document.getElementById('btn-explain-nutrient');
-            const output = document.getElementById('nutrient-ai-explanation');
-            const originalHTML = btn.innerHTML;
-            
-            btn.disabled = true;
-            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Gândesc...`;
-            lucide.createIcons();
-            
-            const issues = healthProfile.length > 0 ? healthProfile.join(', ') : "Nicio problemă specificată";
-            const prompt = `Ești un nutriționist expert. 
-            Utilizatorul se uită la nutrientul: "${currentOpenNutrient.name}" (Cantitate în masă: ${currentOpenNutrient.qty}${currentOpenNutrient.unit}).
-            Profilul medical al utilizatorului: ${issues}.
-            
-            Explică foarte scurt (max 2 fraze):
-            1. De ce este bun acest nutrient?
-            2. Are o legătură specifică cu problemele de sănătate listate? (Dacă da, subliniază asta).
-            Ton: Prietenos și educativ.`;
-
-            try {
-                const txt = await callGeminiText(prompt);
-                output.innerText = txt;
-                output.classList.remove('hidden');
-                // Auto-speak
-                const u = new SpeechSynthesisUtterance(txt); u.lang = 'ro-RO'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-            } catch(e) { alert("Eroare AI: " + e.message); }
-            finally { 
-                btn.innerHTML = originalHTML; 
-                btn.disabled = false;
-                lucide.createIcons(); 
-            }
-        };
-
-        // --- MEDICAL LOGIC (Preserved) ---
-        
-        window.handleMedicalCSV = async (input) => {
-            const file = input.files[0];
-            if (!file) return;
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-
-            window.toggleChat(); 
-            const loadingId = addMessageToChat("Analizez fișierul medical...", 'ai', true);
-            
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const csvText = e.target.result;
-                const prompt = `Ești un medic specialist. Analizează aceste rezultate de laborator (CSV/Text): "${csvText.substring(0, 10000)}". Identifică valorile anormale. JSON strict: { "summary_text": "text scurt", "identified_issues": ["listă", "scurtă"] }`;
-
-                try {
-                    const txt = await callGeminiText(prompt);
-                    const s = txt.indexOf('{'), end = txt.lastIndexOf('}');
-                    const bubble = document.getElementById(loadingId); bubble.classList.remove('animate-pulse');
-
-                    if(s !== -1) {
-                        const res = JSON.parse(txt.substring(s, end+1));
-                        healthProfile = res.identified_issues || [];
-                        localStorage.setItem('health_profile', JSON.stringify(healthProfile));
-                        renderHealthTags();
-                        bubble.innerText = res.summary_text;
-                        const btnId = 'btn-audio-' + Date.now();
-                        const speakBtn = document.createElement('button'); speakBtn.id = btnId; speakBtn.className = "mt-3 text-indigo-300 hover:text-white flex items-center gap-1 text-xs bg-slate-900/50 px-2 py-1 rounded border border-slate-700 transition-colors"; speakBtn.innerHTML = `<i data-lucide="volume-2" class="w-3 h-3"></i> Ascultă`; bubble.appendChild(speakBtn); lucide.createIcons();
-                        setTimeout(() => window.speakTextWithAutoListen(res.summary_text, btnId, true), 500);
-                    } else { bubble.innerText = "Nu am putut interpreta formatul."; }
-                } catch(e) { document.getElementById(loadingId).innerText = "Eroare: " + e.message; } 
-                finally { input.value = ''; }
-            };
-            reader.readAsText(file);
-        };
-
-        window.generateMedicalMenu = async () => {
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            if(healthProfile.length === 0) return alert("Nu ai încărcat analize medicale încă! Folosește agrafa din chat.");
-
-            const btn = document.getElementById('btn-med-menu'); const originalHTML = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i>`; lucide.createIcons();
-
-            const prompt = `Ești nutriționist clinic. Pacientul are: ${healthProfile.join(', ')}. Creează un meniu sigur și terapeutic. JSON strict: { "ingredients": [ { "name": "string", "quantity": number, "unit": "string", "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] } ] }`;
-
-            try {
-                const txt = await callGeminiText(prompt);
-                const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
-                if(s !== -1) {
-                    const result = JSON.parse(txt.substring(s, e+1));
-                    if(result && result.ingredients) {
-                        currentMeal.foods = [];
-                        result.ingredients.forEach(ing => { if(!ing.nutrients) ing.nutrients = []; if(!ing.unit) ing.unit = 'g'; currentMeal.foods.push(ing); });
-                        renderCurrentMeal(); updateAnalysis();
-                        document.getElementById('data-source-msg').innerHTML = `<span class="text-rose-400">🩺 Meniu Terapeutic</span>`;
-                        window.showAIModal("Meniu Terapeutic", `Am creat o masă adaptată pentru: **${healthProfile.join(', ')}**.\n\nVerifică lista de ingrediente!`, "stethoscope");
-                    }
-                }
-            } catch(e) { alert("Eroare AI: " + e.message); } finally { btn.innerHTML = originalHTML; lucide.createIcons(); }
-        };
-
-        function renderHealthTags() {
-            const container = document.getElementById('health-tags'); container.innerHTML = '';
-            if(healthProfile.length === 0) { container.innerHTML = `<span class="text-[10px] text-slate-500 italic">Nicio analiză încărcată.</span>`; return; }
-            healthProfile.forEach(issue => { const tag = document.createElement('span'); tag.className = "bg-rose-900/30 text-rose-300 border border-rose-800 text-[10px] px-2 py-0.5 rounded"; tag.innerText = issue; container.appendChild(tag); });
-        }
-
-        // --- STANDARD ACTION FUNCTIONS ---
-        window.generateRecipe = async () => {
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            if(currentMeal.foods.length === 0) return alert("Adaugă ingrediente în listă mai întâi!");
-            const btn = document.getElementById('btn-chef'); const originalHTML = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i>`; lucide.createIcons();
-            const ingredients = currentMeal.foods.map(f => `${f.quantity}${f.unit} ${f.name}`).join(', ');
-            const prompt = `Ești un bucătar Chef Gourmet. Creează o rețetă folosind: ${ingredients}. Format: ## Titlu, **Ingrediente**, **Mod de preparare**.`;
-            try { const txt = await callGeminiText(prompt); window.showAIModal("Rețeta Chef-ului", txt, "chef-hat"); } catch(e) { alert("Eroare AI: " + e.message); } finally { btn.innerHTML = originalHTML; lucide.createIcons(); }
-        };
-
-        window.analyzeHealth = async () => {
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            if(currentMeal.foods.length === 0) return alert("Masa este goală!");
-            const btn = document.getElementById('btn-coach'); const originalHTML = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i>`; lucide.createIcons();
-            let totalCal = 0, pro = 0, carb = 0, fat = 0;
-            currentMeal.foods.forEach(f => { totalCal += f.calories; if(f.nutrients) { f.nutrients.forEach(n => { if(n.name.includes('Prot')) pro += n.qty; if(n.name.includes('Carb')) carb += n.qty; if(n.name.includes('Grăs')) fat += n.qty; }); } });
-            const prompt = `Ești Nutri Coach. Analizează: ${JSON.stringify(currentMeal.foods)}. Total: ${totalCal} kcal, P:${pro}g, C:${carb}g, F:${fat}g. Oferă 3 sfaturi scurte.`;
-            try { const txt = await callGeminiText(prompt); window.showAIModal("Analiză Nutri Coach", txt, "heart-pulse"); } catch(e) { alert("Eroare AI: " + e.message); } finally { btn.innerHTML = originalHTML; lucide.createIcons(); }
-        };
-
-        window.generateMealFromTitle = async () => {
-            const title = document.getElementById('meal-name').value.trim();
-            const genBtn = document.getElementById('gen-btn');
-            if(!title) return alert("Scrie numele mesei mai întâi.");
-            if(!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            genBtn.disabled = true; const originalHtml = genBtn.innerHTML;
-            genBtn.innerHTML = `<i data-lucide="loader" class="w-3 h-3 animate-spin"></i> Gândesc...`; lucide.createIcons();
-            const prompt = `Ești nutriționist. Generează ingrediente pentru: "${title}". Returnează JSON strict: { "ingredients": [ { "name": "string", "quantity": number, "unit": "string", "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] } ] }`;
-            try {
-                const txt = await callGeminiText(prompt);
-                const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
-                if(s !== -1 && e !== -1) {
-                    const result = JSON.parse(txt.substring(s, e+1));
-                    if(result && result.ingredients) {
-                        result.ingredients.forEach(ing => { if(!ing.nutrients) ing.nutrients = []; if(!ing.unit) ing.unit = 'g'; currentMeal.foods.push(ing); });
-                        renderCurrentMeal(); updateAnalysis();
-                        document.getElementById('data-source-msg').innerHTML = `<span class="text-purple-400">✨ Meniu generat de AI</span>`;
-                    }
-                }
-            } catch(e) { console.error(e); alert("Eroare AI: " + e.message); } finally { genBtn.disabled = false; genBtn.innerHTML = originalHtml; lucide.createIcons(); }
-        };
-
-        window.processFoodItem = async () => {
-            const name = document.getElementById('food-name').value.trim();
-            const qty = parseFloat(document.getElementById('food-qty').value);
-            const unit = document.getElementById('food-unit').value;
-            const btn = document.getElementById('add-btn');
-            if (!name || isNaN(qty) || qty <= 0) return alert("Date invalide");
-            btn.disabled = true; const originalText = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>`; lucide.createIcons();
-            if (editingFoodIndex > -1) {
-                const oldFood = currentMeal.foods[editingFoodIndex];
-                if (oldFood.name.toLowerCase() === name.toLowerCase() && oldFood.unit === unit) {
-                    const factor = qty / oldFood.quantity;
-                    const newNutrients = (oldFood.nutrients || []).map(n => ({ ...n, qty: n.qty * factor, rda_percent: (n.rda_percent * factor).toFixed(1) }));
-                    currentMeal.foods[editingFoodIndex] = { ...oldFood, quantity: qty, calories: Math.round(oldFood.calories * factor), nutrients: newNutrients };
-                    finishProcessing(originalText, btn, "Recalculat local"); return;
-                }
-            }
-            let resultData; let source = 'Local';
-            if(geminiKey) {
-                try {
-                    const prompt = `Analizează alimentul: "${qty} ${unit} de ${name}". Returnează JSON strict: { "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] }`;
-                    const txt = await callGeminiText(prompt);
-                    const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
-                    if(s !== -1) { resultData = JSON.parse(txt.substring(s, e+1)); source = 'AI'; }
-                } catch(e) { console.log("AI failed for item, using local", e); }
-            }
-            if(!resultData) {
-                const nLower = name.toLowerCase(); let match = localFoodDB.default;
-                for(const k in localFoodDB) if(nLower.includes(k) && k !== 'default') { match = localFoodDB[k]; break; }
-                let factor = qty / 100; if(unit === 'bucati') factor = qty * 0.5;
-                const nuts = [];
-                if(match.pro) nuts.push({name:"Proteine", type:"Macro", qty: match.pro*factor, unit:"g", rda_percent: (match.pro*factor/50*100).toFixed(0)});
-                resultData = { calories: Math.round(match.cal * factor), nutrients: nuts };
-            }
-            if(!resultData.nutrients) resultData.nutrients = [];
-            const newFood = { name, quantity: qty, unit, calories: resultData.calories, nutrients: resultData.nutrients };
-            if (editingFoodIndex > -1) currentMeal.foods[editingFoodIndex] = newFood; else currentMeal.foods.push(newFood);
-            finishProcessing(originalText, btn, source === 'AI' ? `<span class="text-emerald-400">✨ Analizat cu Gemini</span>` : `<span class="text-yellow-500">⚠️ Estimare Locală</span>`);
-        };
-
-        // UI Helpers
-        function finishProcessing(ot, btn, msg) { 
-            btn.innerHTML = ot; btn.disabled = false; document.getElementById('data-source-msg').innerHTML = msg || ""; 
-            document.getElementById('food-name').value = ''; document.getElementById('food-qty').value = ''; 
-            exitFoodEditMode(); renderCurrentMeal(); updateAnalysis(); 
-            if(currentMeal.foods.length > 0) document.getElementById('ai-actions-panel').classList.remove('hidden'); lucide.createIcons(); 
-        }
-        function resetFormDate() { document.getElementById('meal-datetime').value = new Date(new Date().getTime() - new Date().getTimezoneOffset()*60000).toISOString().slice(0, 16); }
-        window.toggleSettings = () => { document.getElementById('settings-modal').classList.toggle('hidden'); if(!document.getElementById('settings-modal').classList.contains('hidden')) document.getElementById('api-key-input').value = geminiKey; };
-        function checkApiKeyStatus() { document.getElementById('api-key-indicator').className = `absolute top-1 right-1 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${geminiKey ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`; }
-        window.loadFoodForEdit = (i) => { const f=currentMeal.foods[i]; editingFoodIndex=i; document.getElementById('food-name').value=f.name; document.getElementById('food-qty').value=f.quantity; document.getElementById('food-unit').value=f.unit; document.getElementById('edit-mode-indicator').classList.remove('hidden'); const btn=document.getElementById('add-btn'); btn.innerHTML='<i data-lucide="check" class="w-4 h-4"></i>'; btn.className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-bold transition-all shadow-lg"; lucide.createIcons(); };
-        function exitFoodEditMode() { editingFoodIndex=-1; document.getElementById('edit-mode-indicator').classList.add('hidden'); const btn=document.getElementById('add-btn'); btn.innerHTML='<i data-lucide="plus" class="w-4 h-4"></i><span class="md:hidden">Adaugă</span>'; btn.className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center gap-2"; lucide.createIcons(); };
-        window.removeFood = (i) => { if(editingFoodIndex===i) exitFoodEditMode(); currentMeal.foods.splice(i,1); renderCurrentMeal(); updateAnalysis(); if(currentMeal.foods.length===0) document.getElementById('ai-actions-panel').classList.add('hidden'); };
-        window.saveMealToCloud = async () => { if(!db || !userId) return alert("Baza de date neconectată."); const btn=document.getElementById('save-meal-btn'); const ot=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>'; const pl={date:document.getElementById('meal-datetime').value, name:document.getElementById('meal-name').value, foods:currentMeal.foods, timestamp:serverTimestamp()}; try{ if(currentMeal.id) await setDoc(doc(db,'artifacts','nutrition-pro-app','users',userId,COLLECTION,currentMeal.id),pl,{merge:true}); else await addDoc(collection(db,'artifacts','nutrition-pro-app','users',userId,COLLECTION),pl); resetForm(); } catch(e){alert("Eroare salvare");} finally{btn.disabled=false; btn.innerHTML=ot; lucide.createIcons();} };
-        window.editHistoryMeal = (id) => { const m=historyData.find(x=>x.id===id); if(!m)return; currentMeal=JSON.parse(JSON.stringify(m)); document.getElementById('meal-datetime').value=currentMeal.date; document.getElementById('meal-name').value=currentMeal.name||''; document.getElementById('editor-title').innerText="Modifică Masă"; document.getElementById('cancel-edit-btn').classList.remove('hidden'); document.getElementById('save-meal-btn').innerHTML='<i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizează'; exitFoodEditMode(); renderCurrentMeal(); updateAnalysis(); if(currentMeal.foods.length > 0) document.getElementById('ai-actions-panel').classList.remove('hidden'); };
-        window.deleteMeal = async (id) => { if(!db) return; if(confirm("Ștergi?")) { await deleteDoc(doc(db,'artifacts','nutrition-pro-app','users',userId,COLLECTION,id)); if(currentMeal.id===id) resetForm(); } };
-        window.resetForm = () => { currentMeal={id:null, date:'', name:'', foods:[]}; resetFormDate(); document.getElementById('meal-name').value=''; document.getElementById('editor-title').innerText="Editor Masă"; document.getElementById('cancel-edit-btn').classList.add('hidden'); document.getElementById('save-meal-btn').innerHTML='<i data-lucide="save" class="w-4 h-4"></i> Salvează Masa'; exitFoodEditMode(); renderCurrentMeal(); updateAnalysis(); document.getElementById('ai-actions-panel').classList.add('hidden'); lucide.createIcons(); };
-        window.openNutrientDetail = (n) => { 
-            currentOpenNutrient = n; // Store reference
-            document.getElementById('nutrient-ai-explanation').classList.add('hidden');
-            document.getElementById('modal-n-name').innerText=n.name; document.getElementById('modal-n-type').innerText=n.type; document.getElementById('modal-n-qty').innerText=n.qty.toFixed(1)+n.unit; document.getElementById('modal-n-perc').innerText=n.rda_percent.toFixed(0)+'%'; document.getElementById('modal-n-role').innerText=n.role||"N/A"; document.getElementById('modal-n-bar').style.width=Math.min(n.rda_percent,100)+'%'; document.getElementById('modal-n-bar').className=`h-3 rounded-full transition-all duration-700 ${n.rda_percent>100?'bg-orange-500':'bg-indigo-500'}`; const l=document.getElementById('modal-sources-list'); l.innerHTML=''; n.sources.sort((a,b)=>b.foodQty-a.foodQty).forEach(s=>{ l.innerHTML+=`<li class="flex justify-between border-b border-slate-800 pb-1"><span class="text-slate-300">${s.foodName}</span><span class="font-mono text-slate-500">${s.foodQty.toFixed(1)}${n.unit}</span></li>` }); document.getElementById('nutrient-modal').classList.remove('hidden'); 
-        }
-        window.exportFullJson = () => { if(historyData.length===0) return alert("Fără date."); const b = new Blob([JSON.stringify(historyData, null, 2)], {type: "application/json"}); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `nutritie_export.json`; a.click(); };
-        
-        window.clearApiKey = () => { localStorage.removeItem('gemini_api_key'); localStorage.removeItem('gemini_active_model'); geminiKey = ''; activeModel = null; document.getElementById('api-key-input').value = ''; checkApiKeyStatus(); alert("Cheia a fost ștearsă."); }
-        window.saveApiKey = async () => { const rawKey = document.getElementById('api-key-input').value; const key = rawKey ? rawKey.trim() : ""; const btn = document.getElementById('save-api-btn'); const errEl = document.getElementById('api-key-error'); if(!key.startsWith("AIza")) { errEl.innerHTML = "Cheie invalidă (trebuie să înceapă cu AIza)."; errEl.classList.remove('hidden'); return; } btn.disabled = true; btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Caut model...`; errEl.classList.add('hidden'); const discovered = await getWorkingModel(key); if (discovered) { geminiKey = key; activeModel = discovered; localStorage.setItem('gemini_api_key', key); localStorage.setItem('gemini_active_model', discovered); toggleSettings(); checkApiKeyStatus(); alert(`Conectat cu succes la modelul: ${discovered}`); } else { errEl.innerHTML = `<strong>Eroare:</strong> Cheia este validă, dar nu am găsit niciun model AI accesibil (404/403).`; errEl.classList.remove('hidden'); } btn.disabled = false; btn.innerHTML = "Salvează & Testează"; };
-
-        window.handleImageUpload = async (input) => {
-            const file = input.files[0];
-            if (!file) return;
-            if (!geminiKey) { window.toggleSettings(); return alert("Ai nevoie de cheie API."); }
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const base64Data = e.target.result.split(',')[1];
-                const btn = document.getElementById('cam-btn'); const originalHtml = btn.innerHTML;
-                btn.innerHTML = `<i data-lucide="loader" class="w-3 h-3 animate-spin"></i>`; lucide.createIcons();
-                try {
-                    const prompt = `Analizează imaginea. JSON strict: { "ingredients": [ { "name": "string", "quantity": number, "unit": "g/ml/buc", "calories": number, "nutrients": [] } ] }`;
-                    const model = activeModel && activeModel.includes('flash') ? activeModel : 'gemini-1.5-flash';
-                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [ { text: prompt }, { inlineData: { mimeType: file.type, data: base64Data } } ] }] }) });
-                    if(r.ok) {
-                        const d = await r.json(); const txt = d.candidates[0].content.parts[0].text; const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
-                        if(s!==-1) {
-                            const res = JSON.parse(txt.substring(s, e+1));
-                            res.ingredients.forEach(ing => { if(!ing.unit) ing.unit='g'; if(!ing.nutrients) ing.nutrients=[]; currentMeal.foods.push(ing); });
-                            renderCurrentMeal(); updateAnalysis(); document.getElementById('data-source-msg').innerHTML = `<span class="text-emerald-400">📷 Analiză Foto</span>`;
-                        }
-                    } else { throw new Error("Vision error " + r.status); }
-                } catch (e) { console.error(e); alert("Eroare: " + e.message); } finally { btn.innerHTML = originalHtml; lucide.createIcons(); input.value = ''; }
-            };
-            reader.readAsDataURL(file);
-        };
-
-        // --- SPEECH TO TEXT & TEXT TO SPEECH ---
-        window.toggleVoiceInput = () => {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return alert("Microfon indisponibil.");
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (recognition && recognition.started) { recognition.stop(); return; }
-            recognition = new SR(); recognition.lang = 'ro-RO'; recognition.interimResults = false; recognition.maxAlternatives = 1;
-            const btn = document.getElementById('mic-btn');
-            recognition.onstart = () => { recognition.started = true; btn.classList.add('mic-active'); document.getElementById('chat-input').placeholder = "Te ascult..."; };
-            recognition.onend = () => { recognition.started = false; btn.classList.remove('mic-active'); document.getElementById('chat-input').placeholder = "Scrie sau vorbește..."; };
-            recognition.onresult = (event) => { if (!event.results || !event.results[0]) return; const transcript = event.results[0][0].transcript; const t = transcript.toLowerCase(); if (t.includes("stop") || t.includes("oprește") || t.includes("gata") || t.includes("închide")) { isLoopActive = false; window.speakSimple("Microfon oprit."); addMessageToChat("🛑 Microfon oprit la cerere.", 'system'); return; } document.getElementById('chat-input').value = transcript; window.sendChatMessage(); };
-            recognition.start();
-        };
-        
-        window.speakSimple = (text) => { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'ro-RO'; window.speechSynthesis.speak(utterance); }
-        window.speakTextWithAutoListen = (text, btnId, restartListening = true) => {
-            if (!('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel(); if (!restartListening) isLoopActive = false; else isLoopActive = true;
-            const cleanText = text.replace(/[*#]/g, ''); const utterance = new SpeechSynthesisUtterance(cleanText); utterance.lang = 'ro-RO'; utterance.rate = 1.1;
-            const btn = document.getElementById(btnId);
-            utterance.onstart = () => { if(btn) { btn.innerHTML = `<i data-lucide="square" class="w-3 h-3 fill-current"></i> Stop`; btn.classList.add('text-red-400'); lucide.createIcons(); } };
-            utterance.onend = () => { if(btn) { btn.innerHTML = `<i data-lucide="volume-2" class="w-3 h-3"></i> Ascultă`; btn.classList.remove('text-red-400'); lucide.createIcons(); } if (isLoopActive) setTimeout(() => window.toggleVoiceInput(), 600); };
-            if(btn) { btn.onclick = () => { if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); isLoopActive = false; } else window.speakTextWithAutoListen(text, btnId, false); }; }
-            window.speechSynthesis.speak(utterance);
-        };
-
-        // --- CHAT LOGIC ---
-        function addMessageToChat(text, sender, isLoading = false) {
-            const container = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            const id = 'msg-' + Date.now();
-            div.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-            const bubbleWrapper = document.createElement('div');
-            bubbleWrapper.className = `max-w-[85%] p-3 rounded-2xl ${sender === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-300 rounded-tl-none border border-slate-700'}`;
-            const textSpan = document.createElement('div');
-            textSpan.id = id;
-            textSpan.className = "text-sm";
-            textSpan.innerText = text;
-            bubbleWrapper.appendChild(textSpan);
-            div.appendChild(bubbleWrapper);
-            if(isLoading) textSpan.classList.add('animate-pulse');
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-            return id;
-        }
-
-        window.sendChatMessage = async () => {
-            const input = document.getElementById('chat-input');
-            const msg = input.value.trim();
-            if(!msg) return;
-            if(!geminiKey) return alert("Ai nevoie de cheie API.");
-            addMessageToChat(msg, 'user'); input.value = '';
-            const loadingId = addMessageToChat("...", 'ai', true);
-            const mealContext = currentMeal.foods.length > 0 ? `Masa curentă: ${JSON.stringify(currentMeal.foods.map(f => ({name: f.name, qty: f.quantity, unit: f.unit})))}` : `Masa goală.`;
-            const prompt = `Ești asistent nutrițional. Context: ${mealContext}. User: "${msg}". Răspunde JSON: { "action": "generate/delete/modify/scale/chat", "reply": "...", "ingredients": [], "target": "...", "new_quantity": ... }`;
-            try {
-                const responseText = await callGeminiText(prompt);
-                const bubble = document.getElementById(loadingId); bubble.classList.remove('animate-pulse');
-                const btnId = 'btn-audio-' + Date.now();
-                const speakBtn = document.createElement('button'); speakBtn.id = btnId; speakBtn.className = "mt-3 text-indigo-300 hover:text-white flex items-center gap-1 text-xs bg-slate-900/50 px-2 py-1 rounded border border-slate-700 transition-colors"; speakBtn.innerHTML = `<i data-lucide="volume-2" class="w-3 h-3"></i> Ascultă`;
-                let jsonStart = responseText.indexOf('{'), jsonEnd = responseText.lastIndexOf('}'); let finalText = "";
-                if (jsonStart !== -1 && jsonEnd !== -1) {
-                    try {
-                        const jsonResponse = JSON.parse(responseText.substring(jsonStart, jsonEnd + 1));
-                        let replyText = jsonResponse.reply || "Gata!";
-                        if (jsonResponse.action === 'generate' && jsonResponse.ingredients) { jsonResponse.ingredients.forEach(ing => { if(!ing.nutrients) ing.nutrients = []; if(!ing.unit) ing.unit = 'g'; currentMeal.foods.push(ing); }); } 
-                        else if (jsonResponse.action === 'delete') { if (jsonResponse.target === 'all') { currentMeal.foods = []; replyText = "Am șters toată masa."; } else { const t = jsonResponse.target.toLowerCase(); currentMeal.foods = currentMeal.foods.filter(f => !f.name.toLowerCase().includes(t)); } }
-                        else if (jsonResponse.action === 'modify') { const t = jsonResponse.target.toLowerCase(); currentMeal.foods.forEach(f => { if(f.name.toLowerCase().includes(t)) { f.quantity = jsonResponse.new_quantity; if(jsonResponse.new_unit) f.unit = jsonResponse.new_unit; } }); }
-                        else if (jsonResponse.action === 'scale') { const factor = jsonResponse.factor || 1; currentMeal.foods.forEach(f => { f.quantity *= factor; f.calories = Math.round(f.calories * factor); if(f.nutrients) f.nutrients.forEach(n => n.qty *= factor); }); }
-                        renderCurrentMeal(); updateAnalysis(); bubble.innerText = replyText; finalText = replyText; document.getElementById('data-source-msg').innerHTML = `<span class="text-purple-400">💬 Generat prin Chat</span>`;
-                    } catch (e) { bubble.innerText = responseText; finalText = responseText; }
-                } else { bubble.innerText = responseText; finalText = responseText; }
-                bubble.appendChild(speakBtn); lucide.createIcons(); setTimeout(() => window.speakTextWithAutoListen(finalText, btnId, true), 200);
-            } catch (e) { document.getElementById(loadingId).innerText = `Eroare: ${e.message}`; }
-        };
-
-        function renderHistory() { const container = document.getElementById('meal-history'); container.innerHTML = ''; if (historyData.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-600 text-sm">Nu există date.</div>`; historyData.forEach(meal => { const totalCal = meal.foods.reduce((acc, f) => acc + (f.calories || 0), 0); const d = document.createElement('div'); d.className = "bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm hover:border-indigo-500/50 transition-all"; d.innerHTML = `<div class="flex justify-between items-start mb-2"><div><h4 class="font-bold text-white text-sm">${meal.name || 'Masă'}</h4><div class="text-xs text-slate-500">${new Date(meal.date).toLocaleString('ro-RO')}</div></div><div class="bg-slate-800 text-slate-300 font-mono text-xs px-2 py-1 rounded font-bold">${totalCal} kcal</div></div><div class="flex justify-between mt-3 pt-3 border-t border-slate-800"><div class="text-xs text-slate-500">${meal.foods.length} alimente</div><div class="flex gap-2"><button onclick="editHistoryMeal('${meal.id}')" class="text-xs text-white bg-indigo-600 px-3 py-1 rounded">Editează</button><button onclick="deleteMeal('${meal.id}')" class="text-red-400 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`; container.appendChild(d); }); lucide.createIcons(); }
-        function renderCurrentMeal() { const c = document.getElementById('current-meal-list'), btn = document.getElementById('save-meal-btn'); c.innerHTML = ''; if (currentMeal.foods.length === 0) { btn.disabled = true; return c.innerHTML = `<div class="text-center py-6 text-slate-600 text-sm border-2 border-dashed border-slate-800 rounded-lg">Masa este goală.</div>`; } btn.disabled = false; currentMeal.foods.forEach((f, i) => { const d = document.createElement('div'); d.className = `flex justify-between items-center p-3 rounded-lg border ${i===editingFoodIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-800 border-slate-700'}`; d.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="bg-slate-700 text-white text-xs p-2 rounded min-w-[3.5rem] text-center">${f.calories}</div><div class="min-w-0"><p class="font-bold text-white text-sm truncate">${f.name}</p><p class="text-xs text-slate-400 truncate">${f.quantity} ${f.unit}</p></div></div><div class="flex gap-1">${i!==editingFoodIndex ? `<button onclick="loadFoodForEdit(${i})" class="p-2 text-indigo-400 hover:bg-indigo-900/30 rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button>` : ''}<button onclick="removeFood(${i})" class="p-2 text-slate-500 hover:text-red-400 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`; c.appendChild(d); }); lucide.createIcons(); }
-        function updateAnalysis() {
-            const list = document.getElementById('nutrients-list'), sum = document.getElementById('macro-summary'); list.innerHTML = '';
-            if (currentMeal.foods.length === 0) { sum.classList.add('hidden'); return list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-600 opacity-60"><i data-lucide="pie-chart" class="w-16 h-16 mb-4"></i><p class="text-sm">Fără date...</p></div>`; }
-            sum.classList.remove('hidden');
-            const agg = {}; let tp=0, tc=0, tf=0;
-            currentMeal.foods.forEach(f => { f.nutrients.forEach(n => { if(!agg[n.name]) agg[n.name] = { ...n, qty:0, rda_percent:0, sources:[] }; agg[n.name].qty+=parseFloat(n.qty); agg[n.name].rda_percent+=parseFloat(n.rda_percent); agg[n.name].sources.push({foodName:f.name, foodQty:n.qty}); if(n.name.includes('Prot')) tp+=n.qty; if(n.name.includes('Carb')) tc+=n.qty; if(n.name.includes('Grăs')) tf+=n.qty; }); });
-            document.getElementById('total-pro').innerText=tp.toFixed(0)+'g'; document.getElementById('total-carb').innerText=tc.toFixed(0)+'g'; document.getElementById('total-fat').innerText=tf.toFixed(0)+'g';
-            Object.values(agg).sort((a,b)=>b.rda_percent-a.rda_percent).forEach(n => { const p=Math.min(n.rda_percent,100); const btn=document.createElement('button'); btn.className="w-full text-left p-3 rounded-lg hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all"; btn.onclick=()=>window.openNutrientDetail(n); btn.innerHTML=`<div class="flex justify-between items-end mb-1"><div><div class="font-bold text-slate-200 text-sm">${n.name}</div><div class="text-[10px] text-slate-500 uppercase font-bold">${n.type}</div></div><div class="text-right"><div class="font-mono text-sm text-white font-bold">${n.qty.toFixed(1)}${n.unit}</div><div class="text-[10px] ${n.rda_percent>100?'text-orange-400':'text-slate-500'} font-bold">${n.rda_percent.toFixed(0)}% DZR</div></div></div><div class="w-full bg-slate-800 h-1.5 rounded-full"><div class="bg-indigo-500 h-full rounded-full" style="width:${p}%"></div></div>`; list.appendChild(btn); });
-        }
-
-        async function init() {
-            try {
-                const app = initializeApp(firebaseConfig); db = getFirestore(app); auth = getAuth(app);
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) { userId = user.uid; document.getElementById('auth-status').innerHTML = `<i data-lucide="wifi" class="w-3 h-3"></i> Conectat`; document.getElementById('auth-status').classList.replace('bg-slate-800', 'bg-emerald-900/30'); document.getElementById('auth-status').classList.replace('text-slate-400', 'text-emerald-400'); const q = query(collection(db, 'artifacts', 'nutrition-pro-app', 'users', userId, COLLECTION), orderBy('timestamp', 'desc')); onSnapshot(q, (snap) => { historyData = snap.docs.map(d => ({id: d.id, ...d.data()})); renderHistory(); }, (err) => { console.error(err); }); } else await signInAnonymously(auth);
-                    lucide.createIcons();
-                });
-            } catch (e) { console.error("Firebase init failed:", e); document.getElementById('auth-status').innerHTML = "Offline Mode"; document.getElementById('auth-status').classList.add('text-yellow-500'); }
-            resetFormDate(); checkApiKeyStatus(); lucide.createIcons(); renderHealthTags();
-            if(geminiKey && !activeModel) { activeModel = await getWorkingModel(geminiKey); if(activeModel) localStorage.setItem('gemini_active_model', activeModel); }
-        }
-        
-        init();
-    </script>
+    <!-- Application Script (ES Module) -->
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
