@@ -73,16 +73,24 @@ export const AI = {
                     }
                 }
 
-                if (response.status === 404 || response.status === 400 || response.status === 403) {
-                    console.warn(`Model ${model} returned ${response.status}, trying fallback...`);
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => null);
+                    const errMsg = errData?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+                    lastError = new Error(errMsg);
+                    console.warn(`Model ${model} failed (${response.status}):`, errMsg);
+                    if (response.status === 400 || response.status === 403) {
+                        // Likely invalid key or permission issue
+                        throw new Error(`Eroare Google API: ${errMsg}`);
+                    }
                     continue;
                 }
             } catch (e) {
                 lastError = e;
+                if (e.message.startsWith("Eroare Google API:")) throw e;
             }
         }
 
-        throw new Error(lastError ? lastError.message : "Niciun model AI nu a răspuns. Verifică cheia în Setări.");
+        throw new Error(lastError ? lastError.message : "Niciun model AI nu a răspuns. Verifică dacă ai o cheie Gemini validă din Google AI Studio.");
     },
 
     async callVision(prompt, base64Data, mimeType) {
