@@ -14,7 +14,41 @@ let healthProfile = [];
 let recognition = null;
 let isLoopActive = false;
 
-// Helpers
+// Helpers & Time of Day Meal Suggestion
+export function suggestMealNameByTime(dateTimeString) {
+    const d = dateTimeString ? new Date(dateTimeString) : new Date();
+    const hour = d.getHours();
+    const minute = d.getMinutes();
+    const timeVal = hour + (minute / 60);
+
+    if (timeVal >= 5.0 && timeVal < 10.75) {
+        return "Mic Dejun";
+    } else if (timeVal >= 10.75 && timeVal < 12.5) {
+        return "Gustare de Dimineață";
+    } else if (timeVal >= 12.5 && timeVal < 16.5) {
+        return "Prânz";
+    } else if (timeVal >= 16.5 && timeVal < 19.5) {
+        return "Gustare de După-amiază";
+    } else if (timeVal >= 19.5 && timeVal < 23.0) {
+        return "Cină";
+    } else {
+        return "Gustare de Noapte";
+    }
+}
+
+const STANDARD_SUGGESTIONS = [
+    "Mic Dejun", "Gustare de Dimineață", "Prânz", "Gustare de După-amiază", "Cină", "Gustare de Noapte", "Gustare"
+];
+
+window.handleMealDateChange = (val) => {
+    const nameInput = document.getElementById('meal-name');
+    if (!nameInput) return;
+    const currentVal = nameInput.value.trim();
+    if (!currentVal || STANDARD_SUGGESTIONS.includes(currentVal)) {
+        nameInput.value = suggestMealNameByTime(val);
+    }
+};
+
 function getTodayDateTimeLocal() {
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
@@ -377,8 +411,9 @@ window.removeFood = (i) => {
 
 window.resetForm = () => {
     currentMeal = { id: null, date: '', name: '', foods: [] };
-    document.getElementById('meal-datetime').value = getTodayDateTimeLocal();
-    document.getElementById('meal-name').value = '';
+    const nowLocal = getTodayDateTimeLocal();
+    document.getElementById('meal-datetime').value = nowLocal;
+    document.getElementById('meal-name').value = suggestMealNameByTime(nowLocal);
     document.getElementById('editor-title').innerText = "Editor Masă";
     document.getElementById('cancel-edit-btn').classList.add('hidden');
     document.getElementById('save-meal-btn').innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvează Masa';
@@ -1303,7 +1338,9 @@ window.previewMonthlyPDF = () => {
 
 // --- Initial Startup ---
 function initApp() {
-    document.getElementById('meal-datetime').value = getTodayDateTimeLocal();
+    const nowLocal = getTodayDateTimeLocal();
+    document.getElementById('meal-datetime').value = nowLocal;
+    document.getElementById('meal-name').value = suggestMealNameByTime(nowLocal);
     updateApiKeyIndicator();
     renderHealthTags();
     renderHistory();

@@ -133,14 +133,14 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-5">
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dată & Timp</label>
-                        <input type="datetime-local" id="meal-datetime" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                        <input type="datetime-local" id="meal-datetime" onchange="handleMealDateChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
                     </div>
                     
                     <!-- AI Generator + Camera Button -->
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nume Preparat sau Poză</label>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nume masă, preparat sau poză</label>
                         <div class="flex gap-2">
-                            <input type="text" id="meal-name" placeholder="Ex: Omletă cu ciuperci..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                            <input type="text" id="meal-name" placeholder="Ex: Mic Dejun, Omletă cu ciuperci..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
                             
                             <!-- Generator Button -->
                             <button onclick="generateMealFromTitle()" id="gen-btn" class="bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-purple-500" title="Generează automat din text">
