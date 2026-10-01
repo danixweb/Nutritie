@@ -61,6 +61,18 @@ window.toggleSettings = () => {
     if (!modal.classList.contains('hidden')) {
         document.getElementById('api-key-input').value = Storage.getApiKey();
         document.getElementById('api-key-error').classList.add('hidden');
+        
+        const selectedType = Storage.getSelectedModelType();
+        const modelSelect = document.getElementById('model-select');
+        if (modelSelect) {
+            modelSelect.value = selectedType;
+            window.handleModelSelectChange(selectedType);
+        }
+        const customInput = document.getElementById('custom-model-input');
+        if (customInput) {
+            customInput.value = Storage.getCustomModelName();
+        }
+        refreshIcons();
     }
 };
 
@@ -1103,11 +1115,86 @@ Răspunde strict în JSON:
 };
 
 // --- Settings & Key Management ---
+window.handleModelSelectChange = (val) => {
+    const container = document.getElementById('custom-model-container');
+    if (!container) return;
+    if (val === 'custom') {
+        container.classList.remove('hidden');
+    } else {
+        container.classList.add('hidden');
+    }
+};
+
+window.refreshAvailableModels = async () => {
+    const rawKey = document.getElementById('api-key-input').value;
+    const key = rawKey ? rawKey.trim() : Storage.getApiKey();
+    const btn = document.getElementById('refresh-models-btn');
+    const errEl = document.getElementById('api-key-error');
+
+    if (!key) {
+        errEl.innerHTML = "Introdu cheia API mai întâi pentru a scana modelele disponibile.";
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="w-3 h-3 animate-spin"></i> <span>Scanez...</span>`;
+    errEl.classList.add('hidden');
+    refreshIcons();
+
+    try {
+        const models = await AI.listAvailableModels(key);
+        if (models.length === 0) {
+            alert("Nu am găsit modele disponibile pentru această cheie.");
+            return;
+        }
+
+        const select = document.getElementById('model-select');
+        const currentVal = select.value;
+        select.innerHTML = '';
+
+        // Add dynamically scanned models
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = `${m.id} (${m.displayName || 'Google Gemini'})`;
+            select.appendChild(opt);
+        });
+
+        // Add Auto and Custom options
+        const autoOpt = document.createElement('option');
+        autoOpt.value = 'auto';
+        autoOpt.textContent = 'Auto-Detectare dinamică';
+        select.appendChild(autoOpt);
+
+        const customOpt = document.createElement('option');
+        customOpt.value = 'custom';
+        customOpt.textContent = '✏️ Model Personalizat / Manual...';
+        select.appendChild(customOpt);
+
+        if (models.some(m => m.id === currentVal) || currentVal === 'auto' || currentVal === 'custom') {
+            select.value = currentVal;
+        } else {
+            select.value = models[0].id;
+        }
+
+        window.handleModelSelectChange(select.value);
+        alert(`Am găsit ${models.length} modele disponibile în contul tău Google AI Studio!`);
+    } catch (err) {
+        errEl.innerHTML = `<strong>Eroare scanare:</strong> ${err.message}`;
+        errEl.classList.remove('hidden');
+    } finally {
+        btn.innerHTML = origHTML;
+        refreshIcons();
+    }
+};
+
 window.clearApiKey = () => {
     Storage.clearApiKey();
     document.getElementById('api-key-input').value = '';
+    document.getElementById('custom-model-input').value = '';
     updateApiKeyIndicator();
-    alert("Cheia API a fost ștearsă din stocarea locală.");
+    alert("Cheia API și setările modelului au fost resetate.");
 };
 
 window.saveApiKey = async () => {
@@ -1116,31 +1203,45 @@ window.saveApiKey = async () => {
     const btn = document.getElementById('save-api-btn');
     const errEl = document.getElementById('api-key-error');
 
+    const modelSelect = document.getElementById('model-select');
+    const selectedModelType = modelSelect ? modelSelect.value : 'gemini-2.0-flash';
+    const customModelInput = document.getElementById('custom-model-input');
+    const customModelName = customModelInput ? customModelInput.value.trim() : '';
+
     if (!key || key.length < 5) {
         errEl.innerHTML = "Te rugăm să introduci o cheie API validă.";
         errEl.classList.remove('hidden');
         return;
     }
 
+    if (selectedModelType === 'custom' && !customModelName) {
+        errEl.innerHTML = "Te rugăm să specifici numele modelului personalizat (ex: gemini-2.5-flash).";
+        errEl.classList.remove('hidden');
+        return;
+    }
+
     btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Caut model...`;
+    btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Testare conexiune...`;
     errEl.classList.add('hidden');
     refreshIcons();
 
     try {
-        const discovered = await AI.getWorkingModel(key);
-        const modelToUse = discovered || 'gemini-1.5-flash';
         Storage.saveApiKey(key);
-        Storage.saveActiveModel(modelToUse);
+        Storage.saveSelectedModelType(selectedModelType);
+        if (customModelName) Storage.saveCustomModelName(customModelName);
+
+        const effectiveModel = Storage.getTargetModel();
+        Storage.saveActiveModel(effectiveModel);
+
         window.toggleSettings();
         updateApiKeyIndicator();
-        alert(`Conectat cu succes! Model activ: ${modelToUse}`);
+        alert(`Setări salvate cu succes!\nModel activ: ${effectiveModel}`);
     } catch (err) {
         errEl.innerHTML = `<strong>Eroare:</strong> ${err.message || 'Verifică cheia API.'}`;
         errEl.classList.remove('hidden');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = "Salvează & Testează";
+        btn.innerHTML = "Salvează";
         refreshIcons();
     }
 };
@@ -1154,7 +1255,7 @@ function initApp() {
     renderCurrentMeal();
     updateAnalysis();
     refreshIcons();
-    console.log("Nutriție Pro 2.1 Ready with 100% Local Storage & Cross-Device Support.");
+    console.log("Nutriție Pro 2.1 Ready with Custom Gemini Model Selector & 100% Local Storage.");
 }
 
 // Start once DOM is ready

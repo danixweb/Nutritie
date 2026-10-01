@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
     HEALTH_PROFILE: 'health_profile',
     API_KEY: 'gemini_api_key',
     ACTIVE_MODEL: 'gemini_active_model',
-    CURRENT_DRAFT: 'nutritie_current_draft'
+    SELECTED_MODEL_TYPE: 'gemini_selected_model_type', // 'gemini-2.0-flash', 'gemini-1.5-flash', 'auto', 'custom', etc.
+    CUSTOM_MODEL_NAME: 'gemini_custom_model_name'
 };
 
 // Local food database for offline calorie / macro estimation
@@ -125,6 +126,36 @@ export const Storage = {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_MODEL, model);
     },
 
+    // User Model Preferences (Specific selection or Custom typed string)
+    getSelectedModelType() {
+        return localStorage.getItem(STORAGE_KEYS.SELECTED_MODEL_TYPE) || 'gemini-2.0-flash';
+    },
+
+    saveSelectedModelType(type) {
+        localStorage.setItem(STORAGE_KEYS.SELECTED_MODEL_TYPE, type);
+    },
+
+    getCustomModelName() {
+        return localStorage.getItem(STORAGE_KEYS.CUSTOM_MODEL_NAME) || '';
+    },
+
+    saveCustomModelName(name) {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_MODEL_NAME, name);
+    },
+
+    // Effective Target Model
+    getTargetModel() {
+        const type = this.getSelectedModelType();
+        if (type === 'custom') {
+            const custom = this.getCustomModelName().trim();
+            if (custom) return custom;
+        }
+        if (type && type !== 'auto') {
+            return type;
+        }
+        return this.getActiveModel() || 'gemini-2.0-flash';
+    },
+
     // --- Export / Import ---
     exportAllData() {
         const payload = {
@@ -151,10 +182,8 @@ export const Storage = {
                     const data = JSON.parse(e.target.result);
                     let importedMealsCount = 0;
                     if (Array.isArray(data)) {
-                        // Legacy direct array format
                         const current = Storage.getMeals();
                         const merged = [...data, ...current];
-                        // Unique by ID
                         const unique = Array.from(new Map(merged.map(m => [m.id || JSON.stringify(m), m])).values());
                         localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(unique));
                         importedMealsCount = data.length;
