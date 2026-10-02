@@ -1754,14 +1754,109 @@ window.resetForm = () => {
 };
 
 // --- Meal Storage CRUD ---
-window.saveMealToLocal = () => {
+window.saveMealToLocal = async () => {
     if (currentMeal.foods.length === 0) return alert("Masa este goală.");
     
     const btn = document.getElementById('save-meal-btn');
-    const originalHTML = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Salvare...';
-    refreshIcons();
+    const originalHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+    }
+
+    // Identificare alimente pentru care NU s-au calculat nutrienții
+    const missingIndices = [];
+    currentMeal.foods.forEach((f, idx) => {
+        if (!f.nutrients || !Array.isArray(f.nutrients) || f.nutrients.length === 0) {
+            missingIndices.push(idx);
+        }
+    });
+
+    if (missingIndices.length > 0) {
+        if (btn) {
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Calculare nutrienți...';
+            refreshIcons();
+        }
+
+        const statusEl = document.getElementById('data-source-msg');
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="text-indigo-400 font-semibold animate-pulse">⏳ Calculare nutrienți lipsă pentru ${missingIndices.length} aliment(e)...</span>`;
+        }
+
+        // Dacă AI este disponibil și activat, calculăm nutrienții lipsă prin AI
+        if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
+            try {
+                const missingFoods = missingIndices.map(idx => ({
+                    name: currentMeal.foods[idx].name,
+                    quantity: currentMeal.foods[idx].quantity,
+                    unit: currentMeal.foods[idx].unit
+                }));
+
+                const prompt = `Analizează complet și riguros fiecare aliment din lista următoare pentru a calcula caloriile și spectrul detaliat de nutrienți:
+${JSON.stringify(missingFoods, null, 2)}
+
+Returnează strict un JSON array cu obiectele în aceeași ordine:
+[
+  {
+    "name": "string",
+    "quantity": number,
+    "unit": "string",
+    "calories": number,
+    "nutrients": [
+      {
+        "name": "string",
+        "type": "Macro" | "Micro",
+        "qty": number,
+        "unit": "string",
+        "rda_percent": number,
+        "role": "string"
+      }
+    ]
+  }
+]`;
+                const txt = await AI.callText(prompt);
+                const s = txt.indexOf('[');
+                const e = txt.lastIndexOf(']');
+                if (s !== -1 && e !== -1) {
+                    const parsed = JSON.parse(txt.substring(s, e + 1));
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach((item, pIdx) => {
+                            const originalIdx = missingIndices[pIdx];
+                            if (originalIdx !== undefined && currentMeal.foods[originalIdx]) {
+                                if (item.calories !== undefined && !isNaN(parseInt(item.calories))) {
+                                    currentMeal.foods[originalIdx].calories = parseInt(item.calories);
+                                }
+                                currentMeal.foods[originalIdx].nutrients = Array.isArray(item.nutrients) ? item.nutrients : [];
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn("Eroare la calcularea nutrienților lipsă prin AI la salvare, recurgem la estimare locală:", err);
+            }
+        }
+
+        // Fallback local pentru orice aliment care încă nu are nutrienți calculați
+        currentMeal.foods.forEach((f, idx) => {
+            if (!f.nutrients || !Array.isArray(f.nutrients) || f.nutrients.length === 0) {
+                const localEst = estimateFoodLocally(f.name, f.quantity, f.unit);
+                if (localEst && localEst.nutrients) {
+                    f.nutrients = localEst.nutrients;
+                    if (!f.calories) f.calories = localEst.calories;
+                } else {
+                    f.nutrients = [];
+                }
+            }
+        });
+
+        renderCurrentMeal();
+        updateAnalysis();
+        updateDynamicCaloricGauge();
+    }
+
+    if (btn) {
+        btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Salvare...';
+        refreshIcons();
+    }
 
     const payload = {
         id: currentMeal.id || null,
@@ -1780,9 +1875,11 @@ window.saveMealToLocal = () => {
     } catch (e) {
         alert("Eroare la salvarea mesei: " + e.message);
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
-        refreshIcons();
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            refreshIcons();
+        }
     }
 };
 window.saveMeal = window.saveMealToLocal;
