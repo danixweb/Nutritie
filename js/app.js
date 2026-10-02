@@ -15,6 +15,26 @@ let recognition = null;
 let isLoopActive = false;
 
 // Helpers & Time of Day Meal Suggestion
+export function formatRomanianDateTime(dateTimeString) {
+    if (!dateTimeString) return 'Dată nespecificată';
+    const d = new Date(dateTimeString);
+    if (isNaN(d.getTime())) return dateTimeString;
+
+    const days = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
+    const months = [
+        'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
+        'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'
+    ];
+
+    const dayName = days[d.getDay()];
+    const dayNum = d.getDate();
+    const monthName = months[d.getMonth()];
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    return `${dayName} ${dayNum} ${monthName} ${hours}:${minutes}`;
+}
+
 export function suggestMealNameByTime(dateTimeString) {
     const d = dateTimeString ? new Date(dateTimeString) : new Date();
     const hour = d.getHours();
@@ -41,6 +61,10 @@ const STANDARD_SUGGESTIONS = [
 ];
 
 window.handleMealDateChange = (val) => {
+    const textEl = document.getElementById('meal-datetime-text');
+    if (textEl) {
+        textEl.innerText = formatRomanianDateTime(val);
+    }
     const nameInput = document.getElementById('meal-name');
     if (!nameInput) return;
     const currentVal = nameInput.value.trim();
@@ -701,7 +725,7 @@ window.resetForm = () => {
     currentMeal = { id: null, date: '', name: '', foods: [] };
     const nowLocal = getTodayDateTimeLocal();
     document.getElementById('meal-datetime').value = nowLocal;
-    document.getElementById('meal-name').value = suggestMealNameByTime(nowLocal);
+    window.handleMealDateChange(nowLocal);
     document.getElementById('editor-title').innerText = "Editor Masă";
     document.getElementById('cancel-edit-btn').classList.add('hidden');
     document.getElementById('save-meal-btn').innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvează Masa';
@@ -750,7 +774,9 @@ window.editHistoryMeal = (id) => {
     const m = historyData.find(x => x.id === id);
     if (!m) return;
     currentMeal = JSON.parse(JSON.stringify(m));
-    document.getElementById('meal-datetime').value = currentMeal.date || getTodayDateTimeLocal();
+    const targetDate = currentMeal.date || getTodayDateTimeLocal();
+    document.getElementById('meal-datetime').value = targetDate;
+    window.handleMealDateChange(targetDate);
     document.getElementById('meal-name').value = currentMeal.name || '';
     document.getElementById('editor-title').innerText = "Modifică Masă";
     document.getElementById('cancel-edit-btn').classList.remove('hidden');
@@ -790,13 +816,16 @@ function renderHistory() {
         const totalCal = (meal.foods || []).reduce((acc, f) => acc + (f.calories || 0), 0);
         const d = document.createElement('div');
         d.className = "bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm hover:border-indigo-500/50 transition-all";
-        const dateFormatted = meal.date ? new Date(meal.date).toLocaleString('ro-RO') : 'Dată nespecificată';
+        const dateFormatted = formatRomanianDateTime(meal.date);
         
         d.innerHTML = `
             <div class="flex justify-between items-start mb-2">
                 <div>
                     <h4 class="font-bold text-white text-sm">${meal.name || 'Masă'}</h4>
-                    <div class="text-xs text-slate-500">${dateFormatted}</div>
+                    <div class="text-xs text-indigo-300 font-medium capitalize flex items-center gap-1.5 mt-0.5">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>${dateFormatted}</span>
+                    </div>
                 </div>
                 <div class="bg-slate-800 text-slate-300 font-mono text-xs px-2 py-1 rounded font-bold border border-slate-700">
                     ${totalCal} kcal
@@ -1924,7 +1953,7 @@ window.previewMonthlyPDF = () => {
 function initApp() {
     const nowLocal = getTodayDateTimeLocal();
     document.getElementById('meal-datetime').value = nowLocal;
-    document.getElementById('meal-name').value = suggestMealNameByTime(nowLocal);
+    window.handleMealDateChange(nowLocal);
     loadUserProfileIntoForm();
     window.recalcProfilePreview();
     updateAIVisibility();
