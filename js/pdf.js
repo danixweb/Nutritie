@@ -810,7 +810,7 @@ export const PDFReport = {
                 <!-- Main Header -->
                 <div class="report-header">
                     <div class="report-title-group">
-                        <h1>Nutriție <span>Pro</span> — ${totalsOnly ? 'Sinteză Balanță Metabolică & Totaluri' : 'Jurnal Nutrițional Lunar'}</h1>
+                        <h1>Asistent <span>Nutriție</span> — ${totalsOnly ? 'Sinteză Balanță Metabolică & Totaluri' : 'Jurnal Nutrițional Lunar'}</h1>
                         <p>Raport complet de activitate, aport alimentar și cheltuială metabolică • <strong>${monthName} ${year}</strong></p>
                     </div>
                     <div class="meta-pills">
@@ -901,7 +901,7 @@ export const PDFReport = {
 
                 <!-- Footer Note -->
                 <div class="report-footer">
-                    <div>Generat automat din <strong>Nutriție Pro 2.3</strong> la data de: ${new Date().toLocaleString('ro-RO')} ${totalsOnly ? '• [Mod Doar Totaluri & Balanță Metabolică]' : ''}</div>
+                    <div>Generat automat din <strong>Asistent Nutriție</strong> la data de: ${new Date().toLocaleString('ro-RO')} ${totalsOnly ? '• [Mod Doar Totaluri & Balanță Metabolică]' : ''}</div>
                     <div>Document privat generat local pe dispozitivul utilizatorului.</div>
                 </div>
             </div>
