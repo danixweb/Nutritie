@@ -405,9 +405,11 @@ export const PDFReport = {
                 if (percentDaily >= 85 && percentDaily <= 120) {
                     statusBadge = '<span class="badge-opt">✓ Optim</span>';
                 } else if (percentDaily < 85) {
-                    statusBadge = `<span class="badge-def">▼ Deficit (${percentDaily.toFixed(0)}%)</span>`;
+                    const deficitPercent = Math.max(0, 100 - percentDaily);
+                    statusBadge = `<span class="badge-def">▼ Deficit (${deficitPercent.toFixed(0)}%)</span>`;
                 } else {
-                    statusBadge = `<span class="badge-high">▲ Peste DZR (${percentDaily.toFixed(0)}%)</span>`;
+                    const surplusPercent = percentDaily - 100;
+                    statusBadge = `<span class="badge-high">▲ Peste DZR (+${surplusPercent.toFixed(0)}%)</span>`;
                 }
             }
 

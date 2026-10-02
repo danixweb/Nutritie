@@ -2648,6 +2648,7 @@ window.openDeficienciesReportModal = () => {
         const total = nutrientTotals[key] || 0;
         const dailyAvg = total / daysCount;
         const percent = Math.round((dailyAvg / std.target) * 100);
+        const deficitPercent = Math.max(0, 100 - percent);
 
         const item = {
             key,
@@ -2656,6 +2657,7 @@ window.openDeficienciesReportModal = () => {
             target: std.target,
             dailyAvg: parseFloat(dailyAvg.toFixed(1)),
             percent,
+            deficitPercent,
             role: std.role,
             foods: std.foods
         };
@@ -2682,7 +2684,7 @@ window.openDeficienciesReportModal = () => {
                     <span>Atenție: ${deficiencies.length} nutrienți au un aport mediu zilnic sub 70% din DZR!</span>
                 </div>
                 <div class="text-[11px] text-amber-300/80">
-                    Deficite identificate: <strong>${deficiencies.map(d => d.name).join(', ')}</strong>. Consultă recomandările de mai jos.
+                    Deficite identificate: <strong>${deficiencies.map(d => `${d.name} (Deficit ${d.deficitPercent}%)`).join(', ')}</strong>. Consultă recomandările de mai jos.
                 </div>
             `;
         }
@@ -2695,9 +2697,20 @@ window.openDeficienciesReportModal = () => {
         results.forEach(r => {
             let color = 'bg-emerald-500';
             let textColor = 'text-emerald-400';
-            if (r.percent < 50) { color = 'bg-rose-500'; textColor = 'text-rose-400'; }
-            else if (r.percent < 70) { color = 'bg-amber-500'; textColor = 'text-amber-400'; }
-            else if (r.percent > 100) { color = 'bg-indigo-500'; textColor = 'text-indigo-400'; }
+            let statusText = `✓ ${r.percent}% DZR`;
+            if (r.percent < 50) {
+                color = 'bg-rose-500';
+                textColor = 'text-rose-400';
+                statusText = `Deficit: ${r.deficitPercent}% (${r.percent}% DZR)`;
+            } else if (r.percent < 70) {
+                color = 'bg-amber-500';
+                textColor = 'text-amber-400';
+                statusText = `Deficit: ${r.deficitPercent}% (${r.percent}% DZR)`;
+            } else if (r.percent > 100) {
+                color = 'bg-indigo-500';
+                textColor = 'text-indigo-400';
+                statusText = `+${r.percent - 100}% peste DZR`;
+            }
 
             const card = document.createElement('div');
             card.className = "bg-slate-950 p-3 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors";
@@ -2709,7 +2722,7 @@ window.openDeficienciesReportModal = () => {
                     </div>
                     <div class="text-right">
                         <div class="font-mono text-xs font-bold text-white">${r.dailyAvg} / ${r.target} ${r.unit}</div>
-                        <div class="font-bold text-[10px] ${textColor}">${r.percent}% DZR</div>
+                        <div class="font-bold text-[10px] ${textColor}">${statusText}</div>
                     </div>
                 </div>
                 <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
