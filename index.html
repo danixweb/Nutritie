@@ -250,15 +250,15 @@
                         </h2>
                         <div class="flex items-center gap-2">
                             <button id="toggle-caloric-card-btn" onclick="toggleCaloricCard()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm" title="Retractează / Expandează Balanța Calorică și BMR">
-                                <i id="caloric-card-toggle-icon" data-lucide="chevron-up" class="w-4 h-4 text-indigo-400 transition-transform"></i>
+                                <i id="caloric-card-toggle-icon" data-lucide="chevron-down" class="w-4 h-4 text-indigo-400 transition-transform"></i>
                                 <span id="caloric-card-toggle-text" class="text-[11px] font-medium">Balanță</span>
                             </button>
                             <button id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-1 text-xs font-bold text-red-400 bg-red-900/20 hover:bg-red-900/30 rounded-lg border border-red-900/50 transition-colors">Anulează</button>
                         </div>
                     </div>
 
-                    <!-- Dynamic Dual Calorie & BMR/TDEE Progress Gauge Card -->
-                    <div id="dynamic-caloric-card" class="bg-slate-950/80 rounded-xl p-3.5 border border-slate-800 mb-5 space-y-2.5">
+                    <!-- Dynamic Dual Calorie & BMR/TDEE Progress Gauge Card (Default Retracted) -->
+                    <div id="dynamic-caloric-card" class="hidden bg-slate-950/80 rounded-xl p-3.5 border border-slate-800 mb-5 space-y-2.5">
                         <div class="flex flex-wrap justify-between items-center gap-2">
                             <div class="flex items-center gap-3">
                                 <div>

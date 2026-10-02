@@ -145,16 +145,21 @@ window.toggleCaloricCard = () => {
 };
 
 function initCaloricCardState() {
-    const isCollapsed = localStorage.getItem('caloric_card_collapsed') === 'true';
+    const savedState = localStorage.getItem('caloric_card_collapsed');
+    // Implicit / Default este RETRACTATĂ (collapsed) dacă nu a fost explicit expandată de utilizator
+    const isExpanded = (savedState === 'false');
     const card = document.getElementById('dynamic-caloric-card');
     const icon = document.getElementById('caloric-card-toggle-icon');
     const btnText = document.getElementById('caloric-card-toggle-text');
-    if (isCollapsed && card) {
-        card.classList.add('hidden');
+
+    if (isExpanded) {
+        if (card) card.classList.remove('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-up');
+        if (btnText) btnText.innerText = 'Ascunde';
+    } else {
+        if (card) card.classList.add('hidden');
         if (icon) icon.setAttribute('data-lucide', 'chevron-down');
         if (btnText) btnText.innerText = 'Balanță';
-    } else if (btnText) {
-        btnText.innerText = 'Ascunde';
     }
 }
 
