@@ -188,117 +188,276 @@
 
         <!-- MAIN SCROLLABLE AREA -->
         <main class="w-full p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative bg-slate-950">
-            <div id="meal-editor" class="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-4 sm:p-6 mb-6 transition-all duration-300 max-w-3xl mx-auto">
-                <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
-                    <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                        <i data-lucide="utensils-crossed" class="w-5 h-5 text-indigo-400"></i> 
-                        <span id="editor-title">Editor Masă</span>
-                    </h2>
-                    <button id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-1 text-xs font-bold text-red-400 bg-red-900/20 hover:bg-red-900/30 rounded-lg border border-red-900/50 transition-colors">Anulează</button>
-                </div>
+            <!-- Main Ergonomic Navigation Tabs -->
+            <div class="max-w-3xl mx-auto mb-4 flex gap-2">
+                <button onclick="switchMainTab('meals')" id="main-tab-meals-btn" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500">
+                    <i data-lucide="utensils" class="w-4 h-4"></i>
+                    <span>Editor Mese</span>
+                </button>
+                <button onclick="switchMainTab('activities')" id="main-tab-activities-btn" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">
+                    <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Activitate Zilnică</span>
+                    <span id="activities-badge-count" class="hidden text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-800 font-mono">0</span>
+                </button>
+            </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-5">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dată & Timp</label>
-                        <input type="datetime-local" id="meal-datetime" onchange="handleMealDateChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
-                        <div id="meal-datetime-friendly" class="text-xs text-indigo-300 font-semibold mt-1 flex items-center gap-1.5">
-                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-400"></i>
-                            <span id="meal-datetime-text">-</span>
+            <!-- TAB 1: MEAL EDITOR & JOURNAL -->
+            <div id="meals-tab-content">
+                <div id="meal-editor" class="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-4 sm:p-6 mb-6 transition-all duration-300 max-w-3xl mx-auto">
+                    <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                        <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="utensils-crossed" class="w-5 h-5 text-indigo-400"></i> 
+                            <span id="editor-title">Editor Masă</span>
+                        </h2>
+                        <button id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-1 text-xs font-bold text-red-400 bg-red-900/20 hover:bg-red-900/30 rounded-lg border border-red-900/50 transition-colors">Anulează</button>
+                    </div>
+
+                    <!-- Dynamic Dual Calorie & BMR/TDEE Progress Gauge Card -->
+                    <div id="dynamic-caloric-card" class="bg-slate-950/80 rounded-xl p-3.5 border border-slate-800 mb-5 space-y-2.5">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <div class="flex items-center gap-3">
+                                <div>
+                                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Calorii Masă Curentă</div>
+                                    <div id="meal-live-calories" class="font-mono text-base sm:text-lg font-bold text-white">0 <span class="text-xs font-normal text-slate-400">kcal</span></div>
+                                </div>
+                                <div class="h-7 w-px bg-slate-800"></div>
+                                <div>
+                                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total Zi Curentă</div>
+                                    <div id="day-live-calories" class="font-mono text-base sm:text-lg font-bold text-indigo-300">0 <span class="text-xs font-normal text-slate-400">kcal</span></div>
+                                </div>
+                            </div>
+                            <div id="bmr-status-pill" class="text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-slate-900 border border-slate-800 text-slate-400 flex items-center gap-1.5">
+                                <i data-lucide="gauge" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span id="bmr-status-text">Metabolism bazal: -</span>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Multi-Zone Progress Bar (BMR & TDEE Target) -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-semibold text-slate-500">
+                                <span id="bmr-marker-label">BMR: -</span>
+                                <span id="tdee-marker-label">Necesar Total Zi: -</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden relative">
+                                <div id="caloric-progress-bar" class="h-full rounded-full transition-all duration-500 bg-indigo-500" style="width: 0%"></div>
+                            </div>
+                            <div id="caloric-progress-status" class="text-[10px] text-slate-400 italic">Adaugă alimente pentru a urmări nivelul caloric față de metabolismul bazal...</div>
                         </div>
                     </div>
-                    
-                    <!-- AI Generator + Camera Button -->
-                    <div>
-                        <label id="meal-name-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nume masă</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="meal-name" placeholder="Ex: Mic Dejun, Omletă cu ciuperci..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
-                            
-                            <!-- Generator Button -->
-                            <button onclick="generateMealFromTitle()" id="gen-btn" class="ai-feature hidden bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-purple-500" title="Generează automat din text">
-                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-5">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dată & Timp</label>
+                            <input type="datetime-local" id="meal-datetime" onchange="handleMealDateChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                            <div id="meal-datetime-friendly" class="text-xs text-indigo-300 font-semibold mt-1 flex items-center gap-1.5">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                <span id="meal-datetime-text">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Generator + Camera Button -->
+                        <div>
+                            <label id="meal-name-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nume masă</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="meal-name" placeholder="Ex: Mic Dejun, Omletă cu ciuperci..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                                
+                                <!-- Generator Button -->
+                                <button onclick="generateMealFromTitle()" id="gen-btn" class="ai-feature hidden bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-purple-500" title="Generează automat din text">
+                                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                </button>
+
+                                <!-- Camera Button -->
+                                <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(this)">
+                                <button onclick="document.getElementById('camera-input').click()" id="cam-btn" class="ai-feature hidden bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-emerald-500" title="Fă o poză farfuriei">
+                                    <i data-lucide="camera" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Food Item Input -->
+                    <div class="bg-indigo-950/30 rounded-xl p-3.5 sm:p-4 border border-indigo-900/50 mb-5 relative">
+                        <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 flex justify-between items-center">
+                            <span>Adaugă Aliment</span>
+                            <span id="edit-mode-indicator" class="text-orange-400 hidden animate-pulse font-semibold">● Mod Editare</span>
+                        </label>
+                        <div class="grid grid-cols-12 gap-2 sm:gap-3 items-end">
+                            <div class="col-span-12 sm:col-span-5">
+                                <input type="text" id="food-name" placeholder="Aliment (ex: Piept de pui)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                            </div>
+                            <div class="col-span-6 sm:col-span-3">
+                                <input type="number" id="food-qty" placeholder="Cantitate" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                            </div>
+                            <div class="col-span-6 sm:col-span-2">
+                                <select id="food-unit" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                                    <option value="g">g</option>
+                                    <option value="ml">ml</option>
+                                    <option value="buc">buc</option>
+                                </select>
+                            </div>
+                            <div class="col-span-12 sm:col-span-2">
+                                <button onclick="processFoodItem()" id="add-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white py-2 rounded-lg font-bold text-sm transition-all shadow-md flex items-center justify-center gap-1.5">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                    <span>Adaugă</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="data-source-msg" class="mt-2 text-right text-xs h-4 font-mono"></div>
+                    </div>
+
+                    <!-- AI Smart Actions Panel -->
+                    <div id="ai-actions-panel" class="ai-feature mb-5 hidden">
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="generateRecipe()" id="btn-chef" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-indigo-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
+                                <i data-lucide="chef-hat" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px] font-bold">Chef Mode</span>
                             </button>
-
-                            <!-- Camera Button -->
-                            <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(this)">
-                            <button onclick="document.getElementById('camera-input').click()" id="cam-btn" class="ai-feature hidden bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-emerald-500" title="Fă o poză farfuriei">
-                                <i data-lucide="camera" class="w-4 h-4"></i>
+                            <button onclick="analyzeHealth()" id="btn-coach" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-emerald-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
+                                <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px] font-bold">Nutri Coach</span>
+                            </button>
+                            <button onclick="generateMedicalMenu()" id="btn-med-menu" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-rose-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
+                                <i data-lucide="stethoscope" class="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px] font-bold">Meniu Medical</span>
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Manual Food Item Input -->
-                <div class="bg-indigo-950/30 rounded-xl p-3.5 sm:p-4 border border-indigo-900/50 mb-5 relative">
-                    <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 flex justify-between items-center">
-                        <span>Adaugă Aliment</span>
-                        <span id="edit-mode-indicator" class="text-orange-400 hidden animate-pulse font-semibold">● Mod Editare</span>
-                    </label>
-                    <div class="grid grid-cols-12 gap-2 sm:gap-3 items-end">
-                        <div class="col-span-12 sm:col-span-5">
-                            <input type="text" id="food-name" placeholder="Aliment (ex: Piept de pui)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
-                        </div>
-                        <div class="col-span-6 sm:col-span-3">
-                            <input type="number" id="food-qty" placeholder="Cantitate" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
-                        </div>
-                        <div class="col-span-6 sm:col-span-2">
-                            <select id="food-unit" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
-                                <option value="g">g</option>
-                                <option value="ml">ml</option>
-                                <option value="buc">buc</option>
-                            </select>
-                        </div>
-                        <div class="col-span-12 sm:col-span-2">
-                            <button onclick="processFoodItem()" id="add-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white py-2 rounded-lg font-bold text-sm transition-all shadow-md flex items-center justify-center gap-1.5">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                                <span>Adaugă</span>
-                            </button>
-                        </div>
+                    <!-- Current Meal Items List -->
+                    <div id="current-meal-list" class="space-y-2 mb-5">
+                        <div class="text-center py-6 text-slate-600 text-sm border-2 border-dashed border-slate-800 rounded-xl">Masa este goală.</div>
                     </div>
-                    <div id="data-source-msg" class="mt-2 text-right text-xs h-4 font-mono"></div>
-                </div>
 
-                <!-- AI Smart Actions Panel -->
-                <div id="ai-actions-panel" class="ai-feature mb-5 hidden">
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="generateRecipe()" id="btn-chef" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-indigo-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
-                            <i data-lucide="chef-hat" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-[10px] font-bold">Chef Mode</span>
-                        </button>
-                        <button onclick="analyzeHealth()" id="btn-coach" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-emerald-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
-                            <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-[10px] font-bold">Nutri Coach</span>
-                        </button>
-                        <button onclick="generateMedicalMenu()" id="btn-med-menu" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-rose-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
-                            <i data-lucide="stethoscope" class="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-[10px] font-bold">Meniu Medical</span>
+                    <!-- Save Meal Button -->
+                    <div class="flex justify-end pt-3 border-t border-slate-800">
+                        <button onclick="saveMealToLocal()" id="save-meal-btn" class="w-full sm:w-auto bg-white hover:bg-slate-200 active:scale-95 text-slate-900 font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="save" class="w-4 h-4"></i> Salvează Masa
                         </button>
                     </div>
                 </div>
 
-                <!-- Current Meal Items List -->
-                <div id="current-meal-list" class="space-y-2 mb-5">
-                    <div class="text-center py-6 text-slate-600 text-sm border-2 border-dashed border-slate-800 rounded-xl">Masa este goală.</div>
-                </div>
-
-                <!-- Save Meal Button -->
-                <div class="flex justify-end pt-3 border-t border-slate-800">
-                    <button onclick="saveMealToLocal()" id="save-meal-btn" class="w-full sm:w-auto bg-white hover:bg-slate-200 active:scale-95 text-slate-900 font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        <i data-lucide="save" class="w-4 h-4"></i> Salvează Masa
-                    </button>
+                <!-- Saved Journal Section -->
+                <div class="mt-8 pb-16 max-w-3xl mx-auto">
+                    <div class="flex justify-between items-center mb-4 px-1">
+                        <h3 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="history" class="w-5 h-5 text-slate-400"></i> Jurnal Mese Salvate
+                        </h3>
+                    </div>
+                    <div id="meal-history" class="space-y-3">
+                        <div class="flex flex-col items-center justify-center py-8 text-slate-500">
+                            <i data-lucide="loader-2" class="w-7 h-7 animate-spin mb-2 text-indigo-500"></i>
+                            <span class="text-sm">Se încarcă istoricul...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Saved Journal Section -->
-            <div class="mt-8 pb-16 max-w-3xl mx-auto">
-                <div class="flex justify-between items-center mb-4 px-1">
-                    <h3 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                        <i data-lucide="history" class="w-5 h-5 text-slate-400"></i> Jurnal Salvat pe Dispozitiv
-                    </h3>
-                </div>
-                <div id="meal-history" class="space-y-3">
-                    <div class="flex flex-col items-center justify-center py-8 text-slate-500">
-                        <i data-lucide="loader-2" class="w-7 h-7 animate-spin mb-2 text-indigo-500"></i>
-                        <span class="text-sm">Se încarcă istoricul...</span>
+            <!-- TAB 2: ACTIVITĂȚI ZILNICE & SPORT -->
+            <div id="activities-tab-content" class="hidden space-y-6 max-w-3xl mx-auto pb-16">
+                <div class="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-4 sm:p-6 transition-all">
+                    <div class="flex flex-wrap justify-between items-center mb-5 border-b border-slate-800 pb-3 gap-2">
+                        <div>
+                            <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="activity" class="w-5 h-5 text-emerald-400"></i>
+                                <span>Activități Zilnice & Efort Fizic</span>
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Înregistrează sesiuni de sport sau mișcare pe parcursul zilei.</p>
+                        </div>
+                        <!-- Day Selector & Quick Today -->
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="activity-date-picker" onchange="handleActivityDateChange(this.value)" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-emerald-500">
+                            <button onclick="setActivityDateToday()" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 font-semibold transition-colors">Azi</button>
+                        </div>
+                    </div>
+
+                    <!-- Daily Activity Summary Stat Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                            <div class="text-[9px] text-slate-400 font-bold uppercase">Sesiuni Zi</div>
+                            <div id="act-stat-count" class="font-mono text-lg font-bold text-white mt-0.5">0</div>
+                            <div class="text-[10px] text-slate-500">înregistrate</div>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                            <div class="text-[9px] text-slate-400 font-bold uppercase">Timp Mișcare</div>
+                            <div id="act-stat-duration" class="font-mono text-lg font-bold text-white mt-0.5">0</div>
+                            <div class="text-[10px] text-slate-500">minute total</div>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                            <div class="text-[9px] text-emerald-400 font-bold uppercase">Calorii Arse</div>
+                            <div id="act-stat-burned" class="font-mono text-lg font-bold text-emerald-400 mt-0.5">0</div>
+                            <div class="text-[10px] text-emerald-500/80">kcal efort fizic</div>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                            <div class="text-[9px] text-indigo-400 font-bold uppercase">Digestie (TEF)</div>
+                            <div id="act-stat-tef" class="font-mono text-lg font-bold text-indigo-400 mt-0.5">0</div>
+                            <div class="text-[10px] text-slate-500">kcal metabolizare</div>
+                        </div>
+                    </div>
+
+                    <!-- Add Activity Form -->
+                    <div class="bg-emerald-950/20 rounded-xl p-4 border border-emerald-900/40 mb-6 space-y-4">
+                        <div class="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i> Adaugă Sesiune de Activitate
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tip Activitate / Sport</label>
+                                <select id="activity-type-select" onchange="recalcActivityPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-emerald-500">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Intensitate Efort</label>
+                                <select id="activity-intensity" onchange="recalcActivityPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-emerald-500">
+                                    <option value="light">Ușoară (efort lejer, respirație normală)</option>
+                                    <option value="moderate" selected>Moderată (puls ridicat, transpirație)</option>
+                                    <option value="vigorous">Intensă (antrenament greu / anduranță)</option>
+                                    <option value="extreme">Extremă (sprinturi / limită)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Durată (minute)</label>
+                                <div class="flex gap-1.5">
+                                    <input type="number" id="activity-duration" min="1" max="600" value="30" oninput="recalcActivityPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 font-mono">
+                                    <button type="button" onclick="adjustActivityDuration(15)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-bold transition-colors">+15m</button>
+                                    <button type="button" onclick="adjustActivityDuration(30)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-bold transition-colors">+30m</button>
+                                    <button type="button" onclick="adjustActivityDuration(60)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-bold transition-colors">+60m</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Climat / Temperatură</label>
+                                <select id="activity-climate" onchange="recalcActivityPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-emerald-500">
+                                    <option value="comfort" selected>Confort termic (18 - 24°C)</option>
+                                    <option value="cold">Iarnă / Frig (< 10°C - termogeneză +7%)</option>
+                                    <option value="hot">Vară / Caniculă (> 28°C - termoreglare +4%)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Live Preview & Submit -->
+                        <div class="flex flex-wrap justify-between items-center pt-2 border-t border-emerald-900/40 gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400">Calorii estimate sesiune:</span>
+                                <span id="activity-preview-calories" class="font-mono text-base font-bold text-emerald-400">🔥 ~210 kcal</span>
+                            </div>
+                            <button type="button" onclick="saveActivityFromForm()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-5 rounded-lg transition-all shadow-md flex items-center gap-1.5">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Înregistrează Sesiunea
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sessions List for Selected Day -->
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                            <i data-lucide="list" class="w-3.5 h-3.5 text-slate-400"></i> Sesiuni Înregistrate în Această Zi
+                        </h3>
+                        <div id="day-activities-list" class="space-y-2.5">
+                            <!-- Populated dynamically -->
+                        </div>
                     </div>
                 </div>
             </div>

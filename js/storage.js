@@ -4,6 +4,7 @@
 
 const STORAGE_KEYS = {
     MEALS: 'nutritie_meals_history_v2',
+    ACTIVITIES: 'nutritie_activities_v2',
     HEALTH_PROFILE: 'health_profile',
     USER_PROFILE: 'nutritie_user_profile',
     API_KEY: 'gemini_api_key',
@@ -41,6 +42,50 @@ export const localFoodDB = {
     "castravete": { cal: 15, pro: 0.7, carb: 3.6, fat: 0.1, vitC: 2.8 },
     "ulei": { cal: 884, pro: 0, carb: 0, fat: 100, vitE: 14.3 },
     "default": { cal: 100, pro: 5, carb: 10, fat: 5 }
+};
+
+// Generic offline sports & physical activities database with MET coefficients
+export const localActivityDB = {
+    // 1. Atletism & Alergare
+    "alergare_usoara": { name: "Alergare Ușoară / Jogging (~8 km/h)", category: "Atletism & Alergare", met: 8.0, icon: "footprints" },
+    "alergare_moderata": { name: "Alergare Moderată (~10 km/h)", category: "Atletism & Alergare", met: 10.0, icon: "footprints" },
+    "alergare_rapida": { name: "Alergare Rapidă / Sprint (>12 km/h)", category: "Atletism & Alergare", met: 12.5, icon: "zap" },
+    "alergare_banda": { name: "Alergare pe Bandă / Înclinație", category: "Atletism & Alergare", met: 9.0, icon: "gauge" },
+    "atletism_sarituri": { name: "Sărituri / Atletism Pistă", category: "Atletism & Alergare", met: 7.5, icon: "activity" },
+
+    // 2. Sală, Fitness & Forță
+    "fitness_greutati_moderat": { name: "Antrenament Forță / Greutăți (Moderat)", category: "Fitness & Sală", met: 5.0, icon: "dumbbell" },
+    "fitness_greutati_intens": { name: "Antrenament Forță / Culturism (Intens)", category: "Fitness & Sală", met: 6.5, icon: "dumbbell" },
+    "crossfit": { name: "CrossFit / Circuit Training", category: "Fitness & Sală", met: 8.5, icon: "flame" },
+    "calisthenics": { name: "Calisthenics / Greutatea Corpului", category: "Fitness & Sală", met: 6.0, icon: "user-check" },
+    "pilates": { name: "Pilates / Core & Mobilitate", category: "Fitness & Sală", met: 3.5, icon: "heart" },
+    "yoga": { name: "Yoga (Hatha / Vinyasa)", category: "Fitness & Sală", met: 3.0, icon: "sparkles" },
+    "stretching": { name: "Stretching / Gimnastică Ușoară", category: "Fitness & Sală", met: 2.5, icon: "smile" },
+
+    // 3. Cardio & Anduranță
+    "ciclism_lejer": { name: "Ciclism Lejer (< 16 km/h)", category: "Cardio & Anduranță", met: 4.5, icon: "bike" },
+    "ciclism_moderat": { name: "Ciclism Moderat / Spinning (16-20 km/h)", category: "Cardio & Anduranță", met: 7.0, icon: "bike" },
+    "ciclism_intens": { name: "Ciclism Intens / Șosea (> 20 km/h)", category: "Cardio & Anduranță", met: 10.0, icon: "bike" },
+    "inot_lejer": { name: "Înot Lejer / Recreativ", category: "Cardio & Anduranță", met: 6.0, icon: "waves" },
+    "inot_intens": { name: "Înot Intens / Stil Liber / Fluture", category: "Cardio & Anduranță", met: 10.0, icon: "waves" },
+    "sarit_coarda": { name: "Sărit Coarda (Ritm Alert)", category: "Cardio & Anduranță", met: 11.5, icon: "repeat" },
+    "vaslit": { name: "Canotaj / Ergometru (Vâslit)", category: "Cardio & Anduranță", met: 7.0, icon: "anchor" },
+    "urcat_scari": { name: "Urcat Scări / Stepper", category: "Cardio & Anduranță", met: 8.5, icon: "trending-up" },
+
+    // 4. Sporturi & Jocuri
+    "fotbal": { name: "Fotbal (Meci / Antrenament)", category: "Sporturi & Jocuri", met: 7.5, icon: "trophy" },
+    "baschet": { name: "Baschet (Meci)", category: "Sporturi & Jocuri", met: 7.0, icon: "trophy" },
+    "tenis_camp": { name: "Tenis de Câmp", category: "Sporturi & Jocuri", met: 7.0, icon: "activity" },
+    "tenis_masa": { name: "Tenis de Masă (Ping-Pong)", category: "Sporturi & Jocuri", met: 4.0, icon: "activity" },
+    "volei": { name: "Volei", category: "Sporturi & Jocuri", met: 4.5, icon: "activity" },
+    "box_arte_martiale": { name: "Box / Kickboxing / Arte Marțiale", category: "Sporturi & Jocuri", met: 9.5, icon: "shield" },
+
+    // 5. Activități Cotidiene & Mers
+    "mers_lejer": { name: "Mers Lejer / Plimbare (3-4 km/h)", category: "Activități Cotidiene", met: 3.0, icon: "footprints" },
+    "mers_alert": { name: "Mers Alert / Marș (5-6 km/h)", category: "Activități Cotidiene", met: 4.5, icon: "footprints" },
+    "drumetie": { name: "Drumeție Montană / Hiking", category: "Activități Cotidiene", met: 6.5, icon: "mountain" },
+    "dans_aerobic": { name: "Dans Aerobic / Zumba", category: "Activități Cotidiene", met: 6.5, icon: "music" },
+    "munca_fizica": { name: "Muncă Fizică / Grădinărit Intens", category: "Activități Cotidiene", met: 5.0, icon: "hammer" }
 };
 
 export const Storage = {
@@ -296,6 +341,165 @@ export const Storage = {
         };
     },
 
+    // --- Daily Physical Activities CRUD ---
+    getActivities(dateStr = null) {
+        try {
+            const data = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
+            const list = data ? JSON.parse(data) : [];
+            if (!dateStr) return list;
+            const targetDate = dateStr.slice(0, 10);
+            return list.filter(a => a.date && a.date.slice(0, 10) === targetDate);
+        } catch (e) {
+            console.error("Failed to read activities from storage", e);
+            return [];
+        }
+    },
+
+    saveActivity(activity) {
+        try {
+            const list = this.getActivities();
+            const actToSave = {
+                ...activity,
+                id: activity.id || 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                updatedAt: new Date().toISOString()
+            };
+
+            const existingIndex = list.findIndex(a => a.id === actToSave.id);
+            if (existingIndex >= 0) {
+                list[existingIndex] = actToSave;
+            } else {
+                list.unshift(actToSave);
+            }
+
+            localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(list));
+            return actToSave;
+        } catch (e) {
+            console.error("Failed to save activity", e);
+            throw e;
+        }
+    },
+
+    deleteActivity(id) {
+        try {
+            const list = this.getActivities().filter(a => a.id !== id);
+            localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(list));
+            return true;
+        } catch (e) {
+            console.error("Failed to delete activity", e);
+            return false;
+        }
+    },
+
+    // Calculate Burned Calories via MET
+    calculateBurnedCalories(activityKey, durationMin, intensityLevel = 'moderate', customWeight = null) {
+        const userProf = this.getUserProfile();
+        const weight = customWeight || userProf.weight || 70;
+        const dur = parseFloat(durationMin) || 0;
+        if (dur <= 0) return 0;
+
+        const actInfo = localActivityDB[activityKey] || { met: 5.0 };
+        const baseMet = actInfo.met || 5.0;
+
+        // Intensity Multipliers
+        const intensityFactors = {
+            'light': 0.85,
+            'moderate': 1.0,
+            'vigorous': 1.25,
+            'extreme': 1.5
+        };
+        const factor = intensityFactors[intensityLevel] || 1.0;
+
+        const cal = baseMet * factor * weight * (dur / 60);
+        return Math.max(Math.round(cal), 1);
+    },
+
+    // Thermic Effect of Food (TEF / Consum Digestie)
+    calculateTEF(foodsOrTotalCal) {
+        if (typeof foodsOrTotalCal === 'number') {
+            return Math.round(foodsOrTotalCal * 0.10); // ~10% standard
+        }
+        if (Array.isArray(foodsOrTotalCal)) {
+            let proGrams = 0, carbGrams = 0, fatGrams = 0, totalCal = 0;
+            foodsOrTotalCal.forEach(f => {
+                totalCal += (f.calories || 0);
+                (f.nutrients || []).forEach(n => {
+                    const nLower = (n.name || '').toLowerCase();
+                    if (nLower.includes('prot')) proGrams += (parseFloat(n.qty) || 0);
+                    if (nLower.includes('carb') || nLower.includes('gluc')) carbGrams += (parseFloat(n.qty) || 0);
+                    if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('lipid')) fatGrams += (parseFloat(n.qty) || 0);
+                });
+            });
+            // High-precision TEF by macronutrient (Protein 25%, Carb 8%, Fat 2%)
+            if (proGrams > 0 || carbGrams > 0 || fatGrams > 0) {
+                const tef = (proGrams * 4 * 0.25) + (carbGrams * 4 * 0.08) + (fatGrams * 9 * 0.02);
+                return Math.max(Math.round(tef), 1);
+            }
+            return Math.round(totalCal * 0.10);
+        }
+        return 0;
+    },
+
+    // Climate / Season Thermogenesis Factor
+    calculateClimateFactor(climateType = 'comfort') {
+        if (climateType === 'cold') return 1.07; // Iarna / Frig (<10°C) -> +7% termogeneza adaptativa
+        if (climateType === 'hot') return 1.04;  // Vara / Canicula (>28°C) -> +4% termoreglare/transpiratie
+        return 1.0; // Confort termic (18-24°C)
+    },
+
+    // Comprehensive Daily Metabolic & Energy Balance
+    calculateDailyEnergyBalance(dateStr, climateType = 'comfort') {
+        const dStr = (dateStr || new Date().toISOString()).slice(0, 10);
+        const dayMeals = this.getMeals().filter(m => m.date && m.date.slice(0, 10) === dStr);
+        const dayActivities = this.getActivities(dStr);
+
+        // 1. Calories Consumed & TEF (Digestie)
+        let caloriesConsumed = 0;
+        let allFoods = [];
+        dayMeals.forEach(m => {
+            (m.foods || []).forEach(f => {
+                caloriesConsumed += (f.calories || 0);
+                allFoods.push(f);
+            });
+        });
+        const tefCalories = this.calculateTEF(allFoods.length > 0 ? allFoods : caloriesConsumed);
+
+        // 2. Calories Burned via Sport & Activities
+        let caloriesBurnedSport = 0;
+        let totalActiveMinutes = 0;
+        dayActivities.forEach(a => {
+            caloriesBurnedSport += (parseFloat(a.caloriesBurned) || 0);
+            totalActiveMinutes += (parseFloat(a.duration) || 0);
+        });
+
+        // 3. Basal Metabolic Rate (BMR) & Climate Adjustment
+        const metrics = this.calculateMetrics();
+        const baseBmr = metrics.bmr || 1600;
+        const climateFactor = this.calculateClimateFactor(climateType);
+        const adjustedBmr = Math.round(baseBmr * climateFactor);
+
+        // 4. Total Real Energy Expended
+        const totalExpended = adjustedBmr + tefCalories + caloriesBurnedSport;
+        const netBalance = caloriesConsumed - totalExpended;
+
+        return {
+            date: dStr,
+            mealsCount: dayMeals.length,
+            caloriesConsumed,
+            tefCalories,
+            activitiesCount: dayActivities.length,
+            totalActiveMinutes,
+            caloriesBurnedSport,
+            baseBmr,
+            climateType,
+            climateFactor,
+            adjustedBmr,
+            totalExpended,
+            netBalance,
+            targetCalories: metrics.targetCalories || 2000,
+            hasBiometrics: metrics.bmr !== null
+        };
+    },
+
     // AI Nutrient Calculation Setting (Token-saver & local speed mode)
     isAiNutrientCalcEnabled() {
         const val = localStorage.getItem(STORAGE_KEYS.AI_NUTRIENT_CALC);
@@ -309,9 +513,10 @@ export const Storage = {
     // --- Export / Import ---
     exportAllData() {
         const payload = {
-            version: '2.2',
+            version: '2.3',
             exportDate: new Date().toISOString(),
             meals: this.getMeals(),
+            activities: this.getActivities(),
             healthProfile: this.getHealthProfile(),
             userProfile: this.getUserProfile()
         };
@@ -332,6 +537,8 @@ export const Storage = {
                 try {
                     const data = JSON.parse(e.target.result);
                     let importedMealsCount = 0;
+                    let importedActivitiesCount = 0;
+
                     if (Array.isArray(data)) {
                         const current = Storage.getMeals();
                         const merged = [...data, ...current];
@@ -346,6 +553,13 @@ export const Storage = {
                             localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(unique));
                             importedMealsCount = data.meals.length;
                         }
+                        if (Array.isArray(data.activities)) {
+                            const currentAct = Storage.getActivities();
+                            const mergedAct = [...data.activities, ...currentAct];
+                            const uniqueAct = Array.from(new Map(mergedAct.map(a => [a.id || JSON.stringify(a), a])).values());
+                            localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(uniqueAct));
+                            importedActivitiesCount = data.activities.length;
+                        }
                         if (Array.isArray(data.healthProfile)) {
                             Storage.saveHealthProfile(data.healthProfile);
                         }
@@ -353,7 +567,7 @@ export const Storage = {
                             Storage.saveUserProfile(data.userProfile);
                         }
                     }
-                    resolve({ count: importedMealsCount });
+                    resolve({ count: importedMealsCount, activitiesCount: importedActivitiesCount });
                 } catch (err) {
                     reject(new Error("Format de fișier JSON invalid."));
                 }

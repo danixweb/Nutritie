@@ -1,7 +1,7 @@
 // ==========================================
 // Application Core Logic
 // ==========================================
-import { Storage, localFoodDB } from './storage.js';
+import { Storage, localFoodDB, localActivityDB } from './storage.js';
 import { AI } from './ai.js';
 import { PDFReport } from './pdf.js';
 
@@ -66,11 +66,13 @@ window.handleMealDateChange = (val) => {
         textEl.innerText = formatRomanianDateTime(val);
     }
     const nameInput = document.getElementById('meal-name');
-    if (!nameInput) return;
-    const currentVal = nameInput.value.trim();
-    if (!currentVal || STANDARD_SUGGESTIONS.includes(currentVal)) {
-        nameInput.value = suggestMealNameByTime(val);
+    if (nameInput) {
+        const currentVal = nameInput.value.trim();
+        if (!currentVal || STANDARD_SUGGESTIONS.includes(currentVal)) {
+            nameInput.value = suggestMealNameByTime(val);
+        }
     }
+    updateDynamicCaloricGauge();
 };
 
 function getTodayDateTimeLocal() {
@@ -112,6 +114,341 @@ document.addEventListener('click', (e) => {
         window.closeTopMenu();
     }
 });
+
+// --- Main Tab Navigation (Editor Mese vs Activitate Zilnică) ---
+window.switchMainTab = (tabName) => {
+    const mealsBtn = document.getElementById('main-tab-meals-btn');
+    const actBtn = document.getElementById('main-tab-activities-btn');
+    const mealsContent = document.getElementById('meals-tab-content');
+    const actContent = document.getElementById('activities-tab-content');
+
+    if (tabName === 'activities') {
+        if (mealsBtn) {
+            mealsBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800";
+        }
+        if (actBtn) {
+            actBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-lg border border-emerald-500";
+        }
+        if (mealsContent) mealsContent.classList.add('hidden');
+        if (actContent) actContent.classList.remove('hidden');
+
+        populateActivityTypeSelect();
+        initActivityDate();
+        renderDayActivities();
+        recalcActivityPreview();
+    } else {
+        if (mealsBtn) {
+            mealsBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500";
+        }
+        if (actBtn) {
+            actBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800";
+        }
+        if (mealsContent) mealsContent.classList.remove('hidden');
+        if (actContent) actContent.classList.add('hidden');
+        updateDynamicCaloricGauge();
+    }
+    refreshIcons();
+};
+
+// --- Daily Physical Activities & Sport Controller ---
+function populateActivityTypeSelect() {
+    const sel = document.getElementById('activity-type-select');
+    if (!sel || sel.children.length > 0) return;
+
+    const categories = {};
+    for (const [key, act] of Object.entries(localActivityDB)) {
+        const cat = act.category || 'Altele';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push({ key, ...act });
+    }
+
+    sel.innerHTML = '';
+    for (const [catName, items] of Object.entries(categories)) {
+        const group = document.createElement('optgroup');
+        group.label = catName;
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.key;
+            opt.textContent = `${item.name} (MET: ${item.met})`;
+            group.appendChild(opt);
+        });
+        sel.appendChild(group);
+    }
+}
+
+function initActivityDate() {
+    const picker = document.getElementById('activity-date-picker');
+    if (picker && !picker.value) {
+        picker.value = new Date().toISOString().slice(0, 10);
+    }
+}
+
+window.handleActivityDateChange = (val) => {
+    renderDayActivities();
+    recalcActivityPreview();
+};
+
+window.setActivityDateToday = () => {
+    const picker = document.getElementById('activity-date-picker');
+    if (picker) {
+        picker.value = new Date().toISOString().slice(0, 10);
+        renderDayActivities();
+        recalcActivityPreview();
+    }
+};
+
+window.adjustActivityDuration = (delta) => {
+    const durInput = document.getElementById('activity-duration');
+    if (!durInput) return;
+    let val = parseInt(durInput.value) || 0;
+    val = Math.max(5, Math.min(600, val + delta));
+    durInput.value = val;
+    recalcActivityPreview();
+};
+
+window.recalcActivityPreview = () => {
+    const actKey = document.getElementById('activity-type-select')?.value;
+    const intensity = document.getElementById('activity-intensity')?.value || 'moderate';
+    const dur = parseInt(document.getElementById('activity-duration')?.value) || 30;
+    const previewEl = document.getElementById('activity-preview-calories');
+
+    const burned = Storage.calculateBurnedCalories(actKey, dur, intensity);
+    if (previewEl) {
+        previewEl.innerHTML = `🔥 ~${burned} kcal`;
+    }
+};
+
+window.saveActivityFromForm = () => {
+    const picker = document.getElementById('activity-date-picker');
+    const actKey = document.getElementById('activity-type-select')?.value;
+    const intensity = document.getElementById('activity-intensity')?.value || 'moderate';
+    const dur = parseInt(document.getElementById('activity-duration')?.value) || 0;
+    const climate = document.getElementById('activity-climate')?.value || 'comfort';
+
+    if (!actKey) {
+        alert("Selectează un tip de activitate.");
+        return;
+    }
+    if (dur <= 0) {
+        alert("Introdu o durată validă în minute.");
+        return;
+    }
+
+    const dateStr = picker?.value || new Date().toISOString().slice(0, 10);
+    const actMeta = localActivityDB[actKey] || { name: actKey, met: 5.0, icon: 'activity', category: 'General' };
+    const burned = Storage.calculateBurnedCalories(actKey, dur, intensity);
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newActivity = {
+        id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        date: dateStr,
+        time: timeStr,
+        activityKey: actKey,
+        name: actMeta.name,
+        category: actMeta.category,
+        icon: actMeta.icon || 'activity',
+        met: actMeta.met,
+        durationMinutes: dur,
+        intensity: intensity,
+        climate: climate,
+        burnedCalories: burned,
+        createdAt: new Date().toISOString()
+    };
+
+    Storage.saveActivity(newActivity);
+    renderDayActivities();
+    updateDynamicCaloricGauge();
+    refreshIcons();
+};
+
+window.deleteActivityItem = (id) => {
+    if (confirm("Sigur dorești să ștergi această sesiune de activitate?")) {
+        Storage.deleteActivity(id);
+        renderDayActivities();
+        updateDynamicCaloricGauge();
+    }
+};
+
+function renderDayActivities() {
+    const picker = document.getElementById('activity-date-picker');
+    const dateStr = picker?.value || new Date().toISOString().slice(0, 10);
+    const climate = document.getElementById('activity-climate')?.value || 'comfort';
+
+    const dayActivities = Storage.getActivities(dateStr);
+    const balance = Storage.calculateDailyEnergyBalance(dateStr, climate);
+
+    // Update stats counters
+    const countEl = document.getElementById('act-stat-count');
+    const durEl = document.getElementById('act-stat-duration');
+    const burnedEl = document.getElementById('act-stat-burned');
+    const tefEl = document.getElementById('act-stat-tef');
+    const badgeCount = document.getElementById('activities-badge-count');
+
+    const totalDur = dayActivities.reduce((acc, a) => acc + (a.durationMinutes || 0), 0);
+    const totalBurned = dayActivities.reduce((acc, a) => acc + (a.burnedCalories || 0), 0);
+
+    if (countEl) countEl.innerText = dayActivities.length;
+    if (durEl) durEl.innerText = totalDur;
+    if (burnedEl) burnedEl.innerText = totalBurned;
+    if (tefEl) tefEl.innerText = balance.tefCalories;
+
+    if (badgeCount) {
+        if (dayActivities.length > 0) {
+            badgeCount.innerText = dayActivities.length;
+            badgeCount.classList.remove('hidden');
+        } else {
+            badgeCount.classList.add('hidden');
+        }
+    }
+
+    // Render list
+    const listEl = document.getElementById('day-activities-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    if (dayActivities.length === 0) {
+        listEl.innerHTML = `
+            <div class="text-center py-8 text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-dashed border-slate-800">
+                <i data-lucide="dumbbell" class="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-60"></i>
+                <p>Nicio sesiune de activitate înregistrată pentru această zi.</p>
+                <p class="text-[10px] text-slate-600 mt-0.5">Folosește formularul de mai sus pentru a adăuga antrenamente sau mișcare.</p>
+            </div>
+        `;
+        refreshIcons();
+        return;
+    }
+
+    dayActivities.forEach(act => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-3.5 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 transition-all";
+
+        const intensityLabels = {
+            light: { text: 'Ușor', color: 'text-sky-400 bg-sky-950/60 border-sky-800' },
+            moderate: { text: 'Moderat', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800' },
+            vigorous: { text: 'Intens', color: 'text-amber-400 bg-amber-950/60 border-amber-800' },
+            extreme: { text: 'Extrem', color: 'text-rose-400 bg-rose-950/60 border-rose-800' }
+        };
+        const intInfo = intensityLabels[act.intensity] || intensityLabels.moderate;
+
+        item.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-800/80 flex items-center justify-center text-emerald-400 shrink-0">
+                    <i data-lucide="${act.icon || 'activity'}" class="w-5 h-5"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-bold text-white text-xs sm:text-sm truncate">${act.name}</div>
+                    <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                        <span class="text-slate-300 font-semibold">${act.durationMinutes} min</span>
+                        <span>•</span>
+                        <span class="px-1.5 py-0.5 rounded border font-semibold ${intInfo.color}">${intInfo.text}</span>
+                        <span>•</span>
+                        <span class="text-slate-500">${act.category || 'Sport'}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="text-right">
+                    <div class="font-mono text-sm sm:text-base font-bold text-emerald-400">🔥 -${act.burnedCalories}</div>
+                    <div class="text-[9px] text-slate-500 uppercase font-bold">kcal arse</div>
+                </div>
+                <button onclick="deleteActivityItem('${act.id}')" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors" title="Șterge sesiune">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        `;
+        listEl.appendChild(item);
+    });
+
+    refreshIcons();
+}
+
+// --- Dynamic Caloric Gauge & Dual Progress Tracker ---
+function updateDynamicCaloricGauge() {
+    const mealCalsEl = document.getElementById('meal-live-calories');
+    const dayCalsEl = document.getElementById('day-live-calories');
+    const bmrStatusPill = document.getElementById('bmr-status-pill');
+    const progressBar = document.getElementById('caloric-progress-bar');
+    const progressStatus = document.getElementById('caloric-progress-status');
+    const bmrTargetVal = document.getElementById('bmr-target-val');
+    const tdeeTargetVal = document.getElementById('tdee-target-val');
+
+    if (!mealCalsEl || !dayCalsEl) return;
+
+    // 1. Current Meal Calories
+    let mealCal = 0;
+    (currentMeal.foods || []).forEach(f => {
+        mealCal += parseFloat(f.calories) || 0;
+    });
+    mealCal = Math.round(mealCal);
+    mealCalsEl.innerText = mealCal;
+
+    // 2. Total Day Calories (saved meals on this day + current meal)
+    const mealDateVal = document.getElementById('meal-datetime')?.value || '';
+    const dateStr = mealDateVal ? mealDateVal.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const allMeals = Storage.getMeals();
+    let savedDayCal = 0;
+    allMeals.forEach(m => {
+        if (m.date && m.date.slice(0, 10) === dateStr) {
+            if (currentMeal.id && m.id === currentMeal.id) {
+                // exclude meal currently being edited to avoid double counting
+                return;
+            }
+            (m.foods || []).forEach(f => {
+                savedDayCal += parseFloat(f.calories) || 0;
+            });
+        }
+    });
+
+    const totalDayCal = Math.round(savedDayCal + mealCal);
+    dayCalsEl.innerText = totalDayCal;
+
+    // 3. User Biometric Targets
+    const profile = Storage.getUserProfile();
+    const metrics = Storage.calculateMetrics(profile);
+    const bmr = metrics.bmr || 1600;
+    const targetTDEE = metrics.targetCalories || metrics.tdee || 2000;
+
+    if (bmrTargetVal) bmrTargetVal.innerText = `BMR: ${bmr}`;
+    if (tdeeTargetVal) tdeeTargetVal.innerText = `Target: ${targetTDEE}`;
+
+    // 4. Visual Gauge & Status Updates
+    if (progressBar && progressStatus) {
+        if (totalDayCal < bmr) {
+            const pct = Math.min(Math.round((totalDayCal / bmr) * 60), 60);
+            progressBar.style.width = `${Math.max(pct, 4)}%`;
+            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sm";
+            const diff = bmr - totalDayCal;
+            progressStatus.innerHTML = `Sub metabolismul bazal (<strong class="text-sky-300 font-mono">${diff} kcal</strong> rămase până la BMR de ${bmr})`;
+            if (bmrStatusPill) {
+                bmrStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-950/80 text-sky-300 border border-sky-800/80";
+                bmrStatusPill.innerText = "Sub BMR";
+            }
+        } else if (totalDayCal <= targetTDEE) {
+            const span = targetTDEE - bmr || 1;
+            const extraPct = Math.round(((totalDayCal - bmr) / span) * 40);
+            const pct = 60 + Math.min(extraPct, 40);
+            progressBar.style.width = `${pct}%`;
+            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-sm";
+            const rem = targetTDEE - totalDayCal;
+            progressStatus.innerHTML = `BMR atins! În zona de consum optim (<strong class="text-emerald-300 font-mono">${rem} kcal</strong> până la TDEE de ${targetTDEE})`;
+            if (bmrStatusPill) {
+                bmrStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80";
+                bmrStatusPill.innerText = "BMR Atins ✓";
+            }
+        } else {
+            const surplus = totalDayCal - targetTDEE;
+            progressBar.style.width = "100%";
+            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-amber-500 to-rose-500 shadow-md";
+            progressStatus.innerHTML = `Target caloric depășit (<strong class="text-amber-300 font-mono">+${surplus} kcal surplus</strong> față de ${targetTDEE})`;
+            if (bmrStatusPill) {
+                bmrStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-950/80 text-amber-300 border border-amber-800/80";
+                bmrStatusPill.innerText = "Surplus Caloric";
+            }
+        }
+    }
+}
 
 // --- Tabbed Settings Navigation ---
 window.switchSettingsTab = (tabName) => {
@@ -257,6 +594,7 @@ window.saveUserProfileForm = () => {
     healthProfile = healthIssues;
     renderHealthTags();
     window.recalcProfilePreview();
+    updateDynamicCaloricGauge();
     alert("Datele personale au fost salvate cu succes!");
 };
 
@@ -510,6 +848,7 @@ function renderCurrentMeal() {
         `;
         c.appendChild(d);
     });
+    updateDynamicCaloricGauge();
     refreshIcons();
 }
 
@@ -691,6 +1030,7 @@ function finishProcessing(originalText, btn, msg) {
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
+    updateDynamicCaloricGauge();
     if (currentMeal.foods.length > 0 && Storage.isAiAvailable()) {
         document.getElementById('ai-actions-panel').classList.remove('hidden');
     } else {
@@ -742,6 +1082,7 @@ window.resetForm = () => {
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
+    updateDynamicCaloricGauge();
     document.getElementById('ai-actions-panel').classList.add('hidden');
     document.getElementById('data-source-msg').innerHTML = '';
     refreshIcons();
@@ -808,6 +1149,7 @@ window.deleteMeal = (id) => {
         Storage.deleteMeal(id);
         if (currentMeal.id === id) window.resetForm();
         renderHistory();
+        updateDynamicCaloricGauge();
     }
 };
 
@@ -1635,27 +1977,40 @@ window.openCaloriesReportModal = () => {
     if (!modal) return;
     
     const meals = Storage.getMeals();
+    const allActivities = Storage.getActivities();
     const metrics = Storage.calculateMetrics();
     const targetCal = metrics.targetCalories || 2000;
+    const bmr = metrics.bmr || 1600;
     
-    // Group meals by YYYY-MM-DD
+    // Group days with meals or activities
     const dayMap = {};
     meals.forEach(m => {
         const dStr = m.date ? m.date.slice(0, 10) : 'Necunoscut';
         if (!dayMap[dStr]) {
-            dayMap[dStr] = { date: dStr, meals: [], totalCal: 0 };
+            dayMap[dStr] = { date: dStr, meals: [], totalCal: 0, activities: [] };
         }
         const mealCal = (m.foods || []).reduce((acc, f) => acc + (f.calories || 0), 0);
         dayMap[dStr].meals.push({ name: m.name || 'Masă', cal: mealCal, foodsCount: (m.foods || []).length });
         dayMap[dStr].totalCal += mealCal;
     });
 
+    allActivities.forEach(act => {
+        const dStr = act.date || 'Necunoscut';
+        if (!dayMap[dStr]) {
+            dayMap[dStr] = { date: dStr, meals: [], totalCal: 0, activities: [] };
+        }
+        dayMap[dStr].activities.push(act);
+    });
+
     const dayKeys = Object.keys(dayMap).sort().reverse();
     const dayCount = dayKeys.length;
     
     let totalAllDaysCal = 0;
+    let totalAllDaysBurned = 0;
     dayKeys.forEach(k => {
         totalAllDaysCal += dayMap[k].totalCal;
+        const actBurned = (dayMap[k].activities || []).reduce((acc, a) => acc + (a.burnedCalories || 0), 0);
+        totalAllDaysBurned += actBurned;
     });
     const avgCal = dayCount > 0 ? Math.round(totalAllDaysCal / dayCount) : 0;
     const balance = avgCal > 0 ? avgCal - targetCal : 0;
@@ -1695,10 +2050,11 @@ window.openCaloriesReportModal = () => {
     if (listEl) {
         listEl.innerHTML = '';
         if (dayCount === 0) {
-            listEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-slate-800">Nu există mese salvate în jurnal.</div>`;
+            listEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-slate-800">Nu există date în jurnal.</div>`;
         } else {
             dayKeys.forEach(k => {
                 const day = dayMap[k];
+                const dayBalance = Storage.calculateDailyEnergyBalance(day.date);
                 const pct = targetCal > 0 ? Math.min(Math.round((day.totalCal / targetCal) * 100), 150) : 0;
                 const diff = day.totalCal - targetCal;
                 const dateObj = new Date(day.date);
@@ -1710,7 +2066,7 @@ window.openCaloriesReportModal = () => {
                     <div class="flex justify-between items-center mb-2">
                         <div>
                             <span class="font-bold text-white text-xs capitalize">${dateDisplay}</span>
-                            <span class="text-[10px] text-slate-500 ml-2">(${day.meals.length} mese)</span>
+                            <span class="text-[10px] text-slate-500 ml-2">(${day.meals.length} mese, ${day.activities.length} sport)</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="font-mono text-xs font-bold text-white">${day.totalCal} / ${targetCal} kcal</span>
@@ -1722,8 +2078,14 @@ window.openCaloriesReportModal = () => {
                     <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
                         <div class="h-full rounded-full transition-all duration-500 ${pct > 105 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${Math.min(pct, 100)}%"></div>
                     </div>
-                    <div class="flex flex-wrap gap-1.5 text-[10px] text-slate-400">
-                        ${day.meals.map(m => `<span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${m.name}: <strong class="text-slate-200">${m.cal} kcal</strong></span>`).join('')}
+                    <div class="flex flex-wrap items-center justify-between gap-1.5 text-[10px] pt-1">
+                        <div class="flex flex-wrap gap-1 text-slate-400">
+                            ${day.meals.map(m => `<span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${m.name}: <strong class="text-slate-200">${m.cal} kcal</strong></span>`).join('')}
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px]">
+                            ${dayBalance.sportCalories > 0 ? `<span class="text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800 font-bold">🏃 Sport: -${dayBalance.sportCalories} kcal</span>` : ''}
+                            <span class="text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800">TEF: -${dayBalance.tefCalories} kcal</span>
+                        </div>
                     </div>
                 `;
                 listEl.appendChild(item);
@@ -1971,8 +2333,11 @@ function initApp() {
     renderHistory();
     renderCurrentMeal();
     updateAnalysis();
+    populateActivityTypeSelect();
+    initActivityDate();
+    updateDynamicCaloricGauge();
     refreshIcons();
-    console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile & Health Metrics.");
+    console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile, Health Metrics & Daily Activities.");
 }
 
 // Start once DOM is ready

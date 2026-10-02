@@ -32,21 +32,30 @@ export const PDFReport = {
     // Generate full HTML report string
     generateMonthlyReportHTML(year, month) {
         const allMeals = Storage.getMeals();
+        const allActivities = Storage.getActivities();
         const healthProfile = Storage.getHealthProfile();
         const monthName = MONTH_NAMES_RO[month];
 
-        // Filter meals for this specific month & year
+        // Filter meals & activities for this specific month & year
         const monthlyMeals = allMeals.filter(m => {
             if (!m.date) return false;
             const d = new Date(m.date);
             return d.getFullYear() === year && d.getMonth() === month;
         });
 
-        // Group meals by day number (1 .. daysInMonth)
+        const monthlyActivities = allActivities.filter(a => {
+            if (!a.date) return false;
+            const d = new Date(a.date);
+            return d.getFullYear() === year && d.getMonth() === month;
+        });
+
+        // Group meals and activities by day number (1 .. daysInMonth)
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const mealsByDay = {};
+        const activitiesByDay = {};
         for (let i = 1; i <= daysInMonth; i++) {
             mealsByDay[i] = [];
+            activitiesByDay[i] = [];
         }
 
         monthlyMeals.forEach(meal => {
@@ -57,14 +66,24 @@ export const PDFReport = {
             }
         });
 
+        monthlyActivities.forEach(act => {
+            const d = new Date(act.date);
+            const dayNum = d.getDate();
+            if (activitiesByDay[dayNum]) {
+                activitiesByDay[dayNum].push(act);
+            }
+        });
+
         // Aggregated monthly nutrients
         const monthlyNutrients = {};
         let totalMonthlyCalories = 0;
+        let totalMonthlyBurnedSport = 0;
         let daysWithLoggedMeals = 0;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dayMeals = mealsByDay[d];
-            if (dayMeals.length > 0) daysWithLoggedMeals++;
+            const dayActs = activitiesByDay[d];
+            if (dayMeals.length > 0 || dayActs.length > 0) daysWithLoggedMeals++;
 
             dayMeals.forEach(meal => {
                 (meal.foods || []).forEach(f => {
@@ -85,6 +104,10 @@ export const PDFReport = {
                     });
                 });
             });
+
+            dayActs.forEach(act => {
+                totalMonthlyBurnedSport += (act.burnedCalories || 0);
+            });
         }
 
         // Build Calendar Grid (Weeks & 7 Columns: Mon - Sun)
@@ -104,14 +127,16 @@ export const PDFReport = {
                     calendarGridHTML += `<div class="day-cell empty-cell"></div>`;
                 } else {
                     const dayMeals = mealsByDay[currentDay];
+                    const dayActs = activitiesByDay[currentDay];
                     let dayCalories = 0;
                     let dayProtein = 0;
                     let dayCarbs = 0;
                     let dayFat = 0;
+                    let daySportBurned = dayActs.reduce((acc, a) => acc + (a.burnedCalories || 0), 0);
 
                     let mealsListHTML = '';
-                    if (dayMeals.length === 0) {
-                        mealsListHTML = `<div class="no-meals">- Fără mese -</div>`;
+                    if (dayMeals.length === 0 && dayActs.length === 0) {
+                        mealsListHTML = `<div class="no-meals">- Fără înregistrări -</div>`;
                     } else {
                         dayMeals.forEach((m, mIdx) => {
                             let mealCals = 0;
@@ -153,6 +178,20 @@ export const PDFReport = {
                                 </div>
                             `;
                         });
+
+                        if (dayActs.length > 0) {
+                            mealsListHTML += `
+                                <div class="meal-block" style="border-left: 2px solid #10b981; background: #f0fdf4;">
+                                    <div class="meal-header" style="color: #047857;">
+                                        <strong>🏃 Activități & Sport (${dayActs.length})</strong>
+                                        <span class="meal-cal-badge" style="background:#059669; color:white;">-${daySportBurned} kcal</span>
+                                    </div>
+                                    <div class="foods-row" style="color:#065f46;">
+                                        ${dayActs.map(a => `${a.name} (${a.durationMinutes}m)`).join(', ')}
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
 
                     const isToday = (new Date().getFullYear() === year && new Date().getMonth() === month && new Date().getDate() === currentDay);
@@ -171,6 +210,7 @@ export const PDFReport = {
                                 <div class="tot-label">TOTAL ZI:</div>
                                 <div class="tot-macros">
                                     <b>${dayCalories}</b> kcal • P:<b>${dayProtein.toFixed(0)}g</b> C:<b>${dayCarbs.toFixed(0)}g</b> G:<b>${dayFat.toFixed(0)}g</b>
+                                    ${daySportBurned > 0 ? `<br><span style="color:#059669; font-weight:bold;">🏃 Efort: -${daySportBurned} kcal</span>` : ''}
                                 </div>
                             </div>
                         </div>
