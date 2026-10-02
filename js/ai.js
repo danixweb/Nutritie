@@ -4,6 +4,42 @@
 import { Storage } from './storage.js';
 
 export const AI = {
+    // Test connection with API Key and target model
+    async testConnection(key, model) {
+        const apiKey = key || Storage.getApiKey();
+        if (!apiKey) throw new Error("Lipsă cheie API.");
+
+        let targetModel = model || Storage.getTargetModel();
+        if (!targetModel || targetModel === 'auto' || targetModel === 'custom') {
+            targetModel = 'gemini-flash-latest';
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: "Răspunde doar cu: OK" }] }]
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => null);
+            const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+            if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid")) {
+                throw new Error("Cheia API introdusă este invalidă. Verifică cheia în Google AI Studio.");
+            }
+            throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+            throw new Error("Răspuns invalid de la Gemini API.");
+        }
+
+        Storage.saveActiveModel(targetModel);
+        return true;
+    },
+
     // List all live available models from Google API
     async listAvailableModels(key) {
         const apiKey = key || Storage.getApiKey();

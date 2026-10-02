@@ -5,10 +5,14 @@
 const STORAGE_KEYS = {
     MEALS: 'nutritie_meals_history_v2',
     HEALTH_PROFILE: 'health_profile',
+    USER_PROFILE: 'nutritie_user_profile',
     API_KEY: 'gemini_api_key',
     ACTIVE_MODEL: 'gemini_active_model',
     SELECTED_MODEL_TYPE: 'gemini_selected_model_type', // 'gemini-2.0-flash', 'gemini-1.5-flash', 'auto', 'custom', etc.
-    CUSTOM_MODEL_NAME: 'gemini_custom_model_name'
+    CUSTOM_MODEL_NAME: 'gemini_custom_model_name',
+    AI_ENABLED: 'gemini_ai_enabled',
+    AI_CONNECTED: 'gemini_ai_connected',
+    AI_NUTRIENT_CALC: 'gemini_ai_nutrient_calc'
 };
 
 // Local food database for offline calorie / macro estimation
@@ -116,6 +120,31 @@ export const Storage = {
     clearApiKey() {
         localStorage.removeItem(STORAGE_KEYS.API_KEY);
         localStorage.removeItem(STORAGE_KEYS.ACTIVE_MODEL);
+        localStorage.removeItem(STORAGE_KEYS.AI_CONNECTED);
+    },
+
+    // AI Enable / Disable Flag
+    isAiEnabled() {
+        const val = localStorage.getItem(STORAGE_KEYS.AI_ENABLED);
+        return val === null ? true : val === 'true';
+    },
+
+    setAiEnabled(enabled) {
+        localStorage.setItem(STORAGE_KEYS.AI_ENABLED, enabled ? 'true' : 'false');
+    },
+
+    // AI Connection Verified Flag
+    isAiConnected() {
+        return localStorage.getItem(STORAGE_KEYS.AI_CONNECTED) === 'true';
+    },
+
+    setAiConnected(connected) {
+        localStorage.setItem(STORAGE_KEYS.AI_CONNECTED, connected ? 'true' : 'false');
+    },
+
+    // Effective overall AI availability check
+    isAiAvailable() {
+        return this.isAiEnabled() && !!this.getApiKey().trim() && this.isAiConnected();
     },
 
     getActiveModel() {
@@ -156,13 +185,111 @@ export const Storage = {
         return this.getActiveModel() || 'gemini-flash-latest';
     },
 
+    // --- User Profile & Health Metrics ---
+    getUserProfile() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+            if (data) return JSON.parse(data);
+        } catch (e) {
+            console.error("Failed to read user profile", e);
+        }
+        return {
+            age: 30,
+            gender: 'male',
+            weight: 70,
+            height: 175,
+            activityLevel: 1.375, // 1.2 (Sedentar), 1.375 (Ușor activ), 1.55 (Moderat activ), 1.725 (Activ), 1.9 (Foarte activ)
+            healthIssues: this.getHealthProfile() || [],
+            allergies: [],
+            targetDeficit: 0 // 0 = mentinere, -500 = slabire, 300 = masa musculara
+        };
+    },
+
+    saveUserProfile(profile) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+            if (profile.healthIssues && Array.isArray(profile.healthIssues)) {
+                this.saveHealthProfile(profile.healthIssues);
+            }
+        } catch (e) {
+            console.error("Failed to save user profile", e);
+        }
+    },
+
+    // Calculate Medical & Nutritional Metrics
+    calculateMetrics(profile) {
+        const p = profile || this.getUserProfile();
+        const weight = parseFloat(p.weight) || 70;
+        const height = parseFloat(p.height) || 175;
+        const age = parseInt(p.age) || 30;
+        const gender = p.gender || 'male';
+        const activity = parseFloat(p.activityLevel) || 1.375;
+        const deficit = parseInt(p.targetDeficit) || 0;
+
+        // 1. BMI / IMC
+        const heightM = height / 100;
+        const imc = heightM > 0 ? weight / (heightM * heightM) : 22;
+        let imcCategory = 'Normal';
+        let imcColor = 'text-emerald-400';
+        if (imc < 18.5) { imcCategory = 'Subponderal'; imcColor = 'text-amber-400'; }
+        else if (imc < 25) { imcCategory = 'Normoponderal'; imcColor = 'text-emerald-400'; }
+        else if (imc < 30) { imcCategory = 'Supraponderal'; imcColor = 'text-orange-400'; }
+        else { imcCategory = 'Obezitate'; imcColor = 'text-rose-400'; }
+
+        // 2. Ideal Weight (Lorentz Formula)
+        let idealWeight = 70;
+        if (height >= 140) {
+            if (gender === 'female') {
+                idealWeight = (height - 100) - ((height - 150) / 2.5);
+            } else {
+                idealWeight = (height - 100) - ((height - 150) / 4);
+            }
+        }
+
+        // 3. Basal Metabolic Rate (BMR - Mifflin-St Jeor)
+        let bmr = 0;
+        if (gender === 'female') {
+            bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+        } else {
+            bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+        }
+        bmr = Math.max(Math.round(bmr), 800);
+
+        // 4. Total Daily Energy Expenditure (TDEE) & Target Calories
+        const tdee = Math.round(bmr * activity);
+        const targetCalories = Math.max(Math.round(tdee + deficit), 1000);
+
+        return {
+            imc: parseFloat(imc.toFixed(1)),
+            imcCategory,
+            imcColor,
+            idealWeight: parseFloat(idealWeight.toFixed(1)),
+            bmr,
+            tdee,
+            targetCalories,
+            activityLevel: activity,
+            deficit
+        };
+    },
+
+    // AI Nutrient Calculation Setting (Token-saver & local speed mode)
+    isAiNutrientCalcEnabled() {
+        const val = localStorage.getItem(STORAGE_KEYS.AI_NUTRIENT_CALC);
+        return val === null ? true : val === 'true';
+    },
+
+    setAiNutrientCalcEnabled(enabled) {
+        localStorage.setItem(STORAGE_KEYS.AI_NUTRIENT_CALC, enabled ? 'true' : 'false');
+    },
+
     // --- Export / Import ---
     exportAllData() {
         const payload = {
-            version: '2.1',
+            version: '2.2',
             exportDate: new Date().toISOString(),
             meals: this.getMeals(),
-            healthProfile: this.getHealthProfile()
+            healthProfile: this.getHealthProfile(),
+            userProfile: this.getUserProfile()
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -197,6 +324,9 @@ export const Storage = {
                         }
                         if (Array.isArray(data.healthProfile)) {
                             Storage.saveHealthProfile(data.healthProfile);
+                        }
+                        if (data.userProfile && typeof data.userProfile === 'object') {
+                            Storage.saveUserProfile(data.userProfile);
                         }
                     }
                     resolve({ count: importedMealsCount });

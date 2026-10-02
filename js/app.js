@@ -62,6 +62,161 @@ function refreshIcons() {
 }
 
 // --- UI Toggle Handlers ---
+window.toggleTopMenu = () => {
+    const menu = document.getElementById('top-dropdown-menu');
+    const chevron = document.getElementById('menu-chevron');
+    if (!menu) return;
+    const isHidden = menu.classList.toggle('hidden');
+    if (chevron) {
+        if (!isHidden) chevron.classList.add('rotate-180');
+        else chevron.classList.remove('rotate-180');
+    }
+};
+
+window.closeTopMenu = () => {
+    const menu = document.getElementById('top-dropdown-menu');
+    const chevron = document.getElementById('menu-chevron');
+    if (menu) menu.classList.add('hidden');
+    if (chevron) chevron.classList.remove('rotate-180');
+};
+
+// Global click listener to close menu when clicking outside
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('top-dropdown-menu');
+    const btn = document.getElementById('top-menu-btn');
+    if (menu && !menu.classList.contains('hidden') && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+        window.closeTopMenu();
+    }
+});
+
+// --- Tabbed Settings Navigation ---
+window.switchSettingsTab = (tabName) => {
+    const tabs = ['ai', 'profile', 'nutrients'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const content = document.getElementById(`tab-content-${t}`);
+        if (t === tabName) {
+            if (btn) {
+                btn.className = "flex-1 py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow";
+            }
+            if (content) content.classList.remove('hidden');
+        } else {
+            if (btn) {
+                btn.className = "flex-1 py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-400 hover:text-white";
+            }
+            if (content) content.classList.add('hidden');
+        }
+    });
+
+    if (tabName === 'profile') {
+        loadUserProfileIntoForm();
+        window.recalcProfilePreview();
+    } else if (tabName === 'nutrients') {
+        const nutToggle = document.getElementById('ai-nutrient-calc-toggle');
+        if (nutToggle) nutToggle.checked = Storage.isAiNutrientCalcEnabled();
+    }
+    refreshIcons();
+};
+
+window.openSettingsTab = (tabName) => {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    window.switchSettingsTab(tabName);
+    updateAIVisibility();
+};
+
+// --- User Profile & Biometrics Live Recalculation ---
+function loadUserProfileIntoForm() {
+    const p = Storage.getUserProfile();
+    const ageEl = document.getElementById('user-age');
+    const genderEl = document.getElementById('user-gender');
+    const weightEl = document.getElementById('user-weight');
+    const heightEl = document.getElementById('user-height');
+    const actEl = document.getElementById('user-activity');
+    const goalEl = document.getElementById('user-diet-goal');
+    const issuesEl = document.getElementById('user-health-issues');
+
+    if (ageEl) ageEl.value = p.age || 30;
+    if (genderEl) genderEl.value = p.gender || 'male';
+    if (weightEl) weightEl.value = p.weight || 70;
+    if (heightEl) heightEl.value = p.height || 175;
+    if (actEl) actEl.value = p.activityLevel || 1.375;
+    if (goalEl) goalEl.value = p.targetDeficit || 0;
+    if (issuesEl) {
+        const issues = (p.healthIssues && p.healthIssues.length > 0) ? p.healthIssues : Storage.getHealthProfile();
+        issuesEl.value = issues.join(', ');
+    }
+}
+
+window.recalcProfilePreview = () => {
+    const age = parseInt(document.getElementById('user-age')?.value) || 30;
+    const gender = document.getElementById('user-gender')?.value || 'male';
+    const weight = parseFloat(document.getElementById('user-weight')?.value) || 70;
+    const height = parseFloat(document.getElementById('user-height')?.value) || 175;
+    const activity = parseFloat(document.getElementById('user-activity')?.value) || 1.375;
+    const deficit = parseInt(document.getElementById('user-diet-goal')?.value) || 0;
+
+    const metrics = Storage.calculateMetrics({
+        age, gender, weight, height, activityLevel: activity, targetDeficit: deficit
+    });
+
+    const imcEl = document.getElementById('calc-imc');
+    const imcBadge = document.getElementById('calc-imc-badge');
+    const idealEl = document.getElementById('calc-ideal-weight');
+    const bmrEl = document.getElementById('calc-bmr');
+    const tdeeEl = document.getElementById('calc-tdee');
+    const goalBadge = document.getElementById('calc-goal-badge');
+
+    if (imcEl) imcEl.innerText = metrics.imc;
+    if (imcBadge) {
+        imcBadge.innerText = metrics.imcCategory;
+        imcBadge.className = `text-[10px] font-semibold ${metrics.imcColor}`;
+    }
+    if (idealEl) idealEl.innerText = `${metrics.idealWeight} kg`;
+    if (bmrEl) bmrEl.innerText = `${metrics.bmr} kcal`;
+    if (tdeeEl) tdeeEl.innerText = `${metrics.targetCalories} kcal`;
+    if (goalBadge) {
+        if (deficit === 0) goalBadge.innerText = "Menținere";
+        else if (deficit < 0) goalBadge.innerText = `Deficit ${deficit} kcal`;
+        else goalBadge.innerText = `Surplus +${deficit} kcal`;
+    }
+};
+
+window.saveUserProfileForm = () => {
+    const age = parseInt(document.getElementById('user-age')?.value) || 30;
+    const gender = document.getElementById('user-gender')?.value || 'male';
+    const weight = parseFloat(document.getElementById('user-weight')?.value) || 70;
+    const height = parseFloat(document.getElementById('user-height')?.value) || 175;
+    const activity = parseFloat(document.getElementById('user-activity')?.value) || 1.375;
+    const deficit = parseInt(document.getElementById('user-diet-goal')?.value) || 0;
+    const issuesRaw = document.getElementById('user-health-issues')?.value || '';
+    
+    const healthIssues = issuesRaw
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+    const profile = {
+        age,
+        gender,
+        weight,
+        height,
+        activityLevel: activity,
+        targetDeficit: deficit,
+        healthIssues
+    };
+
+    Storage.saveUserProfile(profile);
+    healthProfile = healthIssues;
+    renderHealthTags();
+    alert("Datele personale și profilul biometric au fost salvate cu succes!");
+};
+
+window.handleAiNutrientCalcChange = (checked) => {
+    Storage.setAiNutrientCalcEnabled(checked);
+};
+
 window.toggleSidebar = () => {
     const sb = document.getElementById('analysis-sidebar');
     const ov = document.getElementById('sidebar-overlay');
@@ -89,13 +244,127 @@ window.toggleChat = () => {
     }
 };
 
+window.handleAiToggleChange = (checked) => {
+    Storage.setAiEnabled(checked);
+    updateAIVisibility();
+};
+
+export function updateAIVisibility() {
+    const isAvailable = Storage.isAiAvailable();
+    const isEnabled = Storage.isAiEnabled();
+    const hasKey = !!Storage.getApiKey().trim();
+
+    // 1. Header Shopping List Button (Removed)
+
+    // 2. Meal Editor Buttons: Generator & Camera
+    const genBtn = document.getElementById('gen-btn');
+    if (genBtn) {
+        if (isAvailable) genBtn.classList.remove('hidden');
+        else genBtn.classList.add('hidden');
+    }
+
+    const camBtn = document.getElementById('cam-btn');
+    if (camBtn) {
+        if (isAvailable) camBtn.classList.remove('hidden');
+        else camBtn.classList.add('hidden');
+    }
+
+    // 3. AI Smart Actions Panel (Chef Mode, Nutri Coach, Meniu Medical)
+    const actionsPanel = document.getElementById('ai-actions-panel');
+    if (actionsPanel) {
+        if (isAvailable && currentMeal.foods.length > 0) {
+            actionsPanel.classList.remove('hidden');
+        } else {
+            actionsPanel.classList.add('hidden');
+        }
+    }
+
+    // 4. Floating Chat Button & Chat Window
+    const chatBtn = document.getElementById('floating-chat-btn');
+    if (chatBtn) {
+        if (isAvailable) chatBtn.classList.remove('hidden');
+        else {
+            chatBtn.classList.add('hidden');
+            const chatWin = document.getElementById('chat-window');
+            if (chatWin && !chatWin.classList.contains('hidden')) {
+                chatWin.classList.remove('chat-visible');
+                chatWin.classList.add('hidden');
+            }
+        }
+    }
+
+    // 5. Nutrient Modal AI Section
+    const nutAiSection = document.getElementById('nutrient-ai-section');
+    if (nutAiSection) {
+        if (isAvailable) nutAiSection.classList.remove('hidden');
+        else nutAiSection.classList.add('hidden');
+    }
+
+    // 6. Header Settings Indicator Dot
+    const ind = document.getElementById('api-key-indicator');
+    if (ind) {
+        if (!isEnabled) {
+            ind.className = 'w-2 h-2 rounded-full bg-slate-500 border border-slate-900 ml-0.5';
+            ind.title = 'AI Dezactivat';
+        } else if (isAvailable) {
+            ind.className = 'w-2 h-2 rounded-full bg-emerald-500 border border-slate-900 ml-0.5';
+            ind.title = 'AI Conectat';
+        } else {
+            ind.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse border border-slate-900 ml-0.5';
+            ind.title = hasKey ? 'AI Neconectat (necesită testare)' : 'Lipsă Cheie API';
+        }
+    }
+
+    // 7. Settings Modal Controls & Connection Badge
+    const toggleEl = document.getElementById('ai-enabled-toggle');
+    if (toggleEl) {
+        toggleEl.checked = isEnabled;
+    }
+
+    const aiConfigSection = document.getElementById('ai-config-section');
+    if (aiConfigSection) {
+        if (isEnabled) {
+            aiConfigSection.classList.remove('opacity-40', 'pointer-events-none');
+        } else {
+            aiConfigSection.classList.add('opacity-40', 'pointer-events-none');
+        }
+    }
+
+    const statusBadge = document.getElementById('ai-connection-status-badge');
+    if (statusBadge) {
+        if (!isEnabled) {
+            statusBadge.className = 'p-3 rounded-xl text-xs font-medium bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center gap-2.5';
+            statusBadge.innerHTML = `<i data-lucide="power-off" class="w-4 h-4 text-slate-400 shrink-0"></i> <span>Folosirea AI este <strong>Dezactivată</strong>. Aplicația funcționează 100% offline.</span>`;
+        } else if (isAvailable) {
+            const activeModel = Storage.getActiveModel() || Storage.getTargetModel();
+            statusBadge.className = 'p-3 rounded-xl text-xs font-medium bg-emerald-950/50 text-emerald-300 border border-emerald-800/70 flex items-center gap-2.5';
+            statusBadge.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i> <span>Conexiune activă la Google Gemini (<strong>${activeModel}</strong>).</span>`;
+        } else if (!hasKey) {
+            statusBadge.className = 'p-3 rounded-xl text-xs font-medium bg-amber-950/40 text-amber-300 border border-amber-800/60 flex items-center gap-2.5';
+            statusBadge.innerHTML = `<i data-lucide="key" class="w-4 h-4 text-amber-400 shrink-0"></i> <span>Nu este introdusă cheia API Gemini. Introdu cheia mai jos.</span>`;
+        } else {
+            statusBadge.className = 'p-3 rounded-xl text-xs font-medium bg-rose-950/40 text-rose-300 border border-rose-800/60 flex items-center gap-2.5';
+            statusBadge.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400 shrink-0"></i> <span>Conexiunea nu este stabilită. Apasă <strong>Salvează & Conectează</strong> pentru testare.</span>`;
+        }
+    }
+
+    // Nutrient calculation toggle
+    const nutToggle = document.getElementById('ai-nutrient-calc-toggle');
+    if (nutToggle) {
+        nutToggle.checked = Storage.isAiNutrientCalcEnabled();
+    }
+
+    refreshIcons();
+}
+
 window.toggleSettings = () => {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
     modal.classList.toggle('hidden');
     if (!modal.classList.contains('hidden')) {
         document.getElementById('api-key-input').value = Storage.getApiKey();
-        document.getElementById('api-key-error').classList.add('hidden');
+        const errEl = document.getElementById('api-key-error');
+        if (errEl) errEl.classList.add('hidden');
         
         const selectedType = Storage.getSelectedModelType();
         const modelSelect = document.getElementById('model-select');
@@ -107,7 +376,9 @@ window.toggleSettings = () => {
         if (customInput) {
             customInput.value = Storage.getCustomModelName();
         }
-        refreshIcons();
+        loadUserProfileIntoForm();
+        window.recalcProfilePreview();
+        updateAIVisibility();
     }
 };
 
@@ -129,14 +400,6 @@ window.showAIModal = (title, content, iconName = 'sparkles') => {
     m.classList.remove('hidden');
     refreshIcons();
 };
-
-function updateApiKeyIndicator() {
-    const key = Storage.getApiKey();
-    const ind = document.getElementById('api-key-indicator');
-    if (ind) {
-        ind.className = `absolute top-1 right-1 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${key ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`;
-    }
-}
 
 // --- Health Profile ---
 function renderHealthTags() {
@@ -299,8 +562,8 @@ window.processFoodItem = async () => {
     let resultData = null;
     let source = 'Local';
 
-    // Try AI analysis if API key is present
-    if (Storage.getApiKey()) {
+    // Try AI analysis only if AI is available, connected AND user enabled nutrient calculation via AI
+    if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
         try {
             const prompt = `Analizează nutrițional alimentul: "${qty} ${unit} de ${name}". Returnează JSON strict: { "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] }`;
             const txt = await AI.callText(prompt);
@@ -371,8 +634,10 @@ function finishProcessing(originalText, btn, msg) {
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
-    if (currentMeal.foods.length > 0) {
+    if (currentMeal.foods.length > 0 && Storage.isAiAvailable()) {
         document.getElementById('ai-actions-panel').classList.remove('hidden');
+    } else {
+        document.getElementById('ai-actions-panel').classList.add('hidden');
     }
     refreshIcons();
 }
@@ -470,8 +735,10 @@ window.editHistoryMeal = (id) => {
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
-    if (currentMeal.foods.length > 0) {
+    if (currentMeal.foods.length > 0 && Storage.isAiAvailable()) {
         document.getElementById('ai-actions-panel').classList.remove('hidden');
+    } else {
+        document.getElementById('ai-actions-panel').classList.add('hidden');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     refreshIcons();
@@ -537,6 +804,8 @@ window.handleImportBackup = async (input) => {
         const result = await Storage.importDataFromFile(file);
         renderHistory();
         renderHealthTags();
+        loadUserProfileIntoForm();
+        window.recalcProfilePreview();
         alert(`Date importate cu succes! (${result.count} mese adăugate/actualizate).`);
     } catch (e) {
         alert("Eroare la import: " + e.message);
@@ -546,37 +815,11 @@ window.handleImportBackup = async (input) => {
 };
 
 // --- Smart AI Actions ---
-window.generateShoppingList = async () => {
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
-    if (currentMeal.foods.length === 0) return alert("Masa este goală! Adaugă ingrediente întâi.");
-
-    const btn = document.querySelector('button[title="Generează Lista de Cumpărături"]');
-    const originalHTML = btn ? btn.innerHTML : '';
-    if (btn) btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>`;
-    refreshIcons();
-
-    const ingredients = currentMeal.foods.map(f => `${f.quantity}${f.unit} ${f.name}`).join(', ');
-    const prompt = `Ești un asistent de cumpărături inteligent.
-Am lista aceasta de ingrediente: ${ingredients}.
-
-Te rog să:
-1. Cumulezi cantitățile pentru ingredientele identice (ex: 2x 100g Orez -> 200g Orez).
-2. Le organizezi logic pe raioane de supermarket (ex: 🥦 Legume/Fructe, 🥩 Carne/Pește, 🧀 Lactate, 🥫 Băcănie, 🧂 Condimente/Altele).
-3. Returnezi rezultatul direct în format HTML curat (fără etichete \`\`\`html), folosind <h3> pentru categorii și <ul><li> pentru produse.`;
-
-    try {
-        const txt = await AI.callText(prompt);
-        window.showAIModal("Listă de Cumpărături", txt, "shopping-cart");
-    } catch (e) {
-        alert("Eroare AI: " + e.message);
-    } finally {
-        if (btn) btn.innerHTML = originalHTML;
-        refreshIcons();
-    }
-};
-
 window.generateRecipe = async () => {
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
     if (currentMeal.foods.length === 0) return alert("Adaugă ingrediente în listă mai întâi!");
     
     const btn = document.getElementById('btn-chef');
@@ -599,7 +842,10 @@ window.generateRecipe = async () => {
 };
 
 window.analyzeHealth = async () => {
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
     if (currentMeal.foods.length === 0) return alert("Masa este goală!");
     
     const btn = document.getElementById('btn-coach');
@@ -643,7 +889,10 @@ Oferă:
 };
 
 window.generateMedicalMenu = async () => {
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
     if (healthProfile.length === 0) return alert("Nu ai încărcat analize medicale încă! Încarcă un fișier CSV cu analize din asistentul de chat.");
 
     const btn = document.getElementById('btn-med-menu');
@@ -697,7 +946,10 @@ window.generateMealFromTitle = async () => {
     const title = document.getElementById('meal-name').value.trim();
     const genBtn = document.getElementById('gen-btn');
     if (!title) return alert("Scrie numele mesei mai întâi (ex: Omletă cu legume, Salată Caesar).");
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
 
     genBtn.disabled = true;
     const originalHtml = genBtn.innerHTML;
@@ -749,7 +1001,10 @@ Returnează JSON strict:
 window.handleImageUpload = async (input) => {
     const file = input.files?.[0];
     if (!file) return;
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -820,11 +1075,15 @@ window.openNutrientDetail = (n) => {
     });
 
     document.getElementById('nutrient-modal').classList.remove('hidden');
+    updateAIVisibility();
     refreshIcons();
 };
 
 window.explainNutrientWithAI = async () => {
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
     if (!currentOpenNutrient) return;
 
     const btn = document.getElementById('btn-explain-nutrient');
@@ -867,7 +1126,10 @@ Explică foarte scurt (max 2 fraze prietenoase):
 window.handleMedicalCSV = async (input) => {
     const file = input.files?.[0];
     if (!file) return;
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini mai întâi."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
 
     window.toggleChat();
     const loadingId = addMessageToChat("Analizez fișierul cu analize medicale...", 'ai', true);
@@ -1049,7 +1311,10 @@ window.sendChatMessage = async () => {
     const input = document.getElementById('chat-input');
     const msg = input.value.trim();
     if (!msg) return;
-    if (!Storage.getApiKey()) { window.toggleSettings(); return alert("Configurează cheia API Gemini în Setări."); }
+    if (!Storage.isAiAvailable()) {
+        window.toggleSettings();
+        return alert("Funcțiile AI sunt dezactivate sau conexiunea nu este stabilită. Verifică setările.");
+    }
 
     addMessageToChat(msg, 'user');
     input.value = '';
@@ -1229,8 +1494,10 @@ window.clearApiKey = () => {
     Storage.clearApiKey();
     document.getElementById('api-key-input').value = '';
     document.getElementById('custom-model-input').value = '';
-    updateApiKeyIndicator();
-    alert("Cheia API și setările modelului au fost resetate.");
+    const errEl = document.getElementById('api-key-error');
+    if (errEl) errEl.classList.add('hidden');
+    updateAIVisibility();
+    alert("Cheia API a fost ștearsă și conexiunea AI a fost oprită.");
 };
 
 window.saveApiKey = async () => {
@@ -1240,13 +1507,15 @@ window.saveApiKey = async () => {
     const errEl = document.getElementById('api-key-error');
 
     const modelSelect = document.getElementById('model-select');
-    const selectedModelType = modelSelect ? modelSelect.value : 'gemini-2.0-flash';
+    const selectedModelType = modelSelect ? modelSelect.value : 'gemini-flash-latest';
     const customModelInput = document.getElementById('custom-model-input');
     const customModelName = customModelInput ? customModelInput.value.trim() : '';
 
     if (!key || key.length < 5) {
-        errEl.innerHTML = "Te rugăm să introduci o cheie API validă.";
+        errEl.innerHTML = "Te rugăm să introduci o cheie API validă din Google AI Studio.";
         errEl.classList.remove('hidden');
+        Storage.setAiConnected(false);
+        updateAIVisibility();
         return;
     }
 
@@ -1257,29 +1526,313 @@ window.saveApiKey = async () => {
     }
 
     btn.disabled = true;
+    const originalBtnHTML = btn.innerHTML;
     btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Testare conexiune...`;
     errEl.classList.add('hidden');
     refreshIcons();
 
     try {
+        // Save preferences
         Storage.saveApiKey(key);
         Storage.saveSelectedModelType(selectedModelType);
         if (customModelName) Storage.saveCustomModelName(customModelName);
 
+        // Test connection live to verify
         const effectiveModel = Storage.getTargetModel();
-        Storage.saveActiveModel(effectiveModel);
+        await AI.testConnection(key, effectiveModel);
 
+        Storage.setAiConnected(true);
+        Storage.setAiEnabled(true);
+        updateAIVisibility();
+
+        alert(`Conexiune la AI stabilită cu succes!\nModel activ: ${effectiveModel}`);
         window.toggleSettings();
-        updateApiKeyIndicator();
-        alert(`Setări salvate cu succes!\nModel activ: ${effectiveModel}`);
     } catch (err) {
-        errEl.innerHTML = `<strong>Eroare:</strong> ${err.message || 'Verifică cheia API.'}`;
+        Storage.setAiConnected(false);
+        updateAIVisibility();
+        errEl.innerHTML = `<strong>Eroare conectare:</strong> ${err.message || 'Verifică cheia API și conexiunea la internet.'}`;
         errEl.classList.remove('hidden');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = "Salvează";
+        btn.innerHTML = originalBtnHTML;
         refreshIcons();
     }
+};
+
+// --- Calories Report Controllers ---
+window.openCaloriesReportModal = () => {
+    const modal = document.getElementById('calories-report-modal');
+    if (!modal) return;
+    
+    const meals = Storage.getMeals();
+    const metrics = Storage.calculateMetrics();
+    const targetCal = metrics.targetCalories || 2000;
+    
+    // Group meals by YYYY-MM-DD
+    const dayMap = {};
+    meals.forEach(m => {
+        const dStr = m.date ? m.date.slice(0, 10) : 'Necunoscut';
+        if (!dayMap[dStr]) {
+            dayMap[dStr] = { date: dStr, meals: [], totalCal: 0 };
+        }
+        const mealCal = (m.foods || []).reduce((acc, f) => acc + (f.calories || 0), 0);
+        dayMap[dStr].meals.push({ name: m.name || 'Masă', cal: mealCal, foodsCount: (m.foods || []).length });
+        dayMap[dStr].totalCal += mealCal;
+    });
+
+    const dayKeys = Object.keys(dayMap).sort().reverse();
+    const dayCount = dayKeys.length;
+    
+    let totalAllDaysCal = 0;
+    dayKeys.forEach(k => {
+        totalAllDaysCal += dayMap[k].totalCal;
+    });
+    const avgCal = dayCount > 0 ? Math.round(totalAllDaysCal / dayCount) : 0;
+    const balance = avgCal > 0 ? avgCal - targetCal : 0;
+
+    // Update Summary Cards
+    const targetEl = document.getElementById('rep-target-cal');
+    const avgEl = document.getElementById('rep-avg-cal');
+    const balEl = document.getElementById('rep-balance-cal');
+    const balBadge = document.getElementById('rep-balance-badge');
+    const countEl = document.getElementById('rep-days-count');
+
+    if (targetEl) targetEl.innerText = targetCal;
+    if (avgEl) avgEl.innerText = avgCal;
+    if (balEl) {
+        balEl.innerText = (balance > 0 ? `+${balance}` : `${balance}`);
+        balEl.className = `font-mono text-lg font-bold mt-0.5 ${balance <= 0 ? 'text-emerald-400' : 'text-amber-400'}`;
+    }
+    if (balBadge) {
+        if (dayCount === 0) {
+            balBadge.innerText = "-";
+            balBadge.className = "text-[10px] text-slate-500 font-semibold";
+        } else if (Math.abs(balance) <= 50) {
+            balBadge.innerText = "Echilibru";
+            balBadge.className = "text-[10px] text-emerald-400 font-semibold";
+        } else if (balance < 0) {
+            balBadge.innerText = `Deficit (${Math.abs(balance)} kcal)`;
+            balBadge.className = "text-[10px] text-emerald-400 font-semibold";
+        } else {
+            balBadge.innerText = `Surplus (+${balance} kcal)`;
+            balBadge.className = "text-[10px] text-amber-400 font-semibold";
+        }
+    }
+    if (countEl) countEl.innerText = dayCount;
+
+    // Render Daily Breakdown
+    const listEl = document.getElementById('rep-calories-days-list');
+    if (listEl) {
+        listEl.innerHTML = '';
+        if (dayCount === 0) {
+            listEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-slate-800">Nu există mese salvate în jurnal.</div>`;
+        } else {
+            dayKeys.forEach(k => {
+                const day = dayMap[k];
+                const pct = targetCal > 0 ? Math.min(Math.round((day.totalCal / targetCal) * 100), 150) : 0;
+                const diff = day.totalCal - targetCal;
+                const dateObj = new Date(day.date);
+                const dateDisplay = isNaN(dateObj.getTime()) ? day.date : dateObj.toLocaleDateString('ro-RO', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+                const item = document.createElement('div');
+                item.className = "bg-slate-950 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 transition-all";
+                item.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <div>
+                            <span class="font-bold text-white text-xs capitalize">${dateDisplay}</span>
+                            <span class="text-[10px] text-slate-500 ml-2">(${day.meals.length} mese)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-xs font-bold text-white">${day.totalCal} / ${targetCal} kcal</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded font-bold ${diff <= 0 ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800' : 'bg-amber-950/60 text-amber-300 border border-amber-800'}">
+                                ${diff > 0 ? `+${diff} surplus` : `${diff} deficit`}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
+                        <div class="h-full rounded-full transition-all duration-500 ${pct > 105 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${Math.min(pct, 100)}%"></div>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 text-[10px] text-slate-400">
+                        ${day.meals.map(m => `<span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${m.name}: <strong class="text-slate-200">${m.cal} kcal</strong></span>`).join('')}
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+    }
+
+    modal.classList.remove('hidden');
+    refreshIcons();
+};
+
+window.closeCaloriesReportModal = () => {
+    const modal = document.getElementById('calories-report-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+// --- Deficiencies Report Controllers ---
+window.openDeficienciesReportModal = () => {
+    const modal = document.getElementById('deficiencies-report-modal');
+    if (!modal) return;
+
+    const meals = Storage.getMeals();
+    const userProf = Storage.getUserProfile();
+    const healthIssues = userProf.healthIssues || Storage.getHealthProfile() || [];
+
+    // Standard Reference Daily Intake (DZR)
+    const DZR_STANDARDS = {
+        'Proteine': { name: 'Proteine', unit: 'g', target: 60, role: 'Construcție & refacere celulară', foods: 'Piept de pui, ouă, ton, somon, iaurt grecesc, linte' },
+        'Carbohidrați': { name: 'Carbohidrați', unit: 'g', target: 250, role: 'Energie principală pentru creier & mușchi', foods: 'Ovăz, orez, cartofi dulci, leguminoase' },
+        'Grăsimi': { name: 'Grăsimi Sănătoase', unit: 'g', target: 70, role: 'Echilibru hormonal & asimilare vitamine', foods: 'Ulei de măsline, avocado, nuci, pește gras' },
+        'Fibre': { name: 'Fibre Dietetice', unit: 'g', target: 30, role: 'Tranzit intestinal & microbiom sănătos', foods: 'Semințe de in, tărâțe, legume verzi, mere, ovăz' },
+        'Vitamina C': { name: 'Vitamina C', unit: 'mg', target: 80, role: 'Imunitate, sinteză colagen & antioxidant', foods: 'Ardei gras, căpșuni, citrice, broccoli, pătrunjel' },
+        'Vitamina D': { name: 'Vitamina D', unit: 'µg', target: 15, role: 'Fixare calciu, sănătate osoasă & imunitate', foods: 'Somon, ouă întregi, ficat de cod, ciuperci' },
+        'Vitamina A': { name: 'Vitamina A', unit: 'µg', target: 800, role: 'Vedere, regenerare piele & mucoase', foods: 'Morcovi, spanac, cartofi dulci, ouă, unt' },
+        'Vitamina B12': { name: 'Vitamina B12', unit: 'µg', target: 2.5, role: 'Sistem nervos & formare eritrocite', foods: 'Carne slabă, pește, ouă, produse lactate' },
+        'Fier': { name: 'Fier', unit: 'mg', target: 14, role: 'Transport de oxigen în organism', foods: 'Spanac, carne roșie slabă, linte, semințe de dovleac' },
+        'Calciu': { name: 'Calciu', unit: 'mg', target: 1000, role: 'Densitate osoasă & contracție musculară', foods: 'Iaurt, lapte, brânză, susan, migdale, broccoli' },
+        'Magneziu': { name: 'Magneziu', unit: 'mg', target: 375, role: 'Relaxare musculară, somn & sinteză ATP', foods: 'Semințe de dovleac, migdale, spanac, ciocolată neagră' },
+        'Potasiu': { name: 'Potasiu', unit: 'mg', target: 3500, role: 'Reglare tensiune arterială & echilibru hidric', foods: 'Banane, avocado, cartofi copți, spanac, roșii' }
+    };
+
+    // Calculate recorded unique days
+    const daySet = new Set();
+    meals.forEach(m => {
+        if (m.date) daySet.add(m.date.slice(0, 10));
+    });
+    const daysCount = Math.max(daySet.size, 1);
+
+    // Sum nutrients across all meals
+    const nutrientTotals = {};
+    meals.forEach(m => {
+        (m.foods || []).forEach(f => {
+            (f.nutrients || []).forEach(n => {
+                const nName = n.name || '';
+                for (const key in DZR_STANDARDS) {
+                    if (nName.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(nName.toLowerCase())) {
+                        nutrientTotals[key] = (nutrientTotals[key] || 0) + (parseFloat(n.qty) || 0);
+                        break;
+                    }
+                }
+            });
+        });
+    });
+
+    const results = [];
+    const deficiencies = [];
+
+    for (const key in DZR_STANDARDS) {
+        const std = DZR_STANDARDS[key];
+        const total = nutrientTotals[key] || 0;
+        const dailyAvg = total / daysCount;
+        const percent = Math.round((dailyAvg / std.target) * 100);
+
+        const item = {
+            key,
+            name: std.name,
+            unit: std.unit,
+            target: std.target,
+            dailyAvg: parseFloat(dailyAvg.toFixed(1)),
+            percent,
+            role: std.role,
+            foods: std.foods
+        };
+        results.push(item);
+        if (meals.length > 0 && percent < 70) {
+            deficiencies.push(item);
+        }
+    }
+
+    // Alert Box
+    const alertBox = document.getElementById('deficiencies-alert-box');
+    if (alertBox) {
+        if (meals.length === 0) {
+            alertBox.className = "p-3.5 rounded-xl border bg-slate-950 border-slate-800 text-slate-400 text-xs flex items-center gap-2.5";
+            alertBox.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0"></i> <span>Jurnalul este gol. Înregistrează mese pentru a calcula automat raportul de micronutrienți.</span>`;
+        } else if (deficiencies.length === 0) {
+            alertBox.className = "p-3.5 rounded-xl border bg-emerald-950/40 border-emerald-800/60 text-emerald-300 text-xs flex items-center gap-2.5";
+            alertBox.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i> <span>Felicitări! Nu s-au detectat deficiențe majore. Toți nutrienții cheie depășesc 70% din DZR.</span>`;
+        } else {
+            alertBox.className = "p-3.5 rounded-xl border bg-amber-950/40 border-amber-800/60 text-amber-200 text-xs";
+            alertBox.innerHTML = `
+                <div class="flex items-center gap-2 font-bold mb-1">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>
+                    <span>Atenție: ${deficiencies.length} nutrienți au un aport mediu zilnic sub 70% din DZR!</span>
+                </div>
+                <div class="text-[11px] text-amber-300/80">
+                    Deficite identificate: <strong>${deficiencies.map(d => d.name).join(', ')}</strong>. Consultă recomandările de mai jos.
+                </div>
+            `;
+        }
+    }
+
+    // Progress Bars Grid
+    const grid = document.getElementById('deficiencies-nutrients-grid');
+    if (grid) {
+        grid.innerHTML = '';
+        results.forEach(r => {
+            let color = 'bg-emerald-500';
+            let textColor = 'text-emerald-400';
+            if (r.percent < 50) { color = 'bg-rose-500'; textColor = 'text-rose-400'; }
+            else if (r.percent < 70) { color = 'bg-amber-500'; textColor = 'text-amber-400'; }
+            else if (r.percent > 100) { color = 'bg-indigo-500'; textColor = 'text-indigo-400'; }
+
+            const card = document.createElement('div');
+            card.className = "bg-slate-950 p-3 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors";
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-1.5">
+                    <div>
+                        <div class="font-bold text-white text-xs">${r.name}</div>
+                        <div class="text-[10px] text-slate-500">${r.role}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-mono text-xs font-bold text-white">${r.dailyAvg} / ${r.target} ${r.unit}</div>
+                        <div class="font-bold text-[10px] ${textColor}">${r.percent}% DZR</div>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div class="${color} h-full rounded-full transition-all duration-500" style="width: ${Math.min(r.percent, 100)}%"></div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // Recommendations
+    const recBox = document.getElementById('deficiencies-recommendations');
+    if (recBox) {
+        recBox.innerHTML = `
+            <h4 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i> Recomandări Personalizate de Corecție
+            </h4>
+            ${deficiencies.length > 0 ? `
+                <div class="space-y-2 mb-3">
+                    ${deficiencies.map(d => `
+                        <div class="text-xs bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                            <span class="font-bold text-amber-300">${d.name}:</span>
+                            <span class="text-slate-300 text-[11px] ml-1">Include mai des în alimentație: <strong class="text-white">${d.foods}</strong>.</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <p class="text-xs text-slate-300 mb-2">Continuă să menții diversitatea alimentară actuală pentru a asigura necesarul complet de micronutrienți.</p>
+            `}
+            ${healthIssues.length > 0 ? `
+                <div class="pt-2 border-t border-indigo-900/50 text-[11px] text-slate-400">
+                    <span class="font-bold text-rose-300">Adaptare Medicală (${healthIssues.join(', ')}):</span>
+                    Asigură-te că alimentele recomandate respectă indicațiile medicului tău curant.
+                </div>
+            ` : ''}
+        `;
+    }
+
+    modal.classList.remove('hidden');
+    refreshIcons();
+};
+
+window.closeDeficienciesReportModal = () => {
+    const modal = document.getElementById('deficiencies-report-modal');
+    if (modal) modal.classList.add('hidden');
 };
 
 // --- PDF Report Controllers ---
@@ -1341,13 +1894,15 @@ function initApp() {
     const nowLocal = getTodayDateTimeLocal();
     document.getElementById('meal-datetime').value = nowLocal;
     document.getElementById('meal-name').value = suggestMealNameByTime(nowLocal);
-    updateApiKeyIndicator();
+    loadUserProfileIntoForm();
+    window.recalcProfilePreview();
+    updateAIVisibility();
     renderHealthTags();
     renderHistory();
     renderCurrentMeal();
     updateAnalysis();
     refreshIcons();
-    console.log("Nutriție Pro 2.1 Ready with Landscape Monthly PDF Reports & 100% Local Storage.");
+    console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile & Health Metrics.");
 }
 
 // Start once DOM is ready

@@ -35,39 +35,106 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-1.5 md:gap-2">
-            <!-- Monthly PDF Report Button -->
-            <button onclick="openPDFModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-950/60 hover:bg-indigo-900/80 rounded-lg border border-indigo-700/60 text-xs text-indigo-300 font-medium transition-all active:scale-95" title="Generează Raport Lunar PDF Landscape">
-                <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i> <span class="hidden sm:inline">Raport PDF</span>
-            </button>
-
-            <!-- Shopping List Button -->
-            <button onclick="generateShoppingList()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-900/30 hover:bg-emerald-800/50 rounded-lg border border-emerald-800/60 text-xs text-emerald-300 transition-colors" title="Generează Lista de Cumpărături">
-                <i data-lucide="shopping-cart" class="w-4 h-4"></i> <span class="hidden sm:inline">Listă</span>
-            </button>
-            
-            <!-- Export / Backup Button -->
-            <button onclick="exportFullJson()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-xs text-slate-300 transition-colors" title="Exportă Datele / Backup">
-                <i data-lucide="download" class="w-4 h-4"></i> <span class="hidden md:inline">Export</span>
-            </button>
-
-            <!-- Import Backup Button -->
+        <!-- Top Right Actions & Dropdown Menu -->
+        <div class="flex items-center gap-2">
+            <!-- Hidden Backup File Input -->
             <input type="file" id="import-input" accept=".json" class="hidden" onchange="handleImportBackup(this)">
-            <button onclick="document.getElementById('import-input').click()" class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-xs text-slate-300 transition-colors" title="Importă Date / Backup">
-                <i data-lucide="upload" class="w-4 h-4"></i> Import
-            </button>
 
             <!-- Local Storage Status Pill -->
-            <div id="auth-status" class="text-[10px] font-mono bg-emerald-950/40 text-emerald-400 px-2 py-1 rounded-lg border border-emerald-800/60 flex items-center gap-1.5" title="Datele sunt salvate 100% pe acest dispozitiv">
-                <i data-lucide="hard-drive" class="w-3 h-3 text-emerald-400"></i>
-                <span class="hidden sm:inline font-medium">Local</span>
+            <div id="auth-status" class="hidden sm:flex text-[10px] font-mono bg-emerald-950/40 text-emerald-400 px-2.5 py-1 rounded-xl border border-emerald-800/60 items-center gap-1.5" title="Datele sunt salvate 100% pe acest dispozitiv">
+                <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span class="font-medium">Local</span>
             </div>
 
-            <!-- Settings Button -->
-            <button onclick="toggleSettings()" class="relative p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-full transition-colors" title="Setări & API Key">
-                <i data-lucide="settings" class="w-5 h-5"></i>
-                <span id="api-key-indicator" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-900"></span>
-            </button>
+            <!-- Main Menu Dropdown Trigger Button -->
+            <div class="relative">
+                <button onclick="toggleTopMenu()" id="top-menu-btn" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 rounded-xl border border-slate-700 text-xs font-bold text-white shadow-sm transition-all" title="Meniu Principal">
+                    <i data-lucide="menu" class="w-4 h-4 text-indigo-400"></i>
+                    <span>Meniu</span>
+                    <i data-lucide="chevron-down" id="menu-chevron" class="w-3.5 h-3.5 text-slate-400 transition-transform"></i>
+                    <span id="api-key-indicator" class="w-2 h-2 rounded-full bg-slate-500 border border-slate-900 ml-0.5"></span>
+                </button>
+
+                <!-- Top Right Dropdown Menu -->
+                <div id="top-dropdown-menu" class="hidden absolute right-0 mt-2 w-72 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl z-50 p-2 text-xs divide-y divide-slate-800/80 backdrop-blur-md">
+                    <!-- Secțiunea Rapoarte -->
+                    <div class="py-1.5">
+                        <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> Rapoarte
+                        </div>
+                        <button onclick="closeTopMenu(); openPDFModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-indigo-950/60 hover:text-indigo-200 transition-colors text-left">
+                            <i data-lucide="file-text" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Raport lunar</div>
+                                <div class="text-[10px] text-slate-400">Export PDF Landscape A4</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); openCaloriesReportModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-emerald-950/60 hover:text-emerald-200 transition-colors text-left">
+                            <i data-lucide="flame" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Raport Calorii</div>
+                                <div class="text-[10px] text-slate-400">Consumat vs. Necesar zilnic (TDEE)</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); openDeficienciesReportModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-amber-950/60 hover:text-amber-200 transition-colors text-left">
+                            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Raport deficiențe</div>
+                                <div class="text-[10px] text-slate-400">Analiză aport nutrienți vs DZR</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Secțiunea Fișiere -->
+                    <div class="py-1.5">
+                        <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="folder" class="w-3.5 h-3.5"></i> Fișiere
+                        </div>
+                        <button onclick="closeTopMenu(); exportFullJson()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
+                            <i data-lucide="download" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Salvare</div>
+                                <div class="text-[10px] text-slate-400">Export backup complet (.json)</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); document.getElementById('import-input').click()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
+                            <i data-lucide="upload" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Încărcare</div>
+                                <div class="text-[10px] text-slate-400">Import backup (.json)</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Secțiunea Setări -->
+                    <div class="py-1.5">
+                        <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i> Setări
+                        </div>
+                        <button onclick="closeTopMenu(); openSettingsTab('ai')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
+                            <i data-lucide="bot" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Utilizare AI</div>
+                                <div class="text-[10px] text-slate-400">Activare, cheie API și conexiune</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); openSettingsTab('profile')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
+                            <i data-lucide="user" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Date personale</div>
+                                <div class="text-[10px] text-slate-400">IMC, Greutate ideală, BMR, TDEE</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); openSettingsTab('nutrients')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-purple-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold">Calcul nutrienți</div>
+                                <div class="text-[10px] text-slate-400">Opțiune calcul AI vs Local</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -143,13 +210,13 @@
                             <input type="text" id="meal-name" placeholder="Ex: Mic Dejun, Omletă cu ciuperci..." class="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
                             
                             <!-- Generator Button -->
-                            <button onclick="generateMealFromTitle()" id="gen-btn" class="bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-purple-500" title="Generează automat din text">
+                            <button onclick="generateMealFromTitle()" id="gen-btn" class="ai-feature hidden bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-purple-500" title="Generează automat din text">
                                 <i data-lucide="sparkles" class="w-4 h-4"></i>
                             </button>
 
                             <!-- Camera Button -->
                             <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(this)">
-                            <button onclick="document.getElementById('camera-input').click()" id="cam-btn" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-emerald-500" title="Fă o poză farfuriei">
+                            <button onclick="document.getElementById('camera-input').click()" id="cam-btn" class="ai-feature hidden bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-md flex items-center gap-1 transition-all border border-emerald-500" title="Fă o poză farfuriei">
                                 <i data-lucide="camera" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -187,7 +254,7 @@
                 </div>
 
                 <!-- AI Smart Actions Panel -->
-                <div id="ai-actions-panel" class="mb-5">
+                <div id="ai-actions-panel" class="ai-feature mb-5 hidden">
                     <div class="grid grid-cols-3 gap-2">
                         <button onclick="generateRecipe()" id="btn-chef" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-indigo-200 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all group">
                             <i data-lucide="chef-hat" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
@@ -235,7 +302,7 @@
     </div>
 
     <!-- Floating Chat Button -->
-    <button onclick="toggleChat()" class="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-3.5 sm:p-4 rounded-full shadow-2xl z-40 transition-transform hover:scale-105 active:scale-95 flex items-center justify-center border-2 border-indigo-400">
+    <button id="floating-chat-btn" onclick="toggleChat()" class="ai-feature hidden fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-3.5 sm:p-4 rounded-full shadow-2xl z-40 transition-transform hover:scale-105 active:scale-95 flex items-center justify-center border-2 border-indigo-400" title="Asistent Vocal & Analize AI">
         <i data-lucide="message-circle" class="w-6 h-6 sm:w-7 sm:h-7"></i>
     </button>
 
@@ -297,7 +364,7 @@
                 </div>
                 
                 <!-- AI Context Button -->
-                <div class="mb-5">
+                <div id="nutrient-ai-section" class="ai-feature mb-5 hidden">
                     <button onclick="explainNutrientWithAI()" id="btn-explain-nutrient" class="w-full bg-indigo-900/40 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-200 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all">
                         <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
                         <span class="text-xs font-bold">De ce am nevoie de acest nutrient?</span>
@@ -329,52 +396,308 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-5 sm:p-6 border border-slate-800">
-            <h3 class="text-lg sm:text-xl font-bold text-white mb-1">Configurare Google Gemini API</h3>
-            <p class="text-xs sm:text-sm text-slate-400 mb-4">Cheia este salvată exclusiv în browserul tău pentru apeluri AI directe.</p>
-            <div class="mb-4">
-                <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Google Gemini API Key</label>
-                <input type="password" id="api-key-input" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors" placeholder="Introdu cheia API...">
-                <p id="api-key-error" class="text-red-400 bg-red-900/20 p-2.5 rounded-lg mt-2 text-xs hidden border border-red-900/50 font-mono"></p>
-                <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">Obține gratuit o cheie din <strong>Google AI Studio</strong> (aistudio.google.com).</p>
+    <!-- Settings Modal (Tabbed: AI, Date Personale, Calcul Nutrienți) -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl p-5 sm:p-6 border border-slate-800 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i> Setări & Profil
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Gestionează AI-ul, datele biometrice și modul de calcul nutrițional.</p>
+                </div>
+                <button onclick="toggleSettings()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
 
-            <!-- Model Selection & Custom Model -->
-            <div class="mb-4 pt-3 border-t border-slate-800">
-                <div class="flex justify-between items-center mb-1.5">
-                    <label class="block text-xs font-bold text-slate-400 uppercase">Model AI Gemini</label>
-                    <button type="button" onclick="refreshAvailableModels()" id="refresh-models-btn" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors" title="Verifică modelele disponibile în contul tău">
-                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> <span>Detectează live</span>
-                    </button>
-                </div>
-                
-                <select id="model-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors mb-2" onchange="handleModelSelectChange(this.value)">
-                    <option value="gemini-flash-latest">Gemini Flash (Cel mai nou & Stabil - Recomandat)</option>
-                    <option value="gemini-flash-lite-latest">Gemini Flash-Lite (Ultra-Rapid)</option>
-                    <option value="gemini-pro-latest">Gemini Pro Latest</option>
-                    <option value="auto">Auto-Detectare dinamică</option>
-                    <option value="custom">✏️ Model Personalizat / Versiune nouă...</option>
-                </select>
-
-                <div id="custom-model-container" class="hidden mt-2">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Introdu numele modelului dorit:</label>
-                    <input type="text" id="custom-model-input" class="w-full bg-slate-800 border border-indigo-500/60 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-400 font-mono transition-colors" placeholder="ex: gemini-2.5-flash sau gemini-3.0-flash">
-                    <p class="text-[10px] text-slate-500 mt-1">Poți introduce orice versiune nouă lansată de Google.</p>
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center pt-2">
-                <button onclick="clearApiKey()" class="text-red-400 text-xs hover:text-red-300 flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg hover:bg-red-900/20 transition-colors">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Șterge Cheia
+            <!-- Settings Navigation Tabs -->
+            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-4 gap-1">
+                <button onclick="switchSettingsTab('ai')" id="tab-btn-ai" class="flex-1 py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow">
+                    <i data-lucide="bot" class="w-3.5 h-3.5"></i> <span>Utilizare AI</span>
                 </button>
-                <div class="flex gap-2">
-                    <button onclick="toggleSettings()" class="text-slate-400 text-xs sm:text-sm px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">Închide</button>
-                    <button id="save-api-btn" onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-4 sm:px-5 rounded-lg transition-all shadow-md flex items-center gap-1.5">
-                        Salvează
-                    </button>
+                <button onclick="switchSettingsTab('profile')" id="tab-btn-profile" class="flex-1 py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+                    <i data-lucide="user" class="w-3.5 h-3.5"></i> <span>Date Personale</span>
+                </button>
+                <button onclick="switchSettingsTab('nutrients')" id="tab-btn-nutrients" class="flex-1 py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> <span>Calcul Nutrienți</span>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-4">
+                <!-- TAB 1: Utilizare AI -->
+                <div id="tab-content-ai" class="space-y-4">
+                    <!-- AI Enable / Disable Toggle -->
+                    <div class="flex items-center justify-between p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/90 shadow-sm">
+                        <div>
+                            <span class="text-sm font-bold text-white flex items-center gap-2">
+                                <i data-lucide="bot" class="w-4 h-4 text-indigo-400"></i> Activează Funcțiile AI
+                            </span>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">Dacă este dezactivat, toate funcțiile și butoanele AI vor fi ascunse.</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                            <input type="checkbox" id="ai-enabled-toggle" class="sr-only peer" onchange="handleAiToggleChange(this.checked)">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <!-- Dynamic AI Connection Status Badge -->
+                    <div id="ai-connection-status-badge"></div>
+
+                    <!-- AI Configuration Section (API Key & Model) -->
+                    <div id="ai-config-section" class="space-y-4 transition-all duration-200">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Google Gemini API Key</label>
+                            <input type="password" id="api-key-input" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors" placeholder="Introdu cheia API (AIzaSy...)">
+                            <p id="api-key-error" class="text-red-400 bg-red-900/20 p-2.5 rounded-lg mt-2 text-xs hidden border border-red-900/50 font-mono"></p>
+                            <p class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">Obține gratuit o cheie din <strong>Google AI Studio</strong> (aistudio.google.com).</p>
+                        </div>
+
+                        <!-- Model Selection & Custom Model -->
+                        <div class="pt-3 border-t border-slate-800">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="block text-xs font-bold text-slate-400 uppercase">Model AI Gemini</label>
+                                <button type="button" onclick="refreshAvailableModels()" id="refresh-models-btn" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors" title="Verifică modelele disponibile în contul tău">
+                                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> <span>Detectează live</span>
+                                </button>
+                            </div>
+                            
+                            <select id="model-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors mb-2" onchange="handleModelSelectChange(this.value)">
+                                <option value="gemini-flash-latest">Gemini Flash (Recomandat)</option>
+                                <option value="gemini-flash-lite-latest">Gemini Flash-Lite (Rapid)</option>
+                                <option value="gemini-pro-latest">Gemini Pro Latest</option>
+                                <option value="auto">Auto-Detectare dinamică</option>
+                                <option value="custom">✏️ Model Personalizat...</option>
+                            </select>
+
+                            <div id="custom-model-container" class="hidden mt-2">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nume model personalizat:</label>
+                                <input type="text" id="custom-model-input" class="w-full bg-slate-800 border border-indigo-500/60 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-400 font-mono transition-colors" placeholder="ex: gemini-2.5-flash">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-2">
+                            <button onclick="clearApiKey()" class="text-red-400 text-xs hover:text-red-300 flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg hover:bg-red-900/20 transition-colors" title="Șterge cheia salvată">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Șterge Cheia
+                            </button>
+                            <button id="save-api-btn" onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-4 sm:px-5 rounded-lg transition-all shadow-md flex items-center gap-1.5">
+                                <i data-lucide="check" class="w-4 h-4"></i> Salvează & Conectează
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- TAB 2: Date Personale & Calcule Biometrice -->
+                <div id="tab-content-profile" class="hidden space-y-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Vârstă (ani)</label>
+                            <input type="number" id="user-age" min="10" max="120" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sex</label>
+                            <select id="user-gender" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white outline-none focus:border-indigo-500" onchange="recalcProfilePreview()">
+                                <option value="male">Bărbat</option>
+                                <option value="female">Femeie</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Greutate (kg)</label>
+                            <input type="number" id="user-weight" min="30" max="300" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Înălțime (cm)</label>
+                            <input type="number" id="user-height" min="100" max="250" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nivel de Activitate Fizică</label>
+                            <select id="user-activity" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-indigo-500" onchange="recalcProfilePreview()">
+                                <option value="1.2">Sedentar (birou, puțin/deloc efort)</option>
+                                <option value="1.375">Ușor activ (antrenament 1-3 zile/săpt)</option>
+                                <option value="1.55" selected>Moderat activ (antrenament 3-5 zile/săpt)</option>
+                                <option value="1.725">Foarte activ (efort intens 6-7 zile)</option>
+                                <option value="1.9">Extrem de activ (muncă fizică grea / atlet)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Obiectiv Caloric</label>
+                            <select id="user-diet-goal" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-indigo-500" onchange="recalcProfilePreview()">
+                                <option value="0" selected>Menținere greutate (Echilibru)</option>
+                                <option value="-500">Slăbire optimă (-500 kcal/zi)</option>
+                                <option value="-250">Slăbire ușoară (-250 kcal/zi)</option>
+                                <option value="300">Creștere masă musculară (+300 kcal/zi)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Afecțiuni medicale și restricții -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Afecțiuni medicale & Atenționări (separate prin virgulă)</label>
+                        <input type="text" id="user-health-issues" placeholder="ex: Colesterol mărit, Hipertensiune, Diabet tip 2, Gastrită..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-indigo-500">
+                        <p class="text-[10px] text-slate-500 mt-1">AI-ul va adapta automat rețetele și meniurile terapeutice la aceste afecțiuni.</p>
+                    </div>
+
+                    <!-- Calculated Health Metrics Card -->
+                    <div class="bg-indigo-950/40 rounded-xl p-3.5 border border-indigo-900/60 space-y-3">
+                        <div class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="calculator" class="w-4 h-4 text-indigo-400"></i> Calcule Biometrice Automate
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                <div class="text-[9px] text-slate-400 font-bold uppercase">Indice Masă (IMC)</div>
+                                <div id="calc-imc" class="font-mono text-base font-bold text-white mt-0.5">22.5</div>
+                                <div id="calc-imc-badge" class="text-[10px] text-emerald-400 font-semibold">Normoponderal</div>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                <div class="text-[9px] text-slate-400 font-bold uppercase">Greutate Ideală</div>
+                                <div id="calc-ideal-weight" class="font-mono text-base font-bold text-white mt-0.5">68.8 kg</div>
+                                <div class="text-[10px] text-slate-400 font-medium">Formula Lorentz</div>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                <div class="text-[9px] text-slate-400 font-bold uppercase">Metabolism (BMR)</div>
+                                <div id="calc-bmr" class="font-mono text-base font-bold text-white mt-0.5">1650 kcal</div>
+                                <div class="text-[10px] text-slate-400 font-medium">Consum în repaus</div>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                <div class="text-[9px] text-indigo-300 font-bold uppercase">Necesar Zilnic Țintă</div>
+                                <div id="calc-tdee" class="font-mono text-base font-bold text-indigo-300 mt-0.5">2200 kcal</div>
+                                <div id="calc-goal-badge" class="text-[10px] text-indigo-400 font-semibold">Menținere</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button onclick="saveUserProfileForm()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-5 rounded-lg transition-all shadow-md flex items-center gap-1.5">
+                            <i data-lucide="check" class="w-4 h-4"></i> Salvează Datele Personale
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 3: Calcul Nutrienți -->
+                <div id="tab-content-nutrients" class="hidden space-y-4">
+                    <div class="flex items-center justify-between p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/90 shadow-sm">
+                        <div class="pr-3">
+                            <span class="text-sm font-bold text-white flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i> Calcul Nutrienți prin AI la Adăugare
+                            </span>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">Nutrienții sunt calculați detaliat de AI la fiecare ingredient doar dacă această opțiune este bifată.</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                            <input type="checkbox" id="ai-nutrient-calc-toggle" class="sr-only peer" onchange="handleAiNutrientCalcChange(this.checked)">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="bg-purple-950/30 p-3.5 rounded-xl border border-purple-900/50">
+                            <div class="font-bold text-purple-300 flex items-center gap-1.5 mb-1">
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5 text-purple-400"></i> Dacă este bifată (AI Activ):
+                            </div>
+                            <p class="text-slate-300 text-[11px] leading-relaxed">
+                                Fiecare aliment este transmis modelului Gemini pentru o descompunere completă a micronutrienților (vitamine, minerale, DZR specific).
+                            </p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60">
+                            <div class="font-bold text-slate-300 flex items-center gap-1.5 mb-1">
+                                <i data-lucide="zap" class="w-3.5 h-3.5 text-yellow-400"></i> Dacă este debifată (sau AI Oprit):
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                Alimentele sunt estimate instantaneu din baza internă locală (0 apeluri API, viteză maximă și funcționare 100% offline).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-slate-800 mt-3">
+                <button onclick="toggleSettings()" class="text-slate-400 text-xs sm:text-sm px-4 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">Închide</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calories Report Modal (Consum vs. Necesar TDEE) -->
+    <div id="calories-report-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl p-5 sm:p-6 border border-slate-800 flex flex-col max-h-[88vh]">
+            <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="flame" class="w-5 h-5 text-emerald-400"></i> Raport Calorii: Consumat vs. Necesar
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Analiză comparativă a aportului caloric față de metabolismul tău zilnic (TDEE).</p>
+                </div>
+                <button onclick="closeCaloriesReportModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-4">
+                <!-- Summary Metrics Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                        <div class="text-[9px] text-slate-400 font-bold uppercase">Necesar Țintă</div>
+                        <div id="rep-target-cal" class="font-mono text-lg font-bold text-indigo-400 mt-0.5">2000</div>
+                        <div class="text-[10px] text-slate-500">kcal / zi</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                        <div class="text-[9px] text-slate-400 font-bold uppercase">Medie Consumată</div>
+                        <div id="rep-avg-cal" class="font-mono text-lg font-bold text-white mt-0.5">1850</div>
+                        <div class="text-[10px] text-slate-500">kcal / zi</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                        <div class="text-[9px] text-slate-400 font-bold uppercase">Bilanț Caloric</div>
+                        <div id="rep-balance-cal" class="font-mono text-lg font-bold text-emerald-400 mt-0.5">-150</div>
+                        <div id="rep-balance-badge" class="text-[10px] text-emerald-400 font-semibold">Deficit</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                        <div class="text-[9px] text-slate-400 font-bold uppercase">Zile Înregistrate</div>
+                        <div id="rep-days-count" class="font-mono text-lg font-bold text-white mt-0.5">0</div>
+                        <div class="text-[10px] text-slate-500">zile în jurnal</div>
+                    </div>
+                </div>
+
+                <!-- Daily Breakdown List -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-400"></i> Istoric pe Zile
+                    </h4>
+                    <div id="rep-calories-days-list" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-slate-800 mt-2">
+                <button onclick="closeCaloriesReportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm py-2 px-5 rounded-lg transition-colors">Închide</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deficiencies Report Modal -->
+    <div id="deficiencies-report-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl p-5 sm:p-6 border border-slate-800 flex flex-col max-h-[88vh]">
+            <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i> Raport Deficiențe Nutriționale
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Evaluarea aportului mediu de micro și macronutrienți față de Doza Zilnică Recomandată (DZR).</p>
+                </div>
+                <button onclick="closeDeficienciesReportModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-4">
+                <!-- Identified Deficiencies Alert -->
+                <div id="deficiencies-alert-box" class="p-3.5 rounded-xl border"></div>
+
+                <!-- Nutrients Progress Bars Grid -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Nivel Mediu Aport Nutrienți (% DZR)</h4>
+                    <div id="deficiencies-nutrients-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+                </div>
+
+                <!-- Recommendations Section -->
+                <div id="deficiencies-recommendations" class="bg-indigo-950/30 rounded-xl p-4 border border-indigo-900/50"></div>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-slate-800 mt-2">
+                <button onclick="closeDeficienciesReportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm py-2 px-5 rounded-lg transition-colors">Închide</button>
             </div>
         </div>
     </div>
