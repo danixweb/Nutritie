@@ -1662,7 +1662,12 @@ window.handleImportBackup = async (input) => {
         renderHealthTags();
         loadUserProfileIntoForm();
         window.recalcProfilePreview();
-        alert(`Date importate cu succes! (${result.count} mese adăugate/actualizate).`);
+        renderDayActivities();
+        updateAIVisibility();
+        updateDynamicCaloricGauge();
+        updateAnalysis();
+        refreshIcons();
+        alert(`Backup restaurat cu succes!\n• Mese importate: ${result.count}\n• Activități fizice/sport: ${result.activitiesCount}\n• Setări AI, Cheie API și Profil Biometric restaurate.`);
     } catch (e) {
         alert("Eroare la import: " + e.message);
     } finally {

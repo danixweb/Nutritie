@@ -711,22 +711,42 @@ export const Storage = {
         localStorage.setItem(STORAGE_KEYS.AI_NUTRIENT_CALC, enabled ? 'true' : 'false');
     },
 
-    // --- Export / Import ---
+    // --- Full Mirror Export / Import (100% Data, Settings, Meals, Sports & API Key) ---
     exportAllData() {
         const payload = {
-            version: '2.3',
+            version: '2.4',
+            appName: 'Asistent Nutritie',
             exportDate: new Date().toISOString(),
             meals: this.getMeals(),
             activities: this.getActivities(),
             healthProfile: this.getHealthProfile(),
-            userProfile: this.getUserProfile()
+            userProfile: this.getUserProfile(),
+            settings: {
+                apiKey: this.getApiKey(),
+                activeModel: this.getActiveModel(),
+                selectedModelType: this.getSelectedModelType(),
+                customModelName: this.getCustomModelName(),
+                aiEnabled: this.isAiEnabled(),
+                aiConnected: this.isAiConnected(),
+                aiNutrientCalc: this.isAiNutrientCalcEnabled()
+            },
+            rawStorage: {}
         };
+
+        // Mirror every single key in localStorage for 100% exact backup
+        for (const [keyName, storageKey] of Object.entries(STORAGE_KEYS)) {
+            const val = localStorage.getItem(storageKey);
+            if (val !== null) {
+                payload.rawStorage[storageKey] = val;
+            }
+        }
+
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         const dateStr = new Date().toISOString().slice(0, 10);
-        a.download = `nutritie_pro_backup_${dateStr}.json`;
+        a.download = `asistent_nutritie_backup_complet_${dateStr}.json`;
         a.click();
         URL.revokeObjectURL(url);
     },
@@ -741,12 +761,23 @@ export const Storage = {
                     let importedActivitiesCount = 0;
 
                     if (Array.isArray(data)) {
+                        // Legacy meals array format
                         const current = Storage.getMeals();
                         const merged = [...data, ...current];
                         const unique = Array.from(new Map(merged.map(m => [m.id || JSON.stringify(m), m])).values());
                         localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(unique));
                         importedMealsCount = data.length;
                     } else if (data && typeof data === 'object') {
+                        // 1. Full rawStorage restore
+                        if (data.rawStorage && typeof data.rawStorage === 'object') {
+                            for (const [sKey, sVal] of Object.entries(data.rawStorage)) {
+                                if (typeof sVal === 'string') {
+                                    localStorage.setItem(sKey, sVal);
+                                }
+                            }
+                        }
+
+                        // 2. Structured meals merge
                         if (Array.isArray(data.meals)) {
                             const current = Storage.getMeals();
                             const merged = [...data.meals, ...current];
@@ -754,6 +785,8 @@ export const Storage = {
                             localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(unique));
                             importedMealsCount = data.meals.length;
                         }
+
+                        // 3. Structured activities merge
                         if (Array.isArray(data.activities)) {
                             const currentAct = Storage.getActivities();
                             const mergedAct = [...data.activities, ...currentAct];
@@ -761,11 +794,27 @@ export const Storage = {
                             localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(uniqueAct));
                             importedActivitiesCount = data.activities.length;
                         }
+
+                        // 4. Health Profile
                         if (Array.isArray(data.healthProfile)) {
                             Storage.saveHealthProfile(data.healthProfile);
                         }
+
+                        // 5. User Biometric Profile
                         if (data.userProfile && typeof data.userProfile === 'object') {
                             Storage.saveUserProfile(data.userProfile);
+                        }
+
+                        // 6. Settings & API Key
+                        if (data.settings && typeof data.settings === 'object') {
+                            const s = data.settings;
+                            if (s.apiKey) Storage.saveApiKey(s.apiKey);
+                            if (s.activeModel) Storage.setActiveModel(s.activeModel);
+                            if (s.selectedModelType) Storage.setSelectedModelType(s.selectedModelType);
+                            if (s.customModelName) Storage.saveCustomModelName(s.customModelName);
+                            if (typeof s.aiEnabled === 'boolean') Storage.setAiEnabled(s.aiEnabled);
+                            if (typeof s.aiConnected === 'boolean') Storage.setAiConnected(s.aiConnected);
+                            if (typeof s.aiNutrientCalc === 'boolean') Storage.setAiNutrientCalcEnabled(s.aiNutrientCalc);
                         }
                     }
                     resolve({ count: importedMealsCount, activitiesCount: importedActivitiesCount });
