@@ -171,6 +171,9 @@
                     <a href="#faq" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
                         <i data-lucide="help-circle" class="w-4 h-4 text-amber-400"></i> 12. Întrebări Frecvente & Tastatură
                     </a>
+                    <a href="#compatibilitate-iphone" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-rose-400"></i> 13. Compatibilitate iPhone & iOS
+                    </a>
                 </nav>
             </div>
         </aside>
@@ -765,6 +768,124 @@
                                 <li>Clic pe insigna <strong>kcal</strong> a oricărui aliment pentru a-i izola nutrienții în panoul lateral.</li>
                             </ul>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 13. COMPATIBILITATE IPHONE & IOS (SAFARI / WEBKIT) -->
+            <section id="compatibilitate-iphone" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-rose-950/80 border border-rose-700/80 flex items-center justify-center text-rose-400">
+                        <i data-lucide="smartphone" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">13. Compatibilitate iPhone & iOS (Safari / WebKit)</h2>
+                        <p class="text-xs text-slate-400">Utilități cu comportament specific pe iOS, limitări impuse de Apple și soluții recomandate.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-5 text-xs text-slate-300">
+                    <div class="p-3.5 bg-indigo-950/40 border border-indigo-800/60 rounded-xl text-indigo-200 leading-relaxed">
+                        <div class="font-bold flex items-center gap-2 mb-1 text-white">
+                            <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i> Informație Importantă pentru Utilizatorii de iPhone / iPad:
+                        </div>
+                        Pe dispozitivele Apple, toate browserele (Safari, Chrome iOS, Firefox iOS, Edge iOS) sunt obligate de politica Apple să utilizeze același motor intern (WebKit). Anumite tehnologii web funcționează diferit față de Android sau PC. Iată detaliile complete și alternativele disponibile:
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        <!-- Card 1: Dictare Vocală -->
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-rose-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="mic" class="w-4 h-4"></i> 1. Dictare Vocală (SpeechRecognition)
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                <strong>Comportament iOS:</strong> Safari pe iOS restricționează fluxul audio continuu și oprește recunoașterea dacă ecranul se blochează sau după câteva secunde de liniște.
+                            </p>
+                            <div class="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-emerald-300">
+                                <strong>Soluție Recomandată:</strong> Atinge câmpul de căutare a alimentului și apasă tasta cu <strong>microfon de pe tastatura nativă Apple (iOS Dictation)</strong>. Funcționează impecabil în limba română!
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Cameră Foto Live -->
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-sky-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="camera" class="w-4 h-4"></i> 2. Scanner Cameră Video Live (WebRTC)
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                <strong>Comportament iOS:</strong> Fluxul video direct pe ecran necesită conexiune HTTPS securizată și nu este permis în browsere interne (ex: când deschizi linkul din Facebook sau Instagram).
+                            </p>
+                            <div class="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-emerald-300">
+                                <strong>Soluție Recomandată:</strong> Folosește butonul <strong>„Atașează Foto / Galerie”</strong>, care deschide camera foto nativă a iPhone-ului la rezoluție maximă sau galeria foto.
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Export PDF & Pop-up -->
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-amber-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="file-text" class="w-4 h-4"></i> 3. Generare Rapoarte PDF & Ferestre Pop-up
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                <strong>Comportament iOS:</strong> Safari blochează implicit ferestrele pop-up pentru previzualizarea printului.
+                            </p>
+                            <div class="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-emerald-300">
+                                <strong>Soluție Recomandată:</strong> Mergi în <em>Configurări (Settings) &gt; Safari &gt; Blocare ferestre pop-up</em> și dezactivează blocarea, sau folosește butonul nativ <strong>Partajare &gt; Tipărire</strong> pentru salvare în Fișiere (iCloud).
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Vibrații Tactile -->
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-purple-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="vibrate" class="w-4 h-4"></i> 4. Feedback Haptic (Vibrații Web)
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                <strong>Comportament iOS:</strong> Apple nu oferă suport pentru API-ul Web Vibration (<code>navigator.vibrate</code>) din motive de securitate a sistemului de operare.
+                            </p>
+                            <div class="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-slate-300">
+                                <strong>Efect:</strong> Toate butoanele și acțiunile funcționează normal, însă fără vibrația mecanică a telefonului la atingere.
+                            </div>
+                        </div>
+
+                        <!-- Card 5: Sinteză Vocală Audio -->
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-teal-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="volume-2" class="w-4 h-4"></i> 5. Redarea Răspunsurilor Vocale în Chat
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                <strong>Comportament iOS:</strong> Redarea audio automată poate fi oprită dacă nu a existat un gest direct (atingere de ecran) imediat înainte de răspuns.
+                            </p>
+                            <div class="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-emerald-300">
+                                <strong>Soluție Recomandată:</strong> Atinge ecranul o dată sau apasă pictograma difuzor de pe mesaj pentru a porni vocea asistentului.
+                            </div>
+                        </div>
+
+                        <!-- Card 6: Persistență Safari ITP & PWA -->
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="shield-check" class="w-4 h-4"></i> 6. Păstrarea Datelor & Safari ITP
+                            </div>
+                            <p class="text-slate-400 text-[11px] leading-relaxed">
+                                <strong>Comportament iOS:</strong> Safari Intelligent Tracking Prevention poate curăța fișierele temporare ale site-urilor dacă nu sunt vizitate timp de 7 zile.
+                            </p>
+                            <div class="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-emerald-300">
+                                <strong>Soluție Recomandată:</strong> Salvează aplicația pe ecranul principal (vezi ghidul de mai jos) și fă un <strong>Backup JSON periodic</strong> din meniu.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PWA Installation Guide on iPhone -->
+                    <div class="p-4 bg-gradient-to-r from-indigo-950/60 to-slate-950 rounded-xl border border-indigo-900/60 space-y-2.5">
+                        <div class="font-bold text-indigo-300 flex items-center gap-2 text-sm">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-400"></i> Cum să instalezi aplicația pe ecranul iPhone-ului (Recomandat):
+                        </div>
+                        <ol class="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px]">
+                            <li>Deschide <strong>Asistent Nutriție</strong> în browserul <strong>Safari</strong> pe iPhone.</li>
+                            <li>Apasă butonul <strong>Partajare (Share)</strong> din partea de jos a ecranului (pictograma pătrat cu săgeată în sus <i data-lucide="share" class="w-3.5 h-3.5 inline text-indigo-400"></i>).</li>
+                            <li>Derulează în jos și alege opțiunea <strong>„Adăugați pe ecranul principal” (Add to Home Screen)</strong>.</li>
+                            <li>Apasă <strong>Adaugă</strong> în colțul dreapta-sus.</li>
+                        </ol>
+                        <p class="text-[10px] text-slate-400 pt-1">
+                            <em>Beneficii:</em> Aplicația se va deschide pe tot ecranul (fără bara de adrese a browserului), pornește ultra-rapid și datele din jurnal sunt protejate.
+                        </p>
                     </div>
                 </div>
             </section>
