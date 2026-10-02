@@ -103,20 +103,20 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
         return { isControlCommand: false, command: null, completedFoods: [], pendingFoodName: null };
     }
     
-    let text = transcript.toLowerCase().trim();
+    let t = (' ' + transcript.toLowerCase().trim() + ' ').replace(/\s+/g, ' ');
     
     // Command words (stop, cancel, etc.)
-    if (text === 'stop' || text === 'gata' || text === 'închide' || text === 'inchide' || text === 'oprește' || text === 'opreste') {
+    if (/\b(stop|gata|închide|inchide|oprește|opreste)\b/i.test(t)) {
         return { isControlCommand: true, command: 'stop', completedFoods: [], pendingFoodName: null };
     }
-    if (text.includes('șterge ultimul') || text.includes('sterge ultimul') || text.includes('șterge ultima') || text.includes('sterge ultima')) {
+    if (/\b(șterge ultimul|sterge ultimul|șterge ultima|sterge ultima)\b/i.test(t)) {
         return { isControlCommand: true, command: 'delete_last', completedFoods: [], pendingFoodName: null };
     }
-    if (text.includes('salvează masa') || text.includes('salveaza masa') || text.includes('salvează') || text.includes('salveaza')) {
+    if (/\b(salvează masa|salveaza masa|salvează|salveaza)\b/i.test(t)) {
         return { isControlCommand: true, command: 'save_meal', completedFoods: [], pendingFoodName: null };
     }
 
-    // Number words mapping
+    // Word numbers mapping
     const numberWords = [
         { w: /\bjumătate\s+de\b|\bjumate\s+de\b|\bjumătate\b|\bjumate\b/gi, val: 0.5 },
         { w: /\bun\s+sfert\s+de\b|\bun\s+sfert\b/gi, val: 0.25 },
@@ -143,158 +143,79 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
         { w: /\bun\b|\bo\b/gi, val: 1 }
     ];
 
-    // Split multiple foods (e.g. "200g pui și 150g orez și două mere")
-    const rawItems = text
-        .replace(/\b(adaugă|adauga|pune|trece|vreau|am mâncat|am mancat)\b/gi, '')
-        .split(/\s+(?:și\s+apoi|apoi|plus|și|si|,)\s+/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+    for (const item of numberWords) {
+        t = t.replace(item.w, ' ' + item.val + ' ');
+    }
+
+    const regex = /(?:(\d+(?:[.,]\d+)?)\s*(?:de\s+)?)?(?<![a-zA-ZăâîșțĂÂÎȘȚ])(kg|kilograme|kilogram|kilo|grame|gram|gr|g|ml|mililitri|mililitru|litri|litru|l|farfurii|farfurie|căni|cani|cană|cana|lingurițe|lingurite|linguriță|lingurita|linguri|lingură|lingura|bucăți|bucati|bucată|bucata|buc|felii|felie|pahare|pahar|boluri|bol|porții|portii|porție|portie|ouă|oua|ou|mere|măr|mar|banane|banană|banana)\b/gi;
 
     const completedFoods = [];
-    let currentPendingFoodName = (pendingContext || '').trim();
+    let lastIdx = 0;
+    let match;
+    let currentPending = (pendingContext || '').trim();
 
-    rawItems.forEach(itemStr => {
-        let clean = (' ' + itemStr + ' ').replace(/\s+/g, ' ');
+    while ((match = regex.exec(t)) !== null) {
+        const segment = t.substring(lastIdx, match.index);
+        lastIdx = regex.lastIndex;
 
-        let extractedQty = null;
-        let extractedUnit = null;
-        let hasExplicitUnit = false;
-
-        // 1. Try to match digits with attached or spaced units
-        const digitMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|kilo|grame|gram|gr|g|ml|mililitri|mililitru|litri|litru|l|farfurii|farfurie|căni|cani|cană|cana|lingurițe|lingurite|linguriță|lingurita|linguri|lingură|lingura|bucăți|bucati|bucată|bucata|buc|felii|felie|pahare|pahar|boluri|bol|porții|portii|porție|portie)?\b/i);
-        if (digitMatch) {
-            extractedQty = parseFloat(digitMatch[1].replace(',', '.'));
-            if (digitMatch[2]) {
-                const uRaw = digitMatch[2].toLowerCase();
-                hasExplicitUnit = true;
-                if (uRaw.startsWith('k')) { extractedQty *= 1000; extractedUnit = 'g'; }
-                else if (uRaw === 'l' || uRaw.startsWith('litr')) { extractedQty *= 1000; extractedUnit = 'ml'; }
-                else if (uRaw.startsWith('mililitr') || uRaw === 'ml') extractedUnit = 'ml';
-                else if (uRaw.startsWith('farfuri')) extractedUnit = 'farfurie';
-                else if (uRaw.startsWith('can') || uRaw.startsWith('căn')) extractedUnit = 'cană';
-                else if (uRaw.startsWith('lingurit')) extractedUnit = 'linguriță';
-                else if (uRaw.startsWith('lingur')) extractedUnit = 'lingură';
-                else if (uRaw.startsWith('pahar')) { extractedQty *= 200; extractedUnit = 'ml'; }
-                else if (uRaw.startsWith('bol')) { extractedUnit = 'farfurie'; }
-                else if (uRaw.startsWith('feli') || uRaw.startsWith('buc') || uRaw.startsWith('porti') || uRaw.startsWith('porți')) extractedUnit = 'buc';
-                else if (uRaw.startsWith('g')) extractedUnit = 'g';
-            }
-            clean = clean.replace(digitMatch[0], ' ');
-        } else {
-            // Check word numbers
-            for (const item of numberWords) {
-                if (item.w.test(clean)) {
-                    extractedQty = item.val;
-                    clean = clean.replace(item.w, ' ');
-                    break;
-                }
-            }
-        }
-
-        // 2. Check explicit unit words if not found yet
-        if (!extractedUnit) {
-            if (/\b(kg|kilograme|kilogram|kilo)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'g';
-                if (extractedQty) extractedQty *= 1000;
-                clean = clean.replace(/\b(kg|kilograme|kilogram|kilo)\b/gi, ' ');
-            } else if (/\b(grame|gram|gr|g)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'g';
-                clean = clean.replace(/\b(grame|gram|gr|g)\b/gi, ' ');
-            } else if (/\b(mililitri|mililitru|ml)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'ml';
-                clean = clean.replace(/\b(mililitri|mililitru|ml)\b/gi, ' ');
-            } else if (/\b(litri|litru|l)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'ml';
-                if (extractedQty) extractedQty *= 1000;
-                clean = clean.replace(/\b(litri|litru|l)\b/gi, ' ');
-            } else if (/\b(farfurie|farfurii)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'farfurie';
-                clean = clean.replace(/\b(farfurie|farfurii)\b/gi, ' ');
-            } else if (/\b(căni|cani|cană|cana)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'cană';
-                clean = clean.replace(/\b(căni|cani|cană|cana)\b/gi, ' ');
-            } else if (/\b(lingurițe|lingurite|lingurita|linguriță)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'linguriță';
-                clean = clean.replace(/\b(lingurițe|lingurite|lingurita|linguriță)\b/gi, ' ');
-            } else if (/\b(linguri|lingura|lingură)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'lingură';
-                clean = clean.replace(/\b(linguri|lingura|lingură)\b/gi, ' ');
-            } else if (/\b(bucăți|bucati|bucată|bucata|buc|felii|felie|porții|portii|porție|portie)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'buc';
-                clean = clean.replace(/\b(bucăți|bucati|bucată|bucata|buc|felii|felie|porții|portii|porție|portie)\b/gi, ' ');
-            } else if (/\b(pahare|pahar)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'ml';
-                extractedQty = (extractedQty || 1) * 200;
-                clean = clean.replace(/\b(pahare|pahar)\b/gi, ' ');
-            } else if (/\b(boluri|bol)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'farfurie';
-                clean = clean.replace(/\b(boluri|bol)\b/gi, ' ');
-            } else if (/\b(ouă|oua|ou)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'buc';
-            } else if (/\b(mere|măr|mar|banane|banană|banana)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'buc';
-            }
-        }
-
-        // Clean food name
-        let foodName = clean
-            .replace(/\b(de|cu|la|din|în|in|pentru|o|un)\b/gi, ' ')
-            .replace(/[^\wăâîșțĂÂÎȘȚ\s-]/g, '')
+        let clean = segment
+            .replace(/\b(adaugă|adauga|pune|trece|vreau|am mâncat|am mancat|de|cu|la|din|în|in|pentru|și|si|apoi|plus)\b/gi, ' ')
+            .replace(/[^\wăâîșțĂÂÎȘȚ\s-]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
 
-        // If food name is missing in this phrase chunk, use the pending food name if available
-        if (!foodName && currentPendingFoodName) {
-            foodName = currentPendingFoodName;
+        if (!clean && currentPending) {
+            clean = currentPending;
         }
 
-        // If NO EXPLICIT UNIT was heard yet:
-        if (!hasExplicitUnit) {
-            if (foodName) {
-                // Keep food name in pending context and do NOT add to completedFoods
-                currentPendingFoodName = foodName.charAt(0).toUpperCase() + foodName.slice(1);
-            }
-            return; // Wait for the unit of measurement!
+        let qty = match[1] ? parseFloat(match[1].replace(',', '.')) : null;
+        const uRaw = match[2].toLowerCase();
+        let unit = 'g';
+
+        if (uRaw.startsWith('k')) { if (qty) qty *= 1000; unit = 'g'; }
+        else if (uRaw === 'l' || uRaw.startsWith('litr')) { if (qty) qty *= 1000; unit = 'ml'; }
+        else if (uRaw.startsWith('mililitr') || uRaw === 'ml') { unit = 'ml'; }
+        else if (uRaw.startsWith('farfuri') || uRaw.startsWith('bol')) { unit = 'farfurie'; }
+        else if (uRaw.startsWith('can') || uRaw.startsWith('căn')) { unit = 'cană'; }
+        else if (uRaw.startsWith('lingurit')) { unit = 'linguriță'; }
+        else if (uRaw.startsWith('lingur')) { unit = 'lingură'; }
+        else if (uRaw.startsWith('pahar')) { if (qty) qty *= 200; unit = 'ml'; }
+        else if (uRaw.startsWith('feli') || uRaw.startsWith('buc') || uRaw.startsWith('porti') || uRaw.startsWith('porți') || uRaw.startsWith('ou') || uRaw.startsWith('măr') || uRaw.startsWith('mar') || uRaw.startsWith('mere') || uRaw.startsWith('banan')) { unit = 'buc'; }
+        else if (uRaw.startsWith('g')) { unit = 'g'; }
+
+        if (!qty) {
+            qty = (unit === 'g' || unit === 'ml') ? 100 : 1;
         }
 
-        // We have an explicit unit!
-        if (!foodName) {
-            if (currentPendingFoodName) {
-                foodName = currentPendingFoodName;
-            } else {
-                return; // Has unit but no food name, ignore
-            }
+        if (!clean) {
+            if (uRaw.startsWith('ou')) clean = 'Ouă';
+            else if (uRaw.startsWith('măr') || uRaw.startsWith('mar') || uRaw.startsWith('mere')) clean = 'Mere';
+            else if (uRaw.startsWith('banan')) clean = 'Banane';
         }
 
-        foodName = foodName.charAt(0).toUpperCase() + foodName.slice(1);
-
-        if (!extractedQty) {
-            extractedQty = (extractedUnit === 'g' || extractedUnit === 'ml') ? 100 : 1;
+        if (clean) {
+            clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+            const foodData = estimateFoodLocally(clean, qty, unit);
+            completedFoods.push(foodData);
+            currentPending = '';
         }
+    }
 
-        const foodData = estimateFoodLocally(foodName, extractedQty, extractedUnit);
-        completedFoods.push(foodData);
-        currentPendingFoodName = ''; // Cleared since this food item is now completed
-    });
+    const tail = t.substring(lastIdx)
+        .replace(/\b(adaugă|adauga|pune|trece|vreau|am mâncat|am mancat|de|cu|la|din|în|in|pentru|și|si|apoi|plus)\b/gi, ' ')
+        .replace(/[^\wăâîșțĂÂÎȘȚ\s-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (tail) {
+        currentPending = tail.charAt(0).toUpperCase() + tail.slice(1);
+    }
 
     return {
         isControlCommand: false,
         command: null,
         completedFoods,
-        pendingFoodName: currentPendingFoodName || null
+        pendingFoodName: currentPending || null
     };
 }
 
