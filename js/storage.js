@@ -82,78 +82,87 @@ export function estimateFoodLocally(name, quantity, unit) {
 }
 
 // Deterministic Romanian Voice Food NLP Parser (Instant & Offline)
-export function parseRomanianFoodVoiceInput(transcript) {
-    if (!transcript || typeof transcript !== 'string') return [];
+// Deterministic Romanian Voice Food NLP Parser (Instant & Offline)
+// STRICT REQUIREMENT: Only completes items when an explicit unit of measurement is heard
+export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
+    if (!transcript || typeof transcript !== 'string') {
+        return { isControlCommand: false, command: null, completedFoods: [], pendingFoodName: null };
+    }
     
     let text = transcript.toLowerCase().trim();
     
     // Command words (stop, cancel, etc.)
     if (text === 'stop' || text === 'gata' || text === 'închide' || text === 'inchide' || text === 'oprește' || text === 'opreste') {
-        return { isControlCommand: true, command: 'stop' };
+        return { isControlCommand: true, command: 'stop', completedFoods: [], pendingFoodName: null };
     }
-    if (text.includes('șterge ultimul') || text.includes('sterge ultimul')) {
-        return { isControlCommand: true, command: 'delete_last' };
+    if (text.includes('șterge ultimul') || text.includes('sterge ultimul') || text.includes('șterge ultima') || text.includes('sterge ultima')) {
+        return { isControlCommand: true, command: 'delete_last', completedFoods: [], pendingFoodName: null };
     }
-    if (text.includes('salvează masa') || text.includes('salveaza masa')) {
-        return { isControlCommand: true, command: 'save_meal' };
+    if (text.includes('salvează masa') || text.includes('salveaza masa') || text.includes('salvează') || text.includes('salveaza')) {
+        return { isControlCommand: true, command: 'save_meal', completedFoods: [], pendingFoodName: null };
     }
 
-    // Split multiple foods (e.g. "200g pui și 150g orez și o roșie")
+    // Number words mapping
+    const numberWords = [
+        { w: /\bjumătate\s+de\b|\bjumate\s+de\b|\bjumătate\b|\bjumate\b/gi, val: 0.5 },
+        { w: /\bun\s+sfert\s+de\b|\bun\s+sfert\b/gi, val: 0.25 },
+        { w: /\bo\s+mie\s+de\b|\bo\s+mie\b/gi, val: 1000 },
+        { w: /\bo\s+sută\s+cincizeci\b|\bo\s+suta\s+cincizeci\b/gi, val: 150 },
+        { w: /\bdouă\s+sute\b|\bdoua\s+sute\b/gi, val: 200 },
+        { w: /\btrei\s+sute\b/gi, val: 300 },
+        { w: /\bpatru\s+sute\b/gi, val: 400 },
+        { w: /\bcinci\s+sute\b/gi, val: 500 },
+        { w: /\bo\s+sută\b|\bo\s+suta\b/gi, val: 100 },
+        { w: /\bcincizeci\b/gi, val: 50 },
+        { w: /\bpatruzeci\b/gi, val: 40 },
+        { w: /\btreizeci\b/gi, val: 30 },
+        { w: /\bdouăzeci\b|\bdouazeci\b/gi, val: 20 },
+        { w: /\bzece\b/gi, val: 10 },
+        { w: /\bnouă\b|\bnoua\b/gi, val: 9 },
+        { w: /\bopt\b/gi, val: 8 },
+        { w: /\bșapte\b|\bsapte\b/gi, val: 7 },
+        { w: /\bșase\b|\bsase\b/gi, val: 6 },
+        { w: /\bcinci\b/gi, val: 5 },
+        { w: /\bpatru\b/gi, val: 4 },
+        { w: /\btrei\b/gi, val: 3 },
+        { w: /\bdouă\b|\bdoua\b|\bdoi\b/gi, val: 2 },
+        { w: /\bun\b|\bo\b/gi, val: 1 }
+    ];
+
+    // Split multiple foods (e.g. "200g pui și 150g orez și două mere")
     const rawItems = text
         .replace(/\b(adaugă|adauga|pune|trece|vreau|am mâncat|am mancat)\b/gi, '')
         .split(/\s+(?:și\s+apoi|apoi|plus|și|si|,)\s+/)
         .map(s => s.trim())
-        .filter(s => s.length > 1);
+        .filter(s => s.length > 0);
 
-    const parsedResults = [];
+    const completedFoods = [];
+    let currentPendingFoodName = (pendingContext || '').trim();
 
     rawItems.forEach(itemStr => {
-        let clean = (' ' + itemStr + ' ')
-            .replace(/\s+/g, ' ');
-
-        // Number words mapping
-        const numberWords = [
-            { w: /\bjumătate\s+de\b|\bjumate\s+de\b|\bjumătate\b|\bjumate\b/gi, val: 0.5 },
-            { w: /\bun\s+sfert\s+de\b|\bun\s+sfert\b/gi, val: 0.25 },
-            { w: /\bo\s+mie\s+de\b|\bo\s+mie\b/gi, val: 1000 },
-            { w: /\bo\s+sută\s+cincizeci\b|\bo\s+suta\s+cincizeci\b/gi, val: 150 },
-            { w: /\bdouă\s+sute\b|\bdoua\s+sute\b/gi, val: 200 },
-            { w: /\btrei\s+sute\b/gi, val: 300 },
-            { w: /\bpatru\s+sute\b/gi, val: 400 },
-            { w: /\bcinci\s+sute\b/gi, val: 500 },
-            { w: /\bo\s+sută\b|\bo\s+suta\b/gi, val: 100 },
-            { w: /\bcincizeci\b/gi, val: 50 },
-            { w: /\bpatruzeci\b/gi, val: 40 },
-            { w: /\btreizeci\b/gi, val: 30 },
-            { w: /\bdouăzeci\b|\bdouazeci\b/gi, val: 20 },
-            { w: /\bzece\b/gi, val: 10 },
-            { w: /\bnouă\b|\bnoua\b/gi, val: 9 },
-            { w: /\bopt\b/gi, val: 8 },
-            { w: /\bșapte\b|\bsapte\b/gi, val: 7 },
-            { w: /\bșase\b|\bsase\b/gi, val: 6 },
-            { w: /\bcinci\b/gi, val: 5 },
-            { w: /\bpatru\b/gi, val: 4 },
-            { w: /\btrei\b/gi, val: 3 },
-            { w: /\bdouă\b|\bdoua\b|\bdoi\b/gi, val: 2 },
-            { w: /\bun\b|\bo\b/gi, val: 1 }
-        ];
+        let clean = (' ' + itemStr + ' ').replace(/\s+/g, ' ');
 
         let extractedQty = null;
         let extractedUnit = null;
+        let hasExplicitUnit = false;
 
-        // Try to match digits with unit attached or spaced (e.g. 200g, 200 g, 150ml, 2 buc)
-        const digitMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|kilo|grame|gram|g|ml|mililitri|mililitru|l|litri|litru|bucăți|bucati|bucata|buc|felii|felie|linguri|lingura|lingurițe|lingurite|lingurita)?\b/i);
+        // 1. Try to match digits with attached or spaced units (e.g. 200g, 200 grame, 150ml, 2 buc, 3 felii)
+        const digitMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|kilo|grame|gram|gr|g|ml|mililitri|mililitru|litri|litru|l|bucăți|bucati|bucată|bucata|buc|felii|felie|lingurițe|lingurite|linguriță|lingurita|linguri|lingură|lingura|pahare|pahar|căni|cani|cană|cana|boluri|bol|porții|portii|porție|portie)?\b/i);
         if (digitMatch) {
             extractedQty = parseFloat(digitMatch[1].replace(',', '.'));
             if (digitMatch[2]) {
                 const uRaw = digitMatch[2].toLowerCase();
+                hasExplicitUnit = true;
                 if (uRaw.startsWith('k')) { extractedQty *= 1000; extractedUnit = 'g'; }
                 else if (uRaw === 'l' || uRaw.startsWith('litr')) { extractedQty *= 1000; extractedUnit = 'ml'; }
-                else if (uRaw.startsWith('m')) extractedUnit = 'ml';
+                else if (uRaw.startsWith('m') && !uRaw.startsWith('mar')) extractedUnit = 'ml';
                 else if (uRaw.startsWith('g')) extractedUnit = 'g';
                 else if (uRaw.startsWith('lingurit')) { extractedQty *= 5; extractedUnit = 'g'; }
                 else if (uRaw.startsWith('lingur')) { extractedQty *= 15; extractedUnit = 'g'; }
-                else if (uRaw.startsWith('feli') || uRaw.startsWith('buc')) extractedUnit = 'buc';
+                else if (uRaw.startsWith('pahar')) { extractedQty *= 200; extractedUnit = 'ml'; }
+                else if (uRaw.startsWith('can')) { extractedQty *= 250; extractedUnit = 'ml'; }
+                else if (uRaw.startsWith('bol')) { extractedQty *= 300; extractedUnit = 'g'; }
+                else if (uRaw.startsWith('feli') || uRaw.startsWith('buc') || uRaw.startsWith('porti') || uRaw.startsWith('porți')) extractedUnit = 'buc';
             }
             clean = clean.replace(digitMatch[0], ' ');
         } else {
@@ -167,33 +176,62 @@ export function parseRomanianFoodVoiceInput(transcript) {
             }
         }
 
-        // Check unit words if not found yet
+        // 2. Check explicit unit words if not found yet
         if (!extractedUnit) {
             if (/\b(kg|kilograme|kilogram|kilo)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'g';
                 if (extractedQty) extractedQty *= 1000;
                 clean = clean.replace(/\b(kg|kilograme|kilogram|kilo)\b/gi, ' ');
-            } else if (/\b(grame|gram|g)\b/i.test(clean)) {
+            } else if (/\b(grame|gram|gr|g)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'g';
-                clean = clean.replace(/\b(grame|gram|g)\b/gi, ' ');
+                clean = clean.replace(/\b(grame|gram|gr|g)\b/gi, ' ');
             } else if (/\b(mililitri|mililitru|ml)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'ml';
                 clean = clean.replace(/\b(mililitri|mililitru|ml)\b/gi, ' ');
             } else if (/\b(litri|litru|l)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'ml';
                 if (extractedQty) extractedQty *= 1000;
                 clean = clean.replace(/\b(litri|litru|l)\b/gi, ' ');
             } else if (/\b(lingurițe|lingurite|lingurita|linguriță)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'g';
                 extractedQty = (extractedQty || 1) * 5;
                 clean = clean.replace(/\b(lingurițe|lingurite|lingurita|linguriță)\b/gi, ' ');
             } else if (/\b(linguri|lingura|lingură)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'g';
                 extractedQty = (extractedQty || 1) * 15;
                 clean = clean.replace(/\b(linguri|lingura|lingură)\b/gi, ' ');
-            } else if (/\b(bucăți|bucati|bucata|buc|felii|felie|ouă|oua|ou|mere|măr|banane|banană)\b/i.test(clean)) {
+            } else if (/\b(bucăți|bucati|bucată|bucata|buc|felii|felie|porții|portii|porție|portie)\b/i.test(clean)) {
+                hasExplicitUnit = true;
                 extractedUnit = 'buc';
-                clean = clean.replace(/\b(bucăți|bucati|bucata|buc|felii|felie)\b/gi, ' ');
+                clean = clean.replace(/\b(bucăți|bucati|bucată|bucata|buc|felii|felie|porții|portii|porție|portie)\b/gi, ' ');
+            } else if (/\b(pahare|pahar)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'ml';
+                extractedQty = (extractedQty || 1) * 200;
+                clean = clean.replace(/\b(pahare|pahar)\b/gi, ' ');
+            } else if (/\b(căni|cani|cană|cana)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'ml';
+                extractedQty = (extractedQty || 1) * 250;
+                clean = clean.replace(/\b(căni|cani|cană|cana)\b/gi, ' ');
+            } else if (/\b(boluri|bol)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'g';
+                extractedQty = (extractedQty || 1) * 300;
+                clean = clean.replace(/\b(boluri|bol)\b/gi, ' ');
+            } else if (/\b(ouă|oua|ou)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'buc';
+                // Leave word in clean or set food name
+            } else if (/\b(mere|măr|mar|banane|banană|banana)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'buc';
             }
         }
 
@@ -204,23 +242,46 @@ export function parseRomanianFoodVoiceInput(transcript) {
             .replace(/\s+/g, ' ')
             .trim();
 
-        if (!foodName) return;
-
-        // Default assumptions if missing
-        if (!extractedQty) {
-            extractedQty = (extractedUnit === 'g' || extractedUnit === 'ml') ? 100 : 1;
+        // If food name is missing in this phrase chunk, use the pending food name if available
+        if (!foodName && currentPendingFoodName) {
+            foodName = currentPendingFoodName;
         }
-        if (!extractedUnit) {
-            extractedUnit = extractedQty >= 10 ? 'g' : 'buc';
+
+        // If NO EXPLICIT UNIT was heard yet:
+        if (!hasExplicitUnit) {
+            if (foodName) {
+                // Keep food name in pending context and do NOT add to completedFoods
+                currentPendingFoodName = foodName.charAt(0).toUpperCase() + foodName.slice(1);
+            }
+            return; // Wait for the unit of measurement!
+        }
+
+        // We have an explicit unit!
+        if (!foodName) {
+            if (currentPendingFoodName) {
+                foodName = currentPendingFoodName;
+            } else {
+                return; // Has unit but no food name, ignore
+            }
         }
 
         foodName = foodName.charAt(0).toUpperCase() + foodName.slice(1);
 
+        if (!extractedQty) {
+            extractedQty = (extractedUnit === 'g' || extractedUnit === 'ml') ? 100 : 1;
+        }
+
         const foodData = estimateFoodLocally(foodName, extractedQty, extractedUnit);
-        parsedResults.push(foodData);
+        completedFoods.push(foodData);
+        currentPendingFoodName = ''; // Cleared since this food item is now completed
     });
 
-    return parsedResults;
+    return {
+        isControlCommand: false,
+        command: null,
+        completedFoods,
+        pendingFoodName: currentPendingFoodName || null
+    };
 }
 
 // Generic offline sports & physical activities database with MET coefficients

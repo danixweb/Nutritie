@@ -1228,6 +1228,9 @@ function exitFoodEditMode() {
     refreshIcons();
 }
 
+let mealVoicePendingFood = '';
+let lastProcessedSpeechIndex = -1;
+
 // --- Voice Food Input (Instant 0ms Local NLP & Multi-food parsing) ---
 window.toggleMealVoiceInput = () => {
     if (isMealVoiceActive) {
@@ -1247,6 +1250,8 @@ window.toggleMealVoiceInput = () => {
         mealVoiceRecognition.continuous = true;
         mealVoiceRecognition.interimResults = true;
         mealVoiceRecognition.maxAlternatives = 1;
+        mealVoicePendingFood = '';
+        lastProcessedSpeechIndex = -1;
 
         const btn = document.getElementById('meal-voice-btn');
         const icon = document.getElementById('meal-voice-icon');
@@ -1262,7 +1267,7 @@ window.toggleMealVoiceInput = () => {
             if (icon) icon.className = "w-3.5 h-3.5 text-rose-400";
             if (text) text.innerText = "Ascult...";
             if (statusBanner) statusBanner.classList.remove('hidden');
-            if (preview) preview.innerText = "Te ascult... spune alimentele (ex: „200g pui, două ouă”)";
+            if (preview) preview.innerText = "Te ascult... spune alimentul și unitatea (ex: „pâine 100g” sau „două ouă”)";
             refreshIcons();
         };
 
@@ -1275,14 +1280,21 @@ window.toggleMealVoiceInput = () => {
                 const transcript = item[0].transcript;
 
                 if (item.isFinal) {
-                    handleVoiceFoodFinalTranscript(transcript.trim());
+                    if (i > lastProcessedSpeechIndex) {
+                        lastProcessedSpeechIndex = i;
+                        handleVoiceFoodFinalTranscript(transcript.trim());
+                    }
                 } else {
                     interimTranscript += transcript;
                 }
             }
 
             if (interimTranscript && preview) {
-                preview.innerText = `🎤 „${interimTranscript}”`;
+                if (mealVoicePendingFood) {
+                    preview.innerText = `⏳ „${mealVoicePendingFood}” + „${interimTranscript}”`;
+                } else {
+                    preview.innerText = `🎤 „${interimTranscript}”`;
+                }
             }
         };
 
@@ -1310,6 +1322,8 @@ window.toggleMealVoiceInput = () => {
 
 window.stopMealVoiceInput = () => {
     isMealVoiceActive = false;
+    mealVoicePendingFood = '';
+    lastProcessedSpeechIndex = -1;
     if (mealVoiceRecognition) {
         try {
             mealVoiceRecognition.stop();
@@ -1336,16 +1350,16 @@ function handleVoiceFoodFinalTranscript(transcript) {
     const preview = document.getElementById('voice-transcript-preview');
     const sourceMsg = document.getElementById('data-source-msg');
 
-    const parsed = parseRomanianFoodVoiceInput(transcript);
+    const result = parseRomanianFoodVoiceInput(transcript, mealVoicePendingFood);
 
     // 1. Control Commands
-    if (parsed && parsed.isControlCommand) {
-        if (parsed.command === 'stop') {
+    if (result && result.isControlCommand) {
+        if (result.command === 'stop') {
             window.stopMealVoiceInput();
             if (sourceMsg) sourceMsg.innerHTML = `<span class="text-slate-400">🛑 Dictare oprită</span>`;
             return;
         }
-        if (parsed.command === 'delete_last') {
+        if (result.command === 'delete_last') {
             if (currentMeal.foods.length > 0) {
                 const removed = currentMeal.foods.pop();
                 renderCurrentMeal();
@@ -1355,30 +1369,23 @@ function handleVoiceFoodFinalTranscript(transcript) {
                 if (preview) preview.innerText = `🗑️ Șters: ${removed.name}`;
                 if (sourceMsg) sourceMsg.innerHTML = `<span class="text-amber-400">🗑️ Șters ultimul aliment (${removed.name})</span>`;
             }
+            mealVoicePendingFood = '';
             return;
         }
-        if (parsed.command === 'save_meal') {
+        if (result.command === 'save_meal') {
             window.stopMealVoiceInput();
             window.saveMeal();
             return;
         }
     }
 
-    // 2. Food Items parsed
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    // 2. Food Items parsed with confirmed unit of measurement
+    if (result && result.completedFoods && result.completedFoods.length > 0) {
         const addedNames = [];
         const startIndex = currentMeal.foods.length;
 
-        parsed.forEach((item, idx) => {
-            const est = estimateFoodLocally(item.name, item.quantity, item.unit);
-            const foodObj = {
-                name: item.name,
-                quantity: item.quantity,
-                unit: item.unit,
-                calories: est.calories,
-                nutrients: est.nutrients
-            };
-            currentMeal.foods.push(foodObj);
+        result.completedFoods.forEach((item, idx) => {
+            currentMeal.foods.push(item);
             addedNames.push(`${item.quantity}${item.unit} ${item.name}`);
 
             // Optional background AI enrichment
@@ -1386,6 +1393,12 @@ function handleVoiceFoodFinalTranscript(transcript) {
                 enrichFoodWithAiInBackground(startIndex + idx);
             }
         });
+
+        mealVoicePendingFood = '';
+        const nameInput = document.getElementById('food-name');
+        const qtyInput = document.getElementById('food-qty');
+        if (nameInput) nameInput.value = '';
+        if (qtyInput) qtyInput.value = '';
 
         renderCurrentMeal();
         updateAnalysis();
@@ -1396,11 +1409,23 @@ function handleVoiceFoodFinalTranscript(transcript) {
             preview.innerText = `✅ Adăugat: ${addedNames.join(', ')}`;
         }
         if (sourceMsg) {
-            sourceMsg.innerHTML = `<span class="text-emerald-400">🎤 +${parsed.length} aliment(e) adăugat(e) vocal</span>`;
+            sourceMsg.innerHTML = `<span class="text-emerald-400">🎤 +${result.completedFoods.length} aliment(e) adăugat(e)</span>`;
+        }
+    } else if (result && result.pendingFoodName) {
+        // Food name recognized, but WAITING for unit of measurement!
+        mealVoicePendingFood = result.pendingFoodName;
+        const nameInput = document.getElementById('food-name');
+        if (nameInput) nameInput.value = result.pendingFoodName;
+
+        if (preview) {
+            preview.innerText = `⏳ „${result.pendingFoodName}”... Spune cantitatea și unitatea (ex: 100 grame / 2 felii)`;
+        }
+        if (sourceMsg) {
+            sourceMsg.innerHTML = `<span class="text-amber-400">⏳ Aștept unitatea pentru „${result.pendingFoodName}”...</span>`;
         }
     } else {
         if (preview) {
-            preview.innerText = `Nu am înțeles clar: „${transcript}”. Spune de exemplu „150g orez”`;
+            preview.innerText = `Nu am auzit unitatea (ex: „100 grame” sau „2 felii”). Spus: „${transcript}”`;
         }
     }
 }
