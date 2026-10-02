@@ -9,6 +9,7 @@ import { PDFReport } from './pdf.js';
 let currentMeal = { id: null, date: '', name: '', foods: [] };
 let historyData = [];
 let editingFoodIndex = -1;
+let selectedFoodNutrientIndex = -1;
 let currentOpenNutrient = null;
 let healthProfile = [];
 let recognition = null;
@@ -617,6 +618,17 @@ window.handleAiNutrientCalcChange = (checked) => {
     Storage.setAiNutrientCalcEnabled(checked);
 };
 
+window.openSidebar = () => {
+    const sb = document.getElementById('analysis-sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    if (!sb || !ov) return;
+    if (sb.classList.contains('-translate-x-full')) {
+        sb.classList.remove('-translate-x-full');
+        ov.classList.remove('hidden');
+        setTimeout(() => ov.classList.remove('opacity-0'), 10);
+    }
+};
+
 window.toggleSidebar = () => {
     const sb = document.getElementById('analysis-sidebar');
     const ov = document.getElementById('sidebar-overlay');
@@ -629,6 +641,111 @@ window.toggleSidebar = () => {
         sb.classList.add('-translate-x-full');
         ov.classList.add('opacity-0');
         setTimeout(() => ov.classList.add('hidden'), 300);
+    }
+};
+
+window.selectFoodForNutrients = (index) => {
+    if (selectedFoodNutrientIndex === index) {
+        selectedFoodNutrientIndex = -1;
+    } else {
+        selectedFoodNutrientIndex = index;
+    }
+    renderCurrentMeal();
+    updateAnalysis();
+    window.openSidebar();
+};
+
+window.clearFoodNutrientFilter = () => {
+    selectedFoodNutrientIndex = -1;
+    renderCurrentMeal();
+    updateAnalysis();
+};
+
+window.recalcAllMealNutrientsAI = async () => {
+    if (currentMeal.foods.length === 0) {
+        alert("Masa este goală. Adaugă mai întâi alimente.");
+        return;
+    }
+    if (!Storage.isAiAvailable()) {
+        alert("AI-ul este dezactivat sau cheia API nu este conectată.");
+        return;
+    }
+
+    const btn = document.getElementById('recalc-all-nutrients-ai-btn');
+    const origHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> <span class="text-[10px]">Calcul...</span>`;
+        refreshIcons();
+    }
+
+    try {
+        const foodsSummary = currentMeal.foods.map(f => ({
+            name: f.name,
+            quantity: f.quantity,
+            unit: f.unit
+        }));
+
+        const prompt = `Analizează complet și riguros fiecare aliment din lista următoare pentru a calcula caloriile și spectrul detaliat de nutrienți:
+${JSON.stringify(foodsSummary, null, 2)}
+
+Returnează strict un JSON array cu obiectele actualizate în aceeași ordine:
+[
+  {
+    "name": "string",
+    "quantity": number,
+    "unit": "string",
+    "calories": number,
+    "nutrients": [
+      {
+        "name": "string",
+        "type": "Macro" | "Micro",
+        "qty": number,
+        "unit": "string",
+        "rda_percent": number,
+        "role": "string"
+      }
+    ]
+  }
+]`;
+
+        const txt = await AI.callText(prompt);
+        const s = txt.indexOf('[');
+        const e = txt.lastIndexOf(']');
+        if (s !== -1 && e !== -1) {
+            const parsed = JSON.parse(txt.substring(s, e + 1));
+            if (Array.isArray(parsed) && parsed.length === currentMeal.foods.length) {
+                currentMeal.foods = parsed.map((item, idx) => ({
+                    name: item.name || currentMeal.foods[idx].name,
+                    quantity: item.quantity || currentMeal.foods[idx].quantity,
+                    unit: item.unit || currentMeal.foods[idx].unit,
+                    calories: parseInt(item.calories) || currentMeal.foods[idx].calories || 0,
+                    nutrients: Array.isArray(item.nutrients) ? item.nutrients : []
+                }));
+
+                const statusEl = document.getElementById('data-source-msg');
+                if (statusEl) statusEl.innerHTML = `<span class="text-emerald-400 font-bold">✨ Nutrienți recalculați cu AI pentru toată masa!</span>`;
+            } else if (Array.isArray(parsed) && parsed.length > 0) {
+                parsed.forEach((item, idx) => {
+                    if (currentMeal.foods[idx]) {
+                        currentMeal.foods[idx].calories = parseInt(item.calories) || currentMeal.foods[idx].calories;
+                        currentMeal.foods[idx].nutrients = Array.isArray(item.nutrients) ? item.nutrients : currentMeal.foods[idx].nutrients;
+                    }
+                });
+            }
+        }
+        renderCurrentMeal();
+        updateAnalysis();
+        updateDynamicCaloricGauge();
+        updateAIVisibility();
+    } catch (e) {
+        alert("Eroare la recalcularea AI a nutrienților: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            refreshIcons();
+        }
     }
 };
 
@@ -700,7 +817,17 @@ export function updateAIVisibility() {
         else nutAiSection.classList.add('hidden');
     }
 
-    // 6. Header Settings Indicator Dot
+    // 6. Refresh Nutrients AI Button in Sidebar
+    const recalcNutBtn = document.getElementById('recalc-all-nutrients-ai-btn');
+    if (recalcNutBtn) {
+        if (isAvailable && currentMeal.foods.length > 0) {
+            recalcNutBtn.classList.remove('hidden');
+        } else {
+            recalcNutBtn.classList.add('hidden');
+        }
+    }
+
+    // 7. Header Settings Indicator Dot
     const ind = document.getElementById('api-key-indicator');
     if (ind) {
         if (!isEnabled) {
@@ -715,7 +842,7 @@ export function updateAIVisibility() {
         }
     }
 
-    // 7. Settings Modal Controls & Connection Badge
+    // 8. Settings Modal Controls & Connection Badge
     const toggleEl = document.getElementById('ai-enabled-toggle');
     if (toggleEl) {
         toggleEl.checked = isEnabled;
@@ -848,9 +975,17 @@ function renderCurrentMeal() {
     currentMeal.foods.forEach((f, i) => {
         const d = document.createElement('div');
         d.className = `flex justify-between items-center p-3 rounded-lg border transition-all ${i === editingFoodIndex ? 'bg-indigo-900/30 border-indigo-500 shadow-md' : 'bg-slate-800 border-slate-700'}`;
+        
+        const isNutrientSelected = (selectedFoodNutrientIndex === i);
+        const kcalBadgeClass = isNutrientSelected 
+            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold ring-2 ring-purple-400 shadow-lg shadow-purple-900/50 scale-105' 
+            : 'bg-slate-700 hover:bg-indigo-600 text-white hover:text-white';
+
         d.innerHTML = `
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="bg-slate-700 text-white text-xs font-mono font-bold p-2 rounded min-w-[3.5rem] text-center">${f.calories} kcal</div>
+                <button type="button" onclick="selectFoodForNutrients(${i})" class="${kcalBadgeClass} text-xs font-mono font-bold p-2 rounded min-w-[3.8rem] text-center cursor-pointer transition-all active:scale-95" title="Click pentru a filtra nutrienții doar pentru acest aliment">
+                    ${f.calories} kcal
+                </button>
                 <div class="min-w-0">
                     <p class="font-bold text-white text-sm truncate">${f.name}</p>
                     <p class="text-xs text-slate-400 truncate">${f.quantity} ${f.unit}</p>
@@ -870,11 +1005,17 @@ function renderCurrentMeal() {
 function updateAnalysis() {
     const list = document.getElementById('nutrients-list');
     const sum = document.getElementById('macro-summary');
+    const subtitle = document.getElementById('nutrients-view-subtitle');
+    const banner = document.getElementById('food-filter-banner');
+    const bannerFoodName = document.getElementById('filtered-food-name');
     if (!list || !sum) return;
     
     list.innerHTML = '';
     if (currentMeal.foods.length === 0) {
         sum.classList.add('hidden');
+        if (banner) banner.classList.add('hidden');
+        if (subtitle) subtitle.innerText = "Calcul cantitativ și procent DZR.";
+        selectedFoodNutrientIndex = -1;
         list.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-slate-600 opacity-60">
                 <i data-lucide="pie-chart" class="w-16 h-16 mb-4"></i>
@@ -886,10 +1027,27 @@ function updateAnalysis() {
     }
     
     sum.classList.remove('hidden');
+
+    // Check if filtering by a single selected food
+    const isSingleFoodMode = (selectedFoodNutrientIndex >= 0 && currentMeal.foods[selectedFoodNutrientIndex]);
+    const targetFoods = isSingleFoodMode ? [currentMeal.foods[selectedFoodNutrientIndex]] : currentMeal.foods;
+
+    if (isSingleFoodMode) {
+        const selFood = currentMeal.foods[selectedFoodNutrientIndex];
+        if (subtitle) subtitle.innerText = `Nutrienți exclusiv pentru: ${selFood.name}`;
+        if (banner) {
+            banner.classList.remove('hidden');
+            if (bannerFoodName) bannerFoodName.innerText = `${selFood.name} (${selFood.quantity} ${selFood.unit} • ${selFood.calories} kcal)`;
+        }
+    } else {
+        if (subtitle) subtitle.innerText = "Calcul cantitativ și procent DZR pentru toată masa.";
+        if (banner) banner.classList.add('hidden');
+    }
+
     const agg = {};
     let tp = 0, tc = 0, tf = 0;
     
-    currentMeal.foods.forEach(f => {
+    targetFoods.forEach(f => {
         if (!f.nutrients) f.nutrients = [];
         f.nutrients.forEach(n => {
             if (!agg[n.name]) {
@@ -910,7 +1068,20 @@ function updateAnalysis() {
     document.getElementById('total-carb').innerText = tc.toFixed(0) + 'g';
     document.getElementById('total-fat').innerText = tf.toFixed(0) + 'g';
     
-    Object.values(agg).sort((a, b) => b.rda_percent - a.rda_percent).forEach(n => {
+    const nutrientItems = Object.values(agg).sort((a, b) => b.rda_percent - a.rda_percent);
+
+    if (nutrientItems.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-8 text-slate-500 text-xs">
+                <i data-lucide="info" class="w-6 h-6 mx-auto mb-2 text-slate-600"></i>
+                <span>Niciun nutrient detaliat pentru acest aliment. Folosește butonul AI Refresh pentru a genera analiza.</span>
+            </div>
+        `;
+        refreshIcons();
+        return;
+    }
+
+    nutrientItems.forEach(n => {
         const p = Math.min(n.rda_percent, 100);
         const btn = document.createElement('button');
         btn.className = "w-full text-left p-3 rounded-lg hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all";
@@ -1078,9 +1249,12 @@ function exitFoodEditMode() {
 
 window.removeFood = (i) => {
     if (editingFoodIndex === i) exitFoodEditMode();
+    if (selectedFoodNutrientIndex === i) selectedFoodNutrientIndex = -1;
+    else if (selectedFoodNutrientIndex > i) selectedFoodNutrientIndex--;
     currentMeal.foods.splice(i, 1);
     renderCurrentMeal();
     updateAnalysis();
+    updateAIVisibility();
     if (currentMeal.foods.length === 0) {
         document.getElementById('ai-actions-panel').classList.add('hidden');
     }
@@ -1088,6 +1262,7 @@ window.removeFood = (i) => {
 
 window.resetForm = () => {
     currentMeal = { id: null, date: '', name: '', foods: [] };
+    selectedFoodNutrientIndex = -1;
     const nowLocal = getTodayDateTimeLocal();
     document.getElementById('meal-datetime').value = nowLocal;
     window.handleMealDateChange(nowLocal);
@@ -1098,7 +1273,7 @@ window.resetForm = () => {
     renderCurrentMeal();
     updateAnalysis();
     updateDynamicCaloricGauge();
-    document.getElementById('ai-actions-panel').classList.add('hidden');
+    updateAIVisibility();
     document.getElementById('data-source-msg').innerHTML = '';
     refreshIcons();
 };
@@ -1140,6 +1315,7 @@ window.editHistoryMeal = (id) => {
     const m = historyData.find(x => x.id === id);
     if (!m) return;
     currentMeal = JSON.parse(JSON.stringify(m));
+    selectedFoodNutrientIndex = -1;
     const targetDate = currentMeal.date || getTodayDateTimeLocal();
     document.getElementById('meal-datetime').value = targetDate;
     window.handleMealDateChange(targetDate);
