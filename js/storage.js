@@ -46,8 +46,8 @@ export const localFoodDB = {
 
 // Local food macro and nutrient estimator (0ms latency, offline)
 export function estimateFoodLocally(name, quantity, unit) {
-    const qty = parseFloat(quantity) || 100;
-    const u = unit || 'g';
+    const qty = parseFloat(quantity) || 1;
+    const u = (unit || 'g').toLowerCase().trim();
     const nLower = (name || '').toLowerCase().trim();
     
     let match = localFoodDB.default;
@@ -59,8 +59,23 @@ export function estimateFoodLocally(name, quantity, unit) {
     }
 
     let factor = qty / 100;
-    if (u === 'bucati' || u === 'buc' || u === 'felii' || u === 'felie') factor = qty * 0.6;
-    if (u === 'ml') factor = qty / 100;
+    if (u === 'bucati' || u === 'buc' || u === 'felii' || u === 'felie' || u === 'bucată' || u === 'bucata') {
+        factor = qty * 0.6; // ~60g
+    } else if (u === 'lingură' || u === 'lingura' || u === 'linguri') {
+        factor = (qty * 15) / 100; // ~15g
+    } else if (u === 'linguriță' || u === 'lingurita' || u === 'lingurițe' || u === 'lingurite') {
+        factor = (qty * 5) / 100; // ~5g
+    } else if (u === 'cană' || u === 'cana' || u === 'căni' || u === 'cani') {
+        factor = (qty * 250) / 100; // ~250g / 250ml
+    } else if (u === 'farfurie' || u === 'farfurii' || u === 'bol' || u === 'boluri' || u === 'porție' || u === 'portie' || u === 'porții' || u === 'portii') {
+        factor = (qty * 350) / 100; // ~350g
+    } else if (u === 'ml' || u === 'mililitri' || u === 'mililitru') {
+        factor = qty / 100;
+    } else if (u === 'kg' || u === 'kilograme' || u === 'kilogram' || u === 'kilo') {
+        factor = (qty * 1000) / 100;
+    } else if (u === 'l' || u === 'litri' || u === 'litru') {
+        factor = (qty * 1000) / 100;
+    }
 
     const nuts = [];
     if (match.pro) nuts.push({ name: "Proteine", type: "Macro", qty: parseFloat((match.pro * factor).toFixed(1)), unit: "g", rda_percent: ((match.pro * factor / 50) * 100).toFixed(0), role: "Construcție musculară" });
@@ -81,7 +96,6 @@ export function estimateFoodLocally(name, quantity, unit) {
     };
 }
 
-// Deterministic Romanian Voice Food NLP Parser (Instant & Offline)
 // Deterministic Romanian Voice Food NLP Parser (Instant & Offline)
 // STRICT REQUIREMENT: Only completes items when an explicit unit of measurement is heard
 export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
@@ -146,8 +160,8 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
         let extractedUnit = null;
         let hasExplicitUnit = false;
 
-        // 1. Try to match digits with attached or spaced units (e.g. 200g, 200 grame, 150ml, 2 buc, 3 felii)
-        const digitMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|kilo|grame|gram|gr|g|ml|mililitri|mililitru|litri|litru|l|bucăți|bucati|bucată|bucata|buc|felii|felie|lingurițe|lingurite|linguriță|lingurita|linguri|lingură|lingura|pahare|pahar|căni|cani|cană|cana|boluri|bol|porții|portii|porție|portie)?\b/i);
+        // 1. Try to match digits with attached or spaced units
+        const digitMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilograme|kilogram|kilo|grame|gram|gr|g|ml|mililitri|mililitru|litri|litru|l|farfurii|farfurie|căni|cani|cană|cana|lingurițe|lingurite|linguriță|lingurita|linguri|lingură|lingura|bucăți|bucati|bucată|bucata|buc|felii|felie|pahare|pahar|boluri|bol|porții|portii|porție|portie)?\b/i);
         if (digitMatch) {
             extractedQty = parseFloat(digitMatch[1].replace(',', '.'));
             if (digitMatch[2]) {
@@ -155,14 +169,15 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
                 hasExplicitUnit = true;
                 if (uRaw.startsWith('k')) { extractedQty *= 1000; extractedUnit = 'g'; }
                 else if (uRaw === 'l' || uRaw.startsWith('litr')) { extractedQty *= 1000; extractedUnit = 'ml'; }
-                else if (uRaw.startsWith('m') && !uRaw.startsWith('mar')) extractedUnit = 'ml';
-                else if (uRaw.startsWith('g')) extractedUnit = 'g';
-                else if (uRaw.startsWith('lingurit')) { extractedQty *= 5; extractedUnit = 'g'; }
-                else if (uRaw.startsWith('lingur')) { extractedQty *= 15; extractedUnit = 'g'; }
+                else if (uRaw.startsWith('mililitr') || uRaw === 'ml') extractedUnit = 'ml';
+                else if (uRaw.startsWith('farfuri')) extractedUnit = 'farfurie';
+                else if (uRaw.startsWith('can') || uRaw.startsWith('căn')) extractedUnit = 'cană';
+                else if (uRaw.startsWith('lingurit')) extractedUnit = 'linguriță';
+                else if (uRaw.startsWith('lingur')) extractedUnit = 'lingură';
                 else if (uRaw.startsWith('pahar')) { extractedQty *= 200; extractedUnit = 'ml'; }
-                else if (uRaw.startsWith('can')) { extractedQty *= 250; extractedUnit = 'ml'; }
-                else if (uRaw.startsWith('bol')) { extractedQty *= 300; extractedUnit = 'g'; }
+                else if (uRaw.startsWith('bol')) { extractedUnit = 'farfurie'; }
                 else if (uRaw.startsWith('feli') || uRaw.startsWith('buc') || uRaw.startsWith('porti') || uRaw.startsWith('porți')) extractedUnit = 'buc';
+                else if (uRaw.startsWith('g')) extractedUnit = 'g';
             }
             clean = clean.replace(digitMatch[0], ' ');
         } else {
@@ -196,15 +211,21 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
                 extractedUnit = 'ml';
                 if (extractedQty) extractedQty *= 1000;
                 clean = clean.replace(/\b(litri|litru|l)\b/gi, ' ');
+            } else if (/\b(farfurie|farfurii)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'farfurie';
+                clean = clean.replace(/\b(farfurie|farfurii)\b/gi, ' ');
+            } else if (/\b(căni|cani|cană|cana)\b/i.test(clean)) {
+                hasExplicitUnit = true;
+                extractedUnit = 'cană';
+                clean = clean.replace(/\b(căni|cani|cană|cana)\b/gi, ' ');
             } else if (/\b(lingurițe|lingurite|lingurita|linguriță)\b/i.test(clean)) {
                 hasExplicitUnit = true;
-                extractedUnit = 'g';
-                extractedQty = (extractedQty || 1) * 5;
+                extractedUnit = 'linguriță';
                 clean = clean.replace(/\b(lingurițe|lingurite|lingurita|linguriță)\b/gi, ' ');
             } else if (/\b(linguri|lingura|lingură)\b/i.test(clean)) {
                 hasExplicitUnit = true;
-                extractedUnit = 'g';
-                extractedQty = (extractedQty || 1) * 15;
+                extractedUnit = 'lingură';
                 clean = clean.replace(/\b(linguri|lingura|lingură)\b/gi, ' ');
             } else if (/\b(bucăți|bucati|bucată|bucata|buc|felii|felie|porții|portii|porție|portie)\b/i.test(clean)) {
                 hasExplicitUnit = true;
@@ -215,20 +236,13 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
                 extractedUnit = 'ml';
                 extractedQty = (extractedQty || 1) * 200;
                 clean = clean.replace(/\b(pahare|pahar)\b/gi, ' ');
-            } else if (/\b(căni|cani|cană|cana)\b/i.test(clean)) {
-                hasExplicitUnit = true;
-                extractedUnit = 'ml';
-                extractedQty = (extractedQty || 1) * 250;
-                clean = clean.replace(/\b(căni|cani|cană|cana)\b/gi, ' ');
             } else if (/\b(boluri|bol)\b/i.test(clean)) {
                 hasExplicitUnit = true;
-                extractedUnit = 'g';
-                extractedQty = (extractedQty || 1) * 300;
+                extractedUnit = 'farfurie';
                 clean = clean.replace(/\b(boluri|bol)\b/gi, ' ');
             } else if (/\b(ouă|oua|ou)\b/i.test(clean)) {
                 hasExplicitUnit = true;
                 extractedUnit = 'buc';
-                // Leave word in clean or set food name
             } else if (/\b(mere|măr|mar|banane|banană|banana)\b/i.test(clean)) {
                 hasExplicitUnit = true;
                 extractedUnit = 'buc';
