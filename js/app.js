@@ -1345,8 +1345,30 @@ window.stopMealVoiceInput = () => {
     refreshIcons();
 };
 
+let lastProcessedTranscript = '';
+let lastProcessedTimestamp = 0;
+
+function normalizeFoodKey(name) {
+    return (name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\s]/g, '')
+        .trim();
+}
+
 function handleVoiceFoodFinalTranscript(transcript) {
     if (!transcript) return;
+    const now = Date.now();
+    const cleanTrans = transcript.toLowerCase().trim();
+
+    // Debounce exact duplicate speech events within 1.5 seconds
+    if (cleanTrans === lastProcessedTranscript && (now - lastProcessedTimestamp) < 1500) {
+        return;
+    }
+    lastProcessedTranscript = cleanTrans;
+    lastProcessedTimestamp = now;
+
     const preview = document.getElementById('voice-transcript-preview');
     const sourceMsg = document.getElementById('data-source-msg');
 
@@ -1381,16 +1403,36 @@ function handleVoiceFoodFinalTranscript(transcript) {
 
     // 2. Food Items parsed with confirmed unit of measurement
     if (result && result.completedFoods && result.completedFoods.length > 0) {
-        const addedNames = [];
-        const startIndex = currentMeal.foods.length;
+        const processedNames = [];
 
-        result.completedFoods.forEach((item, idx) => {
-            currentMeal.foods.push(item);
-            addedNames.push(`${item.quantity}${item.unit} ${item.name}`);
+        result.completedFoods.forEach((item) => {
+            const itemKey = normalizeFoodKey(item.name);
+            const existingIndex = currentMeal.foods.findIndex(f => normalizeFoodKey(f.name) === itemKey);
 
-            // Optional background AI enrichment
-            if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
-                enrichFoodWithAiInBackground(startIndex + idx);
+            if (existingIndex > -1) {
+                // If item already exists in the list, DO NOT DUPLICATE: update quantity & unit!
+                currentMeal.foods[existingIndex] = {
+                    ...currentMeal.foods[existingIndex],
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    calories: item.calories,
+                    nutrients: item.nutrients
+                };
+                processedNames.push(`${item.quantity}${item.unit} ${item.name} (actualizat)`);
+
+                if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
+                    enrichFoodWithAiInBackground(existingIndex);
+                }
+            } else {
+                // Add new food item
+                const newIdx = currentMeal.foods.length;
+                currentMeal.foods.push(item);
+                processedNames.push(`${item.quantity}${item.unit} ${item.name}`);
+
+                if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
+                    enrichFoodWithAiInBackground(newIdx);
+                }
             }
         });
 
@@ -1406,10 +1448,10 @@ function handleVoiceFoodFinalTranscript(transcript) {
         updateAIVisibility();
 
         if (preview) {
-            preview.innerText = `✅ Adăugat: ${addedNames.join(', ')}`;
+            preview.innerText = `✅ ${processedNames.join(', ')}`;
         }
         if (sourceMsg) {
-            sourceMsg.innerHTML = `<span class="text-emerald-400">🎤 +${result.completedFoods.length} aliment(e) adăugat(e)</span>`;
+            sourceMsg.innerHTML = `<span class="text-emerald-400">🎤 ${processedNames.join(', ')}</span>`;
         }
     } else if (result && result.pendingFoodName) {
         // Food name recognized, but WAITING for unit of measurement!
