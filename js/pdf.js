@@ -137,6 +137,13 @@ export const PDFReport = {
                 });
             });
 
+            // Sort activities by time
+            dayActs.sort((a, b) => {
+                const tA = a.time || '12:00';
+                const tB = b.time || '12:00';
+                return tA.localeCompare(tB);
+            });
+
             let daySportBurned = 0;
             let daySportDuration = 0;
             dayActs.forEach(act => {
@@ -147,11 +154,11 @@ export const PDFReport = {
             });
             totalMonthlyBurnedSport += daySportBurned;
 
-            // Thermal & TEF
+            // Thermal & TEF (TEF intra in calcul STRICT doar daca a avut loc o masa)
             const seasonInfo = Storage.calculateClimateFactor('auto', dateStr);
             const climateFactor = seasonInfo.factor || 1.0;
             const adjustedBmr = Math.round(baseBmr * climateFactor);
-            const dayTEF = Storage.calculateTEF(dayFoods.length > 0 ? dayFoods : dayCals);
+            const dayTEF = (dayCals > 0 && dayFoods.length > 0) ? Storage.calculateTEF(dayFoods) : (dayCals > 0 ? Storage.calculateTEF(dayCals) : 0);
 
             totalMonthlyBmr += adjustedBmr;
             totalMonthlyTef += dayTEF;
@@ -255,7 +262,7 @@ export const PDFReport = {
                                             <span class="meal-cal-badge" style="background:#059669; color:white;">-${stat.daySportBurned} kcal</span>
                                         </div>
                                         <div class="foods-row" style="color:#065f46;">
-                                            ${dayActs.map(a => `${a.name} (${a.durationMinutes}m)`).join(', ')}
+                                            ${dayActs.map(a => `${a.time ? `[${a.time}] ` : ''}${a.name} (${a.durationMinutes}m)`).join(', ')}
                                         </div>
                                     </div>
                                 `;
@@ -318,7 +325,7 @@ export const PDFReport = {
             }
 
             const seasonTag = stat.climateFactor > 1.0 ? `<small style="color:#64748b; font-size:6.5px;"> (${stat.seasonName} +${Math.round((stat.climateFactor - 1) * 100)}%)</small>` : '';
-            const sportTag = stat.daySportBurned > 0 ? `<div style="font-size:6.5px; color:#059669;">${stat.dayActs.map(a => a.name).join(', ')} (${stat.daySportDuration}m)</div>` : '';
+            const sportTag = stat.daySportBurned > 0 ? `<div style="font-size:6.5px; color:#059669;">${stat.dayActs.map(a => `${a.time ? `${a.time} ` : ''}${a.name}`).join(', ')} (${stat.daySportDuration}m)</div>` : '';
 
             metabolicRowsHTML += `
                 <tr>

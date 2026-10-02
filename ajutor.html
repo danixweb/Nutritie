@@ -761,36 +761,43 @@
                         <i data-lucide="activity" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">9. Activitate Fizică, Coeficienți MET, TEF & Sezoane</h2>
-                        <p class="text-xs text-slate-400">Consum caloric precis pentru antrenamente, efectul digestiei și adaptarea termoreglării.</p>
+                        <h2 class="text-xl font-bold text-white">9. Activitate Fizică, Coeficienți MET, Ora Sesiunilor & TEF Condiționat</h2>
+                        <p class="text-xs text-slate-400">Consum caloric precis pentru antrenamente, oră de desfășurare, efectul digestiei și adaptarea termoreglării.</p>
                     </div>
                 </div>
 
                 <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
                     <p class="leading-relaxed">
-                        Tab-ul <strong>Activitate Zilnică</strong> gestionează cheltuielile energetice ale zilei selectate și se integrează în balanța metabolică globală:
+                        Tab-ul <strong>Activitate Zilnică</strong> gestionează cheltuielile energetice ale zilei selectate și se integrează în balanța metabolică globală și în timp real:
                     </p>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                            <div class="font-bold text-emerald-400 flex items-center gap-1.5">
+                                <i data-lucide="clock" class="w-4 h-4"></i> Ora de Desfășurare
+                            </div>
+                            <p class="text-[11px] text-slate-400">Fiecare sesiune (ex: 07:30 sau 18:00) este înregistrată cu oră exactă, permițând calcularea balanței aport-consum în orice moment al zilei.</p>
+                        </div>
+
                         <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
                             <div class="font-bold text-emerald-400 flex items-center gap-1.5">
                                 <i data-lucide="dumbbell" class="w-4 h-4"></i> Coeficienți MET
                             </div>
-                            <p class="text-[11px] text-slate-400">Alergare (8-12 MET), Înot (7-10 MET), Forță/Fitness (5-8 MET), Ciclism (6-10 MET), Sporturi de echipă, Mers sau Treburi casnice.</p>
+                            <p class="text-[11px] text-slate-400">Calisthenics (flotări, genuflexiuni, tracțiuni), Alergare (8-12.5 MET), Fitness/Sală (5-8.5 MET), Ciclism, Înot, Sporturi și Mers.</p>
                         </div>
 
                         <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
                             <div class="font-bold text-sky-400 flex items-center gap-1.5">
-                                <i data-lucide="flame" class="w-4 h-4"></i> TEF (Efect Termic Digestie)
+                                <i data-lucide="flame" class="w-4 h-4"></i> TEF (Digestie Condiționată)
                             </div>
-                            <p class="text-[11px] text-slate-400">Consumul energetic necesar procesării alimentelor (~10% din totalul caloriilor ingerate în acea zi, calculat automat).</p>
+                            <p class="text-[11px] text-slate-400">Consumul de metabolizare a hranei intră în calcul <strong>exclusiv dacă s-a înregistrat o masă</strong> (dacă aportul este 0, TEF este strict 0 kcal).</p>
                         </div>
 
                         <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
                             <div class="font-bold text-amber-400 flex items-center gap-1.5">
-                                <i data-lucide="sun-medium" class="w-4 h-4"></i> Confort Termic Anotimpuri
+                                <i data-lucide="sun-medium" class="w-4 h-4"></i> Confort Termic
                             </div>
-                            <p class="text-[11px] text-slate-400">Selectat automat după luna din an (Iarna +5% consum termogeneză, Vara +2% adaptare răcire, Primăvara/Toamna 0%).</p>
+                            <p class="text-[11px] text-slate-400">Adaptare automată după anotimp (Iarna +7% termogeneză la frig, Vara +4% termoreglare la căldură, Primăvara/Toamna standard).</p>
                         </div>
                     </div>
                 </div>

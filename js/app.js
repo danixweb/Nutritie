@@ -197,8 +197,22 @@ function initActivityDate() {
     if (picker && !picker.value) {
         picker.value = todayStr;
     }
+    const timeInput = document.getElementById('activity-time-input');
+    if (timeInput && !timeInput.value) {
+        const now = new Date();
+        timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
     syncSeasonWithDate(picker?.value || todayStr);
 }
+
+window.setActivityTimeNow = () => {
+    const timeInput = document.getElementById('activity-time-input');
+    if (timeInput) {
+        const now = new Date();
+        timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+    recalcActivityPreview();
+};
 
 window.handleActivityDateChange = (val) => {
     syncSeasonWithDate(val);
@@ -212,6 +226,11 @@ window.setActivityDateToday = () => {
     const todayStr = new Date().toISOString().slice(0, 10);
     if (picker) {
         picker.value = todayStr;
+    }
+    const timeInput = document.getElementById('activity-time-input');
+    if (timeInput) {
+        const now = new Date();
+        timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
     syncSeasonWithDate(todayStr);
     renderDayActivities();
@@ -242,6 +261,7 @@ window.recalcActivityPreview = () => {
 
 window.saveActivityFromForm = () => {
     const picker = document.getElementById('activity-date-picker');
+    const timeInput = document.getElementById('activity-time-input');
     const actKey = document.getElementById('activity-type-select')?.value;
     const intensity = document.getElementById('activity-intensity')?.value || 'moderate';
     const dur = parseInt(document.getElementById('activity-duration')?.value) || 0;
@@ -257,11 +277,14 @@ window.saveActivityFromForm = () => {
     }
 
     const dateStr = picker?.value || new Date().toISOString().slice(0, 10);
+    let timeStr = timeInput?.value;
+    if (!timeStr) {
+        const now = new Date();
+        timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
     const actMeta = localActivityDB[actKey] || { name: actKey, met: 5.0, icon: 'activity', category: 'General' };
     const burned = Storage.calculateBurnedCalories(actKey, dur, intensity);
-
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const newActivity = {
         id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -300,6 +323,13 @@ function renderDayActivities() {
 
     const dayActivities = Storage.getActivities(dateStr);
     const balance = Storage.calculateDailyEnergyBalance(dateStr, climate);
+
+    // Sort activities chronologically by time of session
+    dayActivities.sort((a, b) => {
+        const tA = a.time || '12:00';
+        const tB = b.time || '12:00';
+        return tA.localeCompare(tB);
+    });
 
     // Update stats counters
     const countEl = document.getElementById('act-stat-count');
@@ -360,8 +390,11 @@ function renderDayActivities() {
                     <i data-lucide="${act.icon || 'activity'}" class="w-5 h-5"></i>
                 </div>
                 <div class="min-w-0">
-                    <div class="font-bold text-white text-xs sm:text-sm truncate">${act.name}</div>
+                    <div class="font-bold text-white text-xs sm:text-sm truncate flex items-center gap-2">
+                        <span>${act.name}</span>
+                    </div>
                     <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                        <span class="text-emerald-400 font-mono font-bold bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">⏰ ${act.time || '12:00'}</span>
                         <span class="text-slate-300 font-semibold">${act.durationMinutes} min</span>
                         <span>•</span>
                         <span class="px-1.5 py-0.5 rounded border font-semibold ${intInfo.color}">${intInfo.text}</span>
@@ -386,7 +419,7 @@ function renderDayActivities() {
     refreshIcons();
 }
 
-// --- Dynamic Caloric Gauge & Circadian Hourly BMR Progress Tracker ---
+// --- Dynamic Caloric Gauge & Circadian Hourly Metabolic Balance Progress Tracker ---
 function updateDynamicCaloricGauge() {
     const mealCalsEl = document.getElementById('meal-live-calories');
     const dayCalsEl = document.getElementById('day-live-calories');
@@ -399,9 +432,10 @@ function updateDynamicCaloricGauge() {
 
     if (!mealCalsEl || !dayCalsEl) return;
 
-    // 1. Current Meal Calories
+    // 1. Current Meal Calories & Foods
     let mealCal = 0;
-    (currentMeal.foods || []).forEach(f => {
+    const currentMealFoods = currentMeal.foods || [];
+    currentMealFoods.forEach(f => {
         mealCal += parseFloat(f.calories) || 0;
     });
     mealCal = Math.round(mealCal);
@@ -429,6 +463,7 @@ function updateDynamicCaloricGauge() {
 
     const allMeals = Storage.getMeals();
     let savedDayCal = 0;
+    let savedFoodsList = [];
     allMeals.forEach(m => {
         if (m.date && m.date.slice(0, 10) === dateStr) {
             if (currentMeal.id && m.id === currentMeal.id) {
@@ -437,6 +472,7 @@ function updateDynamicCaloricGauge() {
             }
             (m.foods || []).forEach(f => {
                 savedDayCal += parseFloat(f.calories) || 0;
+                savedFoodsList.push(f);
             });
         }
     });
@@ -450,14 +486,38 @@ function updateDynamicCaloricGauge() {
     const bmr = metrics.bmr || 1600;
     const targetTDEE = metrics.targetCalories || metrics.tdee || 2000;
 
-    // 4. Hourly Circadian BMR calculations
+    // 4. Hourly Circadian BMR & Real-time Active Balance calculations
     const hourlyBmrObj = Storage.calculateHourlyBmr(bmr, hourFloat);
     const cumulativeBmr = hourlyBmrObj.cumulativeBmr; // e.g. at 08:30 -> ~560 kcal
     const hourlyRate = Math.round(hourlyBmrObj.hourlyRate); // e.g. ~70 kcal/h
 
+    // Calculate sport calories burned up to this hour of day
+    const dayActivities = Storage.getActivities(dateStr);
+    let sportBurnedUpToHour = 0;
+    dayActivities.forEach(act => {
+        const actHour = Storage.getItemHour(act);
+        if (actHour <= hourFloat) {
+            sportBurnedUpToHour += (parseFloat(act.burnedCalories || act.caloriesBurned) || 0);
+        }
+    });
+
+    // Calculate TEF (Digestie) - STRICT CONDITIONAL: doar daca s-au consumat alimente
+    const allFoodsUpToHour = savedFoodsList.concat(currentMealFoods);
+    const tefAtHour = (totalDayCal > 0 && allFoodsUpToHour.length > 0)
+        ? Storage.calculateTEF(allFoodsUpToHour)
+        : (totalDayCal > 0 ? Storage.calculateTEF(totalDayCal) : 0);
+
+    // Total Real Expenditure up to this hour (BMR orar + TEF digestie + Sport)
+    const realTimeExpended = cumulativeBmr + tefAtHour + sportBurnedUpToHour;
+    const realTimeNetBalance = totalDayCal - realTimeExpended;
+
     // Update labels above the bar
     if (bmrMarkerLabel) {
-        bmrMarkerLabel.innerHTML = `BMR orar (${formattedTimeStr}): <b>~${cumulativeBmr} kcal</b> <span class="text-slate-500 font-normal">(${hourlyRate} kcal/h)</span>`;
+        let extraPills = [];
+        if (sportBurnedUpToHour > 0) extraPills.push(`Sport: <b class="text-emerald-400">-${sportBurnedUpToHour} kcal</b>`);
+        if (tefAtHour > 0) extraPills.push(`TEF: <b class="text-indigo-400">-${tefAtHour} kcal</b>`);
+        const extraText = extraPills.length > 0 ? ` | ${extraPills.join(' | ')}` : '';
+        bmrMarkerLabel.innerHTML = `BMR orar (${formattedTimeStr}): <b>~${cumulativeBmr} kcal</b> <span class="text-slate-500 font-normal">(${hourlyRate} kcal/h)</span>${extraText}`;
     }
     if (tdeeMarkerLabel) {
         tdeeMarkerLabel.innerHTML = `BMR 24h: <b>${bmr} kcal</b> | Țintă 24h: <b>${targetTDEE} kcal</b>`;
@@ -471,7 +531,8 @@ function updateDynamicCaloricGauge() {
 
         if (totalDayCal === 0) {
             progressBar.className = "h-full rounded-full transition-all duration-500 bg-slate-700";
-            progressStatus.innerHTML = `Adaugă alimente pentru a urmări aportul față de cota BMR orară (~${cumulativeBmr} kcal până la ${formattedTimeStr}).`;
+            const sportNote = sportBurnedUpToHour > 0 ? ` (+${sportBurnedUpToHour} kcal sport)` : '';
+            progressStatus.innerHTML = `Nicio masă până la ora ${formattedTimeStr} (TEF = 0 kcal). Consum metabolic acumulat: ~${cumulativeBmr} kcal${sportNote}.`;
             if (bmrStatusPill) {
                 bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-slate-900 border border-slate-800 text-slate-400 flex items-center gap-1.5";
                 if (bmrStatusText) bmrStatusText.innerText = `BMR orar: ~${cumulativeBmr} kcal`;
@@ -480,7 +541,7 @@ function updateDynamicCaloricGauge() {
             // Surplus over 24h TDEE
             const surplus = totalDayCal - targetTDEE;
             progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-amber-500 to-rose-500 shadow-md";
-            progressStatus.innerHTML = `Target zilnic depășit (<strong class="text-amber-300 font-mono">+${surplus} kcal surplus</strong> față de TDEE de ${targetTDEE} kcal)`;
+            progressStatus.innerHTML = `Target zilnic depășit (<strong class="text-amber-300 font-mono">+${surplus} kcal surplus</strong> față de TDEE de ${targetTDEE} kcal • Balanță la ${formattedTimeStr}: ${realTimeNetBalance > 0 ? `+${realTimeNetBalance}` : realTimeNetBalance} kcal)`;
             if (bmrStatusPill) {
                 bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-amber-950/80 text-amber-300 border border-amber-800/80 flex items-center gap-1.5";
                 if (bmrStatusText) bmrStatusText.innerText = `Surplus Caloric (+${surplus} kcal)`;
@@ -489,36 +550,36 @@ function updateDynamicCaloricGauge() {
             // Reached 24h BMR, in optimal zone toward TDEE
             const rem = targetTDEE - totalDayCal;
             progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-sm";
-            progressStatus.innerHTML = `BMR de 24h atins! În zona de consum optim (<strong class="text-emerald-300 font-mono">${rem} kcal</strong> până la TDEE de ${targetTDEE} kcal)`;
+            progressStatus.innerHTML = `BMR 24h atins! Zona de consum optim (<strong class="text-emerald-300 font-mono">${rem} kcal</strong> rămase până la TDEE • Balanță la ${formattedTimeStr}: ${realTimeNetBalance > 0 ? `+${realTimeNetBalance}` : realTimeNetBalance} kcal)`;
             if (bmrStatusPill) {
                 bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 flex items-center gap-1.5";
                 if (bmrStatusText) bmrStatusText.innerText = "BMR 24h Atins ✓";
             }
         } else {
-            // Below 24h BMR, but evaluate relative to hourly circadian BMR!
-            const ratioToHourlyBmr = cumulativeBmr > 0 ? (totalDayCal / cumulativeBmr) : 1;
+            // Below 24h BMR, evaluate relative to hourly circadian BMR and actual real-time expenditure
+            const ratioToHourlyExpenditure = realTimeExpended > 0 ? (totalDayCal / realTimeExpended) : 1;
 
-            if (hourFloat < 19 && ratioToHourlyBmr >= 0.70 && ratioToHourlyBmr <= 1.45) {
-                // On track for this time of day (e.g. morning breakfast or lunch on schedule)
+            if (hourFloat < 19 && ratioToHourlyExpenditure >= 0.70 && ratioToHourlyExpenditure <= 1.45) {
+                // On track for this time of day
                 progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-emerald-400 shadow-sm";
-                progressStatus.innerHTML = `Ritm optim pentru ora ${formattedTimeStr}! (<strong class="text-emerald-300 font-mono">${totalDayCal} kcal</strong> consumate vs ~${cumulativeBmr} kcal cotă BMR orară • Progres: ${Math.round((totalDayCal / bmr) * 100)}% din BMR 24h)`;
+                progressStatus.innerHTML = `Ritm optim pentru ora ${formattedTimeStr}! (<strong class="text-emerald-300 font-mono">${totalDayCal} kcal</strong> aport vs ${realTimeExpended} kcal consum total orar: BMR ~${cumulativeBmr}${tefAtHour > 0 ? ` + TEF ${tefAtHour}` : ''}${sportBurnedUpToHour > 0 ? ` + Sport ${sportBurnedUpToHour}` : ''})`;
                 if (bmrStatusPill) {
                     bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 flex items-center gap-1.5";
                     if (bmrStatusText) bmrStatusText.innerText = `Pe grafic la ora ${formattedTimeStr}`;
                 }
-            } else if (hourFloat < 19 && ratioToHourlyBmr > 1.45) {
-                // Energetic reserve ahead of hourly BMR, but well under 24h target
+            } else if (hourFloat < 19 && ratioToHourlyExpenditure > 1.45) {
+                // Energetic reserve ahead of hourly expenditure
                 progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-sm";
-                progressStatus.innerHTML = `Aport energetic substanțial (<strong class="text-indigo-300 font-mono">${totalDayCal} kcal</strong> • Progres: ${Math.round((totalDayCal / bmr) * 100)}% din BMR 24h de ${bmr} kcal)`;
+                progressStatus.innerHTML = `Rezervă energetică la ora ${formattedTimeStr} (<strong class="text-indigo-300 font-mono">${totalDayCal} kcal</strong> aport vs ${realTimeExpended} kcal consum orar • Balanță: +${realTimeNetBalance} kcal)`;
                 if (bmrStatusPill) {
                     bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-800/80 flex items-center gap-1.5";
-                    if (bmrStatusText) bmrStatusText.innerText = `Rezervă energie (${totalDayCal} kcal)`;
+                    if (bmrStatusText) bmrStatusText.innerText = `Rezervă energie (+${realTimeNetBalance} kcal)`;
                 }
             } else if (hourFloat >= 19 && totalDayCal < bmr) {
                 // Late evening and total day is under 24h BMR
                 const diff = bmr - totalDayCal;
                 progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sm";
-                progressStatus.innerHTML = `Totalul zilei este sub metabolismul bazal (<strong class="text-sky-300 font-mono">${diff} kcal</strong> rămase până la BMR de ${bmr} kcal)`;
+                progressStatus.innerHTML = `Totalul zilei este sub metabolismul bazal (<strong class="text-sky-300 font-mono">${diff} kcal</strong> rămase până la BMR 24h de ${bmr} kcal)`;
                 if (bmrStatusPill) {
                     bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-sky-950/80 text-sky-300 border border-sky-800/80 flex items-center gap-1.5";
                     if (bmrStatusText) bmrStatusText.innerText = `Sub BMR 24h (-${diff} kcal)`;
@@ -526,7 +587,7 @@ function updateDynamicCaloricGauge() {
             } else {
                 // Morning/midday with light intake
                 progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-sky-500 to-teal-400 shadow-sm";
-                progressStatus.innerHTML = `Aport lejer la ora ${formattedTimeStr} (<strong class="text-sky-300 font-mono">${totalDayCal} kcal</strong> consumate • Cotă BMR orară: ~${cumulativeBmr} kcal)`;
+                progressStatus.innerHTML = `Aport lejer la ora ${formattedTimeStr} (<strong class="text-sky-300 font-mono">${totalDayCal} kcal</strong> aport vs ${realTimeExpended} kcal consum orar: BMR ~${cumulativeBmr}${sportBurnedUpToHour > 0 ? ` + Sport ${sportBurnedUpToHour}` : ''})`;
                 if (bmrStatusPill) {
                     bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-sky-950/80 text-sky-300 border border-sky-800/80 flex items-center gap-1.5";
                     if (bmrStatusText) bmrStatusText.innerText = `Aport lejer (${totalDayCal} kcal)`;
@@ -2647,7 +2708,7 @@ window.openCaloriesReportModal = () => {
                         </div>
                         <div class="flex items-center gap-2 text-[10px]">
                             ${dayBalance.sportCalories > 0 ? `<span class="text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800 font-bold">🏃 Sport: -${dayBalance.sportCalories} kcal</span>` : ''}
-                            <span class="text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800">TEF: -${dayBalance.tefCalories} kcal</span>
+                            ${dayBalance.tefCalories > 0 ? `<span class="text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800">TEF: -${dayBalance.tefCalories} kcal</span>` : ''}
                         </div>
                     </div>
                 `;

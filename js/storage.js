@@ -618,12 +618,33 @@ export const Storage = {
         return Math.max(Math.round(cal), 1);
     },
 
+    // Helper to get decimal hour (0..24) from meal or activity item
+    getItemHour(item) {
+        if (!item) return 12.0;
+        if (item.time && typeof item.time === 'string' && item.time.includes(':')) {
+            const [h, m] = item.time.split(':').map(Number);
+            return (isNaN(h) ? 12 : h) + ((isNaN(m) ? 0 : m) / 60);
+        }
+        if (item.date && typeof item.date === 'string' && item.date.includes('T')) {
+            const timePart = item.date.split('T')[1];
+            if (timePart && timePart.includes(':')) {
+                const [h, m] = timePart.split(':').map(Number);
+                return (isNaN(h) ? 12 : h) + ((isNaN(m) ? 0 : m) / 60);
+            }
+        }
+        return 12.0;
+    },
+
     // Thermic Effect of Food (TEF / Consum Digestie)
+    // Consumul pentru digestie intra in calcul STRICT doar daca a avut loc o masa (> 0 calorii)
     calculateTEF(foodsOrTotalCal) {
+        if (!foodsOrTotalCal) return 0;
         if (typeof foodsOrTotalCal === 'number') {
+            if (foodsOrTotalCal <= 0) return 0;
             return Math.round(foodsOrTotalCal * 0.10); // ~10% standard
         }
         if (Array.isArray(foodsOrTotalCal)) {
+            if (foodsOrTotalCal.length === 0) return 0;
             let proGrams = 0, carbGrams = 0, fatGrams = 0, totalCal = 0;
             foodsOrTotalCal.forEach(f => {
                 totalCal += (f.calories || 0);
@@ -634,10 +655,11 @@ export const Storage = {
                     if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('lipid')) fatGrams += (parseFloat(n.qty) || 0);
                 });
             });
+            if (totalCal <= 0 && proGrams === 0 && carbGrams === 0 && fatGrams === 0) return 0;
             // High-precision TEF by macronutrient (Protein 25%, Carb 8%, Fat 2%)
             if (proGrams > 0 || carbGrams > 0 || fatGrams > 0) {
                 const tef = (proGrams * 4 * 0.25) + (carbGrams * 4 * 0.08) + (fatGrams * 9 * 0.02);
-                return Math.max(Math.round(tef), 1);
+                return Math.round(tef);
             }
             return Math.round(totalCal * 0.10);
         }
@@ -665,13 +687,20 @@ export const Storage = {
         return { factor: 1.0, name: 'Toamnă', label: 'Toamnă (Standard)', season: 'autumn' };
     },
 
-    // Comprehensive Daily Metabolic & Energy Balance
-    calculateDailyEnergyBalance(dateStr, climateType = 'auto') {
+    // Comprehensive Daily & Hourly Real-Time Metabolic Energy Balance
+    calculateDailyEnergyBalance(dateStr, climateType = 'auto', upToHour = null) {
         const dStr = (dateStr || new Date().toISOString()).slice(0, 10);
-        const dayMeals = this.getMeals().filter(m => m.date && m.date.slice(0, 10) === dStr);
-        const dayActivities = this.getActivities(dStr);
+        let dayMeals = this.getMeals().filter(m => m.date && m.date.slice(0, 10) === dStr);
+        let dayActivities = this.getActivities(dStr);
+
+        const isHourlyCutoff = (upToHour !== null && upToHour !== undefined && !isNaN(upToHour));
+        if (isHourlyCutoff) {
+            dayMeals = dayMeals.filter(m => this.getItemHour(m) <= upToHour);
+            dayActivities = dayActivities.filter(a => this.getItemHour(a) <= upToHour);
+        }
 
         // 1. Calories Consumed & TEF (Digestie)
+        // Regula fiziologica: Consumul pentru digestie (TEF) intra in calcul STRICT daca a avut loc cel putin o masa
         let caloriesConsumed = 0;
         let allFoods = [];
         dayMeals.forEach(m => {
@@ -680,9 +709,11 @@ export const Storage = {
                 allFoods.push(f);
             });
         });
-        const tefCalories = this.calculateTEF(allFoods.length > 0 ? allFoods : caloriesConsumed);
+        const tefCalories = (caloriesConsumed > 0 && allFoods.length > 0) 
+            ? this.calculateTEF(allFoods) 
+            : (caloriesConsumed > 0 ? this.calculateTEF(caloriesConsumed) : 0);
 
-        // 2. Calories Burned via Sport & Activities
+        // 2. Calories Burned via Sport & Activities (cu ora de desfasurare)
         let caloriesBurnedSport = 0;
         let totalActiveMinutes = 0;
         dayActivities.forEach(a => {
@@ -695,28 +726,39 @@ export const Storage = {
         const baseBmr = metrics.bmr || 1600;
         const climateObj = this.calculateClimateFactor(climateType, dStr);
         const climateFactor = climateObj.factor;
-        const adjustedBmr = Math.round(baseBmr * climateFactor);
+        const adjusted24hBmr = Math.round(baseBmr * climateFactor);
 
-        // 4. Total Real Energy Expended
-        const totalExpended = adjustedBmr + tefCalories + caloriesBurnedSport;
+        let effectiveBmr = adjusted24hBmr;
+        let hourlyBmrObj = null;
+        if (isHourlyCutoff) {
+            hourlyBmrObj = this.calculateHourlyBmr(adjusted24hBmr, upToHour);
+            effectiveBmr = hourlyBmrObj.cumulativeBmr;
+        }
+
+        // 4. Total Real Energy Expended (BMR + TEF doar daca s-a mancat + Sport)
+        const totalExpended = effectiveBmr + tefCalories + caloriesBurnedSport;
         const netBalance = caloriesConsumed - totalExpended;
 
         return {
             date: dStr,
+            upToHour: isHourlyCutoff ? upToHour : null,
             mealsCount: dayMeals.length,
             caloriesConsumed,
             tefCalories,
             activitiesCount: dayActivities.length,
             totalActiveMinutes,
             caloriesBurnedSport,
+            sportCalories: caloriesBurnedSport,
             baseBmr,
             climateType,
             climateFactor,
-            adjustedBmr,
+            adjustedBmr: adjusted24hBmr,
+            effectiveBmr,
             totalExpended,
             netBalance,
             targetCalories: metrics.targetCalories || 2000,
-            hasBiometrics: metrics.bmr !== null
+            hasBiometrics: metrics.bmr !== null,
+            hourlyBmrObj
         };
     },
 
