@@ -467,8 +467,8 @@ export const Storage = {
         let caloriesBurnedSport = 0;
         let totalActiveMinutes = 0;
         dayActivities.forEach(a => {
-            caloriesBurnedSport += (parseFloat(a.caloriesBurned) || 0);
-            totalActiveMinutes += (parseFloat(a.duration) || 0);
+            caloriesBurnedSport += (parseFloat(a.burnedCalories || a.caloriesBurned) || 0);
+            totalActiveMinutes += (parseFloat(a.durationMinutes || a.duration) || 0);
         });
 
         // 3. Basal Metabolic Rate (BMR) & Climate Adjustment
