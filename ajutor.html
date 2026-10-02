@@ -265,10 +265,53 @@
                         </li>
                     </ul>
 
-                    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-                        <span class="text-emerald-400 font-bold">💡 Exemplu dictare multiplă:</span>
-                        <p class="text-slate-300 italic mt-1 font-mono">„200g piept de pui, o cană de orez, două ouă și o farfurie de ciorbă”</p>
-                        <p class="text-[11px] text-slate-500 mt-1">Aplicația recunoaște și adaugă instantaneu 4 alimente distincte cu gramajele și caloriile corespunzătoare.</p>
+                    <!-- Suport Multi-Aliment (Separatori & Dictare Continuă) -->
+                    <div class="space-y-3 pt-2 border-t border-slate-800">
+                        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                            <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+                            Suport Multi-Aliment (Separatori & Dictare Continuă)
+                        </h3>
+                        <p class="text-slate-300 leading-relaxed">
+                            Poți dicta oricâte alimente dintr-o singură respirație. Aplicația recunoaște automat delimitarea fiecărui produs prin <strong>separatori uzuali</strong> sau prin tranziția de la o unitate de măsură la următorul aliment.
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                                <span class="text-indigo-400 font-bold text-xs flex items-center gap-1.5">
+                                    <i data-lucide="split" class="w-3.5 h-3.5"></i> Separatori Vocali Suportați:
+                                </span>
+                                <ul class="list-disc list-inside text-[11px] text-slate-400 space-y-1">
+                                    <li><code class="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">„și”</code> / <code class="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">„si”</code></li>
+                                    <li><code class="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">„apoi”</code> / <code class="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">„și apoi”</code></li>
+                                    <li><code class="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">„plus”</code></li>
+                                    <li>Virgulă sau pauză naturală de vorbire</li>
+                                </ul>
+                            </div>
+
+                            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                                <span class="text-emerald-400 font-bold text-xs flex items-center gap-1.5">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Exemple de Dictare Multi-Aliment:
+                                </span>
+                                <div class="space-y-1.5 text-[11px] text-slate-300 italic font-mono">
+                                    <div class="p-1.5 bg-slate-900 rounded border border-slate-800">
+                                        „200g piept de pui <strong class="text-amber-300">și</strong> 150g orez <strong class="text-amber-300">și</strong> o roșie”
+                                    </div>
+                                    <div class="p-1.5 bg-slate-900 rounded border border-slate-800">
+                                        „două ouă, 50g cașcaval <strong class="text-amber-300">apoi</strong> o cană de lapte”
+                                    </div>
+                                    <div class="p-1.5 bg-slate-900 rounded border border-slate-800">
+                                        „pâine două felii <strong class="text-amber-300">plus</strong> 20g unt”
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
+                            <i data-lucide="info" class="w-4 h-4 text-sky-400 shrink-0 mt-0.5"></i>
+                            <div>
+                                <strong class="text-slate-200">Filtru inteligent anti-duplicate:</strong> Dacă repeți sau corectezi un aliment deja existent în listă (ex: spui <em>„Pâine două felii”</em> și apoi <em>„Pâine 100g”</em>), aplicația <strong>nu îl multiplică</strong>, ci îi actualizează automat gramajul și caloriile în timp real.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
