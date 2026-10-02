@@ -106,13 +106,13 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
     let t = (' ' + transcript.toLowerCase().trim() + ' ').replace(/\s+/g, ' ');
     
     // Command words (stop, cancel, etc.)
-    if (/\b(stop|gata|închide|inchide|oprește|opreste)\b/i.test(t)) {
+    if (/\b(stop|gata|închide|inchide|oprește|opreste|gata masa|oprește microfonul|opreste microfonul)\b/i.test(t)) {
         return { isControlCommand: true, command: 'stop', completedFoods: [], pendingFoodName: null };
     }
-    if (/\b(șterge ultimul|sterge ultimul|șterge ultima|sterge ultima)\b/i.test(t)) {
+    if (/\b(șterge ultimul|sterge ultimul|șterge ultima|sterge ultima|șterge ultimul aliment|sterge ultimul aliment|anulează ultimul|anuleaza ultimul)\b/i.test(t)) {
         return { isControlCommand: true, command: 'delete_last', completedFoods: [], pendingFoodName: null };
     }
-    if (/\b(salvează masa|salveaza masa|salvează|salveaza)\b/i.test(t)) {
+    if (/\b(salvează masa|salveaza masa|salvează|salveaza|salvare masa|salvare|salvează meniul|salveaza meniul)\b/i.test(t)) {
         return { isControlCommand: true, command: 'save_meal', completedFoods: [], pendingFoodName: null };
     }
 

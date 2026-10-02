@@ -1396,7 +1396,9 @@ function handleVoiceFoodFinalTranscript(transcript) {
         }
         if (result.command === 'save_meal') {
             window.stopMealVoiceInput();
-            window.saveMeal();
+            if (typeof window.saveMealToLocal === 'function') {
+                window.saveMealToLocal();
+            }
             return;
         }
     }
@@ -1564,6 +1566,7 @@ window.saveMealToLocal = () => {
         refreshIcons();
     }
 };
+window.saveMeal = window.saveMealToLocal;
 
 window.editHistoryMeal = (id) => {
     const m = historyData.find(x => x.id === id);
