@@ -118,6 +118,46 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// --- Caloric Card Collapse/Expand Toggle ---
+window.toggleCaloricCard = () => {
+    const card = document.getElementById('dynamic-caloric-card');
+    const icon = document.getElementById('caloric-card-toggle-icon');
+    const btnText = document.getElementById('caloric-card-toggle-text');
+    if (!card) return;
+
+    const isHidden = card.classList.contains('hidden');
+    if (isHidden) {
+        card.classList.remove('hidden');
+        if (icon) {
+            icon.setAttribute('data-lucide', 'chevron-up');
+        }
+        if (btnText) btnText.innerText = 'Ascunde';
+        localStorage.setItem('caloric_card_collapsed', 'false');
+    } else {
+        card.classList.add('hidden');
+        if (icon) {
+            icon.setAttribute('data-lucide', 'chevron-down');
+        }
+        if (btnText) btnText.innerText = 'Balanță';
+        localStorage.setItem('caloric_card_collapsed', 'true');
+    }
+    refreshIcons();
+};
+
+function initCaloricCardState() {
+    const isCollapsed = localStorage.getItem('caloric_card_collapsed') === 'true';
+    const card = document.getElementById('dynamic-caloric-card');
+    const icon = document.getElementById('caloric-card-toggle-icon');
+    const btnText = document.getElementById('caloric-card-toggle-text');
+    if (isCollapsed && card) {
+        card.classList.add('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+        if (btnText) btnText.innerText = 'Balanță';
+    } else if (btnText) {
+        btnText.innerText = 'Ascunde';
+    }
+}
+
 // --- Main Tab Navigation (Editor Mese vs Activitate Zilnică) ---
 window.switchMainTab = (tabName) => {
     const mealsBtn = document.getElementById('main-tab-meals-btn');
@@ -2976,6 +3016,7 @@ function initApp() {
     updateAnalysis();
     populateActivityTypeSelect();
     initActivityDate();
+    initCaloricCardState();
     updateDynamicCaloricGauge();
     refreshIcons();
     console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile, Health Metrics & Daily Activities.");
