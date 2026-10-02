@@ -811,21 +811,21 @@
                 <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
-                            <div class="font-bold text-indigo-300">Formule Clinice Integrate</div>
+                            <div class="font-bold text-indigo-300">Formule Clinice Integrate & BMR Orar</div>
                             <ul class="list-disc list-inside text-[11px] text-slate-400 space-y-1">
-                                <li><strong>BMR (Mifflin-St Jeor):</strong> Caloriile vitale de bază în repaus.</li>
-                                <li><strong>IMC (Indice de Masă Corporală):</strong> Categorii clinice cu culori (Subponderal, Normal, Supraponderal, Obezitate).</li>
+                                <li><strong>BMR (Mifflin-St Jeor):</strong> Rata metabolică bazală pe 24h (~1600-1800 kcal).</li>
+                                <li><strong>Distribuție Orară BMR:</strong> $BMR / 24\text{ ore}$. Dimineața la micul dejun (ex: ora 08:30), corpul a consumat cota de ~560 kcal, astfel că o masă de 450 kcal este semnalizată ca <em>Ritm Optim</em>.</li>
                                 <li><strong>TDEE:</strong> Consum total zilnic adaptat după nivelul de activitate fizică.</li>
-                                <li><strong>Greutate Ideală:</strong> Formula Lorentz / Robinson.</li>
+                                <li><strong>IMC & Greutate Ideală:</strong> Categorii clinice cu culori (Lorentz & Mifflin).</li>
                             </ul>
                         </div>
 
                         <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
-                            <div class="font-bold text-emerald-300">Semnificația Culorilor Barei de Progres:</div>
+                            <div class="font-bold text-emerald-300">Semnificația Indicatorilor & Culorilor:</div>
                             <ul class="space-y-1 text-[11px]">
-                                <li class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> <strong class="text-sky-300">Albastru:</strong> Sub metabolismul bazal (BMR).</li>
-                                <li class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> <strong class="text-emerald-300">Verde:</strong> În intervalul optim de menținere/deficit (BMR &rarr; TDEE).</li>
-                                <li class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> <strong class="text-amber-300">Galben / Portocaliu:</strong> Depășire TDEE (Surplus caloric).</li>
+                                <li class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> <strong class="text-emerald-300">Verde:</strong> În ritm optim față de cota BMR orară și intervalul de menținere/deficit (BMR &rarr; TDEE).</li>
+                                <li class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> <strong class="text-sky-300">Albastru:</strong> Aport lejer dimineața sau sub BMR 24h la finalul serii.</li>
+                                <li class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> <strong class="text-amber-300">Galben / Portocaliu:</strong> Depășire TDEE 24h (Surplus caloric).</li>
                             </ul>
                         </div>
                     </div>

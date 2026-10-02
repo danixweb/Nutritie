@@ -386,15 +386,16 @@ function renderDayActivities() {
     refreshIcons();
 }
 
-// --- Dynamic Caloric Gauge & Dual Progress Tracker ---
+// --- Dynamic Caloric Gauge & Circadian Hourly BMR Progress Tracker ---
 function updateDynamicCaloricGauge() {
     const mealCalsEl = document.getElementById('meal-live-calories');
     const dayCalsEl = document.getElementById('day-live-calories');
     const bmrStatusPill = document.getElementById('bmr-status-pill');
+    const bmrStatusText = document.getElementById('bmr-status-text');
     const progressBar = document.getElementById('caloric-progress-bar');
     const progressStatus = document.getElementById('caloric-progress-status');
-    const bmrTargetVal = document.getElementById('bmr-target-val');
-    const tdeeTargetVal = document.getElementById('tdee-target-val');
+    const bmrMarkerLabel = document.getElementById('bmr-marker-label');
+    const tdeeMarkerLabel = document.getElementById('tdee-marker-label');
 
     if (!mealCalsEl || !dayCalsEl) return;
 
@@ -409,6 +410,23 @@ function updateDynamicCaloricGauge() {
     // 2. Total Day Calories (saved meals on this day + current meal)
     const mealDateVal = document.getElementById('meal-datetime')?.value || '';
     const dateStr = mealDateVal ? mealDateVal.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    
+    // Extract selected or current hour of day
+    let hourFloat = 12.0;
+    let formattedTimeStr = "12:00";
+    if (mealDateVal && mealDateVal.includes('T')) {
+        const timePart = mealDateVal.split('T')[1];
+        const [hh, mm] = timePart.split(':').map(Number);
+        if (!isNaN(hh)) {
+            hourFloat = hh + (isNaN(mm) ? 0 : mm / 60);
+            formattedTimeStr = `${String(hh).padStart(2, '0')}:${String(mm || 0).padStart(2, '0')}`;
+        }
+    } else {
+        const now = new Date();
+        hourFloat = now.getHours() + (now.getMinutes() / 60);
+        formattedTimeStr = now.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+    }
+
     const allMeals = Storage.getMeals();
     let savedDayCal = 0;
     allMeals.forEach(m => {
@@ -432,41 +450,87 @@ function updateDynamicCaloricGauge() {
     const bmr = metrics.bmr || 1600;
     const targetTDEE = metrics.targetCalories || metrics.tdee || 2000;
 
-    if (bmrTargetVal) bmrTargetVal.innerText = `BMR: ${bmr}`;
-    if (tdeeTargetVal) tdeeTargetVal.innerText = `Target: ${targetTDEE}`;
+    // 4. Hourly Circadian BMR calculations
+    const hourlyBmrObj = Storage.calculateHourlyBmr(bmr, hourFloat);
+    const cumulativeBmr = hourlyBmrObj.cumulativeBmr; // e.g. at 08:30 -> ~560 kcal
+    const hourlyRate = Math.round(hourlyBmrObj.hourlyRate); // e.g. ~70 kcal/h
 
-    // 4. Visual Gauge & Status Updates
+    // Update labels above the bar
+    if (bmrMarkerLabel) {
+        bmrMarkerLabel.innerHTML = `BMR orar (${formattedTimeStr}): <b>~${cumulativeBmr} kcal</b> <span class="text-slate-500 font-normal">(${hourlyRate} kcal/h)</span>`;
+    }
+    if (tdeeMarkerLabel) {
+        tdeeMarkerLabel.innerHTML = `BMR 24h: <b>${bmr} kcal</b> | Țintă 24h: <b>${targetTDEE} kcal</b>`;
+    }
+
+    // 5. Visual Gauge & Circadian Status Evaluation
     if (progressBar && progressStatus) {
-        if (totalDayCal < bmr) {
-            const pct = Math.min(Math.round((totalDayCal / bmr) * 60), 60);
-            progressBar.style.width = `${Math.max(pct, 4)}%`;
-            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sm";
-            const diff = bmr - totalDayCal;
-            progressStatus.innerHTML = `Sub metabolismul bazal (<strong class="text-sky-300 font-mono">${diff} kcal</strong> rămase până la BMR de ${bmr})`;
+        // Overall daily progress percentage (0 - 100%)
+        const dailyProgressPct = Math.min(Math.round((totalDayCal / targetTDEE) * 100), 100);
+        progressBar.style.width = `${Math.max(dailyProgressPct, totalDayCal > 0 ? 5 : 0)}%`;
+
+        if (totalDayCal === 0) {
+            progressBar.className = "h-full rounded-full transition-all duration-500 bg-slate-700";
+            progressStatus.innerHTML = `Adaugă alimente pentru a urmări aportul față de cota BMR orară (~${cumulativeBmr} kcal până la ${formattedTimeStr}).`;
             if (bmrStatusPill) {
-                bmrStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-950/80 text-sky-300 border border-sky-800/80";
-                bmrStatusPill.innerText = "Sub BMR";
+                bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-slate-900 border border-slate-800 text-slate-400 flex items-center gap-1.5";
+                if (bmrStatusText) bmrStatusText.innerText = `BMR orar: ~${cumulativeBmr} kcal`;
             }
-        } else if (totalDayCal <= targetTDEE) {
-            const span = targetTDEE - bmr || 1;
-            const extraPct = Math.round(((totalDayCal - bmr) / span) * 40);
-            const pct = 60 + Math.min(extraPct, 40);
-            progressBar.style.width = `${pct}%`;
-            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-sm";
-            const rem = targetTDEE - totalDayCal;
-            progressStatus.innerHTML = `BMR atins! În zona de consum optim (<strong class="text-emerald-300 font-mono">${rem} kcal</strong> până la TDEE de ${targetTDEE})`;
+        } else if (totalDayCal > targetTDEE) {
+            // Surplus over 24h TDEE
+            const surplus = totalDayCal - targetTDEE;
+            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-amber-500 to-rose-500 shadow-md";
+            progressStatus.innerHTML = `Target zilnic depășit (<strong class="text-amber-300 font-mono">+${surplus} kcal surplus</strong> față de TDEE de ${targetTDEE} kcal)`;
             if (bmrStatusPill) {
-                bmrStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80";
-                bmrStatusPill.innerText = "BMR Atins ✓";
+                bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-amber-950/80 text-amber-300 border border-amber-800/80 flex items-center gap-1.5";
+                if (bmrStatusText) bmrStatusText.innerText = `Surplus Caloric (+${surplus} kcal)`;
+            }
+        } else if (totalDayCal >= bmr) {
+            // Reached 24h BMR, in optimal zone toward TDEE
+            const rem = targetTDEE - totalDayCal;
+            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-sm";
+            progressStatus.innerHTML = `BMR de 24h atins! În zona de consum optim (<strong class="text-emerald-300 font-mono">${rem} kcal</strong> până la TDEE de ${targetTDEE} kcal)`;
+            if (bmrStatusPill) {
+                bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 flex items-center gap-1.5";
+                if (bmrStatusText) bmrStatusText.innerText = "BMR 24h Atins ✓";
             }
         } else {
-            const surplus = totalDayCal - targetTDEE;
-            progressBar.style.width = "100%";
-            progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-amber-500 to-rose-500 shadow-md";
-            progressStatus.innerHTML = `Target caloric depășit (<strong class="text-amber-300 font-mono">+${surplus} kcal surplus</strong> față de ${targetTDEE})`;
-            if (bmrStatusPill) {
-                bmrStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-950/80 text-amber-300 border border-amber-800/80";
-                bmrStatusPill.innerText = "Surplus Caloric";
+            // Below 24h BMR, but evaluate relative to hourly circadian BMR!
+            const ratioToHourlyBmr = cumulativeBmr > 0 ? (totalDayCal / cumulativeBmr) : 1;
+
+            if (hourFloat < 19 && ratioToHourlyBmr >= 0.70 && ratioToHourlyBmr <= 1.45) {
+                // On track for this time of day (e.g. morning breakfast or lunch on schedule)
+                progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-emerald-400 shadow-sm";
+                progressStatus.innerHTML = `Ritm optim pentru ora ${formattedTimeStr}! (<strong class="text-emerald-300 font-mono">${totalDayCal} kcal</strong> consumate vs ~${cumulativeBmr} kcal cotă BMR orară • Progres: ${Math.round((totalDayCal / bmr) * 100)}% din BMR 24h)`;
+                if (bmrStatusPill) {
+                    bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 flex items-center gap-1.5";
+                    if (bmrStatusText) bmrStatusText.innerText = `Pe grafic la ora ${formattedTimeStr}`;
+                }
+            } else if (hourFloat < 19 && ratioToHourlyBmr > 1.45) {
+                // Energetic reserve ahead of hourly BMR, but well under 24h target
+                progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-sm";
+                progressStatus.innerHTML = `Aport energetic substanțial (<strong class="text-indigo-300 font-mono">${totalDayCal} kcal</strong> • Progres: ${Math.round((totalDayCal / bmr) * 100)}% din BMR 24h de ${bmr} kcal)`;
+                if (bmrStatusPill) {
+                    bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-800/80 flex items-center gap-1.5";
+                    if (bmrStatusText) bmrStatusText.innerText = `Rezervă energie (${totalDayCal} kcal)`;
+                }
+            } else if (hourFloat >= 19 && totalDayCal < bmr) {
+                // Late evening and total day is under 24h BMR
+                const diff = bmr - totalDayCal;
+                progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sm";
+                progressStatus.innerHTML = `Totalul zilei este sub metabolismul bazal (<strong class="text-sky-300 font-mono">${diff} kcal</strong> rămase până la BMR de ${bmr} kcal)`;
+                if (bmrStatusPill) {
+                    bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-sky-950/80 text-sky-300 border border-sky-800/80 flex items-center gap-1.5";
+                    if (bmrStatusText) bmrStatusText.innerText = `Sub BMR 24h (-${diff} kcal)`;
+                }
+            } else {
+                // Morning/midday with light intake
+                progressBar.className = "h-full rounded-full transition-all duration-500 bg-gradient-to-r from-sky-500 to-teal-400 shadow-sm";
+                progressStatus.innerHTML = `Aport lejer la ora ${formattedTimeStr} (<strong class="text-sky-300 font-mono">${totalDayCal} kcal</strong> consumate • Cotă BMR orară: ~${cumulativeBmr} kcal)`;
+                if (bmrStatusPill) {
+                    bmrStatusPill.className = "text-[11px] px-2.5 py-1 rounded-lg font-semibold bg-sky-950/80 text-sky-300 border border-sky-800/80 flex items-center gap-1.5";
+                    if (bmrStatusText) bmrStatusText.innerText = `Aport lejer (${totalDayCal} kcal)`;
+                }
             }
         }
     }

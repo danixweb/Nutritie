@@ -527,6 +527,25 @@ export const Storage = {
         };
     },
 
+    // Calculate Hourly / Cumulative Circadian BMR up to a specific hour (0..24)
+    calculateHourlyBmr(baseBmr = 1600, hourFloat = null) {
+        let h = hourFloat;
+        if (h === null || h === undefined || isNaN(h)) {
+            const now = new Date();
+            h = now.getHours() + (now.getMinutes() / 60);
+        }
+        h = Math.max(0.5, Math.min(24, h));
+        const hourlyRate = baseBmr / 24;
+        const cumulativeBmr = Math.round(hourlyRate * h);
+        
+        return {
+            hourlyRate: parseFloat(hourlyRate.toFixed(1)),
+            hourElapsed: parseFloat(h.toFixed(1)),
+            cumulativeBmr,
+            dailyBmr: baseBmr
+        };
+    },
+
     // --- Daily Physical Activities CRUD ---
     getActivities(dateStr = null) {
         try {
