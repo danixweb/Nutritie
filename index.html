@@ -490,22 +490,23 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Vârstă (ani)</label>
-                            <input type="number" id="user-age" min="10" max="120" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
+                            <input type="number" id="user-age" min="10" max="120" placeholder="ex: 35" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sex</label>
                             <select id="user-gender" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white outline-none focus:border-indigo-500" onchange="recalcProfilePreview()">
+                                <option value="">Selectează...</option>
                                 <option value="male">Bărbat</option>
                                 <option value="female">Femeie</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Greutate (kg)</label>
-                            <input type="number" id="user-weight" min="30" max="300" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
+                            <input type="number" id="user-weight" min="30" max="300" step="0.5" placeholder="ex: 72.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Înălțime (cm)</label>
-                            <input type="number" id="user-height" min="100" max="250" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
+                            <input type="number" id="user-height" min="100" max="250" placeholder="ex: 175" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" oninput="recalcProfilePreview()">
                         </div>
                     </div>
 
@@ -513,9 +514,10 @@
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nivel de Activitate Fizică</label>
                             <select id="user-activity" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-indigo-500" onchange="recalcProfilePreview()">
+                                <option value="">Selectează...</option>
                                 <option value="1.2">Sedentar (birou, puțin/deloc efort)</option>
                                 <option value="1.375">Ușor activ (antrenament 1-3 zile/săpt)</option>
-                                <option value="1.55" selected>Moderat activ (antrenament 3-5 zile/săpt)</option>
+                                <option value="1.55">Moderat activ (antrenament 3-5 zile/săpt)</option>
                                 <option value="1.725">Foarte activ (efort intens 6-7 zile)</option>
                                 <option value="1.9">Extrem de activ (muncă fizică grea / atlet)</option>
                             </select>
@@ -523,7 +525,8 @@
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Obiectiv Caloric</label>
                             <select id="user-diet-goal" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-indigo-500" onchange="recalcProfilePreview()">
-                                <option value="0" selected>Menținere greutate (Echilibru)</option>
+                                <option value="">Selectează...</option>
+                                <option value="0">Menținere greutate (Echilibru)</option>
                                 <option value="-500">Slăbire optimă (-500 kcal/zi)</option>
                                 <option value="-250">Slăbire ușoară (-250 kcal/zi)</option>
                                 <option value="300">Creștere masă musculară (+300 kcal/zi)</option>
@@ -546,23 +549,23 @@
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                             <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
                                 <div class="text-[9px] text-slate-400 font-bold uppercase">Indice Masă (IMC)</div>
-                                <div id="calc-imc" class="font-mono text-base font-bold text-white mt-0.5">22.5</div>
-                                <div id="calc-imc-badge" class="text-[10px] text-emerald-400 font-semibold">Normoponderal</div>
+                                <div id="calc-imc" class="font-mono text-base font-bold text-white mt-0.5">-</div>
+                                <div id="calc-imc-badge" class="text-[10px] text-slate-400 font-semibold">Necompletat</div>
                             </div>
                             <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
                                 <div class="text-[9px] text-slate-400 font-bold uppercase">Greutate Ideală</div>
-                                <div id="calc-ideal-weight" class="font-mono text-base font-bold text-white mt-0.5">68.8 kg</div>
+                                <div id="calc-ideal-weight" class="font-mono text-base font-bold text-white mt-0.5">-</div>
                                 <div class="text-[10px] text-slate-400 font-medium">Formula Lorentz</div>
                             </div>
                             <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
                                 <div class="text-[9px] text-slate-400 font-bold uppercase">Metabolism (BMR)</div>
-                                <div id="calc-bmr" class="font-mono text-base font-bold text-white mt-0.5">1650 kcal</div>
+                                <div id="calc-bmr" class="font-mono text-base font-bold text-white mt-0.5">-</div>
                                 <div class="text-[10px] text-slate-400 font-medium">Consum în repaus</div>
                             </div>
                             <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
                                 <div class="text-[9px] text-indigo-300 font-bold uppercase">Necesar Zilnic Țintă</div>
-                                <div id="calc-tdee" class="font-mono text-base font-bold text-indigo-300 mt-0.5">2200 kcal</div>
-                                <div id="calc-goal-badge" class="text-[10px] text-indigo-400 font-semibold">Menținere</div>
+                                <div id="calc-tdee" class="font-mono text-base font-bold text-indigo-300 mt-0.5">-</div>
+                                <div id="calc-goal-badge" class="text-[10px] text-slate-400 font-semibold">-</div>
                             </div>
                         </div>
                     </div>

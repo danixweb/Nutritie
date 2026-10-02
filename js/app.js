@@ -137,12 +137,12 @@ function loadUserProfileIntoForm() {
     const goalEl = document.getElementById('user-diet-goal');
     const issuesEl = document.getElementById('user-health-issues');
 
-    if (ageEl) ageEl.value = p.age || 30;
-    if (genderEl) genderEl.value = p.gender || 'male';
-    if (weightEl) weightEl.value = p.weight || 70;
-    if (heightEl) heightEl.value = p.height || 175;
-    if (actEl) actEl.value = p.activityLevel || 1.375;
-    if (goalEl) goalEl.value = p.targetDeficit || 0;
+    if (ageEl) ageEl.value = (p.age !== null && p.age !== undefined) ? p.age : '';
+    if (genderEl) genderEl.value = p.gender || '';
+    if (weightEl) weightEl.value = (p.weight !== null && p.weight !== undefined) ? p.weight : '';
+    if (heightEl) heightEl.value = (p.height !== null && p.height !== undefined) ? p.height : '';
+    if (actEl) actEl.value = (p.activityLevel !== null && p.activityLevel !== undefined) ? p.activityLevel : '';
+    if (goalEl) goalEl.value = (p.targetDeficit !== null && p.targetDeficit !== undefined) ? p.targetDeficit : '';
     if (issuesEl) {
         const issues = (p.healthIssues && p.healthIssues.length > 0) ? p.healthIssues : Storage.getHealthProfile();
         issuesEl.value = issues.join(', ');
@@ -150,12 +150,18 @@ function loadUserProfileIntoForm() {
 }
 
 window.recalcProfilePreview = () => {
-    const age = parseInt(document.getElementById('user-age')?.value) || 30;
-    const gender = document.getElementById('user-gender')?.value || 'male';
-    const weight = parseFloat(document.getElementById('user-weight')?.value) || 70;
-    const height = parseFloat(document.getElementById('user-height')?.value) || 175;
-    const activity = parseFloat(document.getElementById('user-activity')?.value) || 1.375;
-    const deficit = parseInt(document.getElementById('user-diet-goal')?.value) || 0;
+    const ageRaw = document.getElementById('user-age')?.value;
+    const gender = document.getElementById('user-gender')?.value || '';
+    const weightRaw = document.getElementById('user-weight')?.value;
+    const heightRaw = document.getElementById('user-height')?.value;
+    const actRaw = document.getElementById('user-activity')?.value;
+    const deficitRaw = document.getElementById('user-diet-goal')?.value;
+
+    const age = (ageRaw && !isNaN(ageRaw) && Number(ageRaw) > 0) ? parseInt(ageRaw) : null;
+    const weight = (weightRaw && !isNaN(weightRaw) && Number(weightRaw) > 0) ? parseFloat(weightRaw) : null;
+    const height = (heightRaw && !isNaN(heightRaw) && Number(heightRaw) > 0) ? parseFloat(heightRaw) : null;
+    const activity = (actRaw && !isNaN(actRaw) && Number(actRaw) > 0) ? parseFloat(actRaw) : null;
+    const deficit = (deficitRaw !== '' && deficitRaw !== null && !isNaN(deficitRaw)) ? parseInt(deficitRaw) : null;
 
     const metrics = Storage.calculateMetrics({
         age, gender, weight, height, activityLevel: activity, targetDeficit: deficit
@@ -168,30 +174,46 @@ window.recalcProfilePreview = () => {
     const tdeeEl = document.getElementById('calc-tdee');
     const goalBadge = document.getElementById('calc-goal-badge');
 
-    if (imcEl) imcEl.innerText = metrics.imc;
+    if (imcEl) imcEl.innerText = metrics.imc !== null ? metrics.imc : '-';
     if (imcBadge) {
         imcBadge.innerText = metrics.imcCategory;
         imcBadge.className = `text-[10px] font-semibold ${metrics.imcColor}`;
     }
-    if (idealEl) idealEl.innerText = `${metrics.idealWeight} kg`;
-    if (bmrEl) bmrEl.innerText = `${metrics.bmr} kcal`;
-    if (tdeeEl) tdeeEl.innerText = `${metrics.targetCalories} kcal`;
+    if (idealEl) idealEl.innerText = metrics.idealWeight !== null ? `${metrics.idealWeight} kg` : '-';
+    if (bmrEl) bmrEl.innerText = metrics.bmr !== null ? `${metrics.bmr} kcal` : '-';
+    if (tdeeEl) tdeeEl.innerText = metrics.targetCalories !== null ? `${metrics.targetCalories} kcal` : '-';
     if (goalBadge) {
-        if (deficit === 0) goalBadge.innerText = "Menținere";
-        else if (deficit < 0) goalBadge.innerText = `Deficit ${deficit} kcal`;
-        else goalBadge.innerText = `Surplus +${deficit} kcal`;
+        if (metrics.targetCalories === null) {
+            goalBadge.innerText = "-";
+            goalBadge.className = "text-[10px] text-slate-400 font-semibold";
+        } else if (deficit === 0 || deficit === null) {
+            goalBadge.innerText = "Menținere";
+            goalBadge.className = "text-[10px] text-indigo-400 font-semibold";
+        } else if (deficit < 0) {
+            goalBadge.innerText = `Deficit ${deficit} kcal`;
+            goalBadge.className = "text-[10px] text-emerald-400 font-semibold";
+        } else {
+            goalBadge.innerText = `Surplus +${deficit} kcal`;
+            goalBadge.className = "text-[10px] text-amber-400 font-semibold";
+        }
     }
 };
 
 window.saveUserProfileForm = () => {
-    const age = parseInt(document.getElementById('user-age')?.value) || 30;
-    const gender = document.getElementById('user-gender')?.value || 'male';
-    const weight = parseFloat(document.getElementById('user-weight')?.value) || 70;
-    const height = parseFloat(document.getElementById('user-height')?.value) || 175;
-    const activity = parseFloat(document.getElementById('user-activity')?.value) || 1.375;
-    const deficit = parseInt(document.getElementById('user-diet-goal')?.value) || 0;
+    const ageRaw = document.getElementById('user-age')?.value;
+    const gender = document.getElementById('user-gender')?.value || '';
+    const weightRaw = document.getElementById('user-weight')?.value;
+    const heightRaw = document.getElementById('user-height')?.value;
+    const actRaw = document.getElementById('user-activity')?.value;
+    const deficitRaw = document.getElementById('user-diet-goal')?.value;
     const issuesRaw = document.getElementById('user-health-issues')?.value || '';
     
+    const age = (ageRaw && !isNaN(ageRaw) && Number(ageRaw) > 0) ? parseInt(ageRaw) : null;
+    const weight = (weightRaw && !isNaN(weightRaw) && Number(weightRaw) > 0) ? parseFloat(weightRaw) : null;
+    const height = (heightRaw && !isNaN(heightRaw) && Number(heightRaw) > 0) ? parseFloat(heightRaw) : null;
+    const activity = (actRaw && !isNaN(actRaw) && Number(actRaw) > 0) ? parseFloat(actRaw) : null;
+    const deficit = (deficitRaw !== '' && deficitRaw !== null && !isNaN(deficitRaw)) ? parseInt(deficitRaw) : null;
+
     const healthIssues = issuesRaw
         .split(',')
         .map(s => s.trim())
@@ -210,7 +232,8 @@ window.saveUserProfileForm = () => {
     Storage.saveUserProfile(profile);
     healthProfile = healthIssues;
     renderHealthTags();
-    alert("Datele personale și profilul biometric au fost salvate cu succes!");
+    window.recalcProfilePreview();
+    alert("Datele personale au fost salvate cu succes!");
 };
 
 window.handleAiNutrientCalcChange = (checked) => {
@@ -1511,8 +1534,21 @@ window.saveApiKey = async () => {
     const customModelInput = document.getElementById('custom-model-input');
     const customModelName = customModelInput ? customModelInput.value.trim() : '';
 
-    if (!key || key.length < 5) {
-        errEl.innerHTML = "Te rugăm să introduci o cheie API validă din Google AI Studio.";
+    // Always save model preferences
+    Storage.saveSelectedModelType(selectedModelType);
+    if (customModelName) Storage.saveCustomModelName(customModelName);
+
+    if (!key) {
+        Storage.clearApiKey();
+        Storage.setAiConnected(false);
+        updateAIVisibility();
+        if (errEl) errEl.classList.add('hidden');
+        alert("Preferințele au fost salvate. Conexiunea AI este oprită (fără cheie API).");
+        return;
+    }
+
+    if (key.length < 5) {
+        errEl.innerHTML = "Te rugăm să introduci o cheie API validă din Google AI Studio sau să lași câmpul gol pentru mod offline.";
         errEl.classList.remove('hidden');
         Storage.setAiConnected(false);
         updateAIVisibility();
@@ -1532,12 +1568,7 @@ window.saveApiKey = async () => {
     refreshIcons();
 
     try {
-        // Save preferences
         Storage.saveApiKey(key);
-        Storage.saveSelectedModelType(selectedModelType);
-        if (customModelName) Storage.saveCustomModelName(customModelName);
-
-        // Test connection live to verify
         const effectiveModel = Storage.getTargetModel();
         await AI.testConnection(key, effectiveModel);
 

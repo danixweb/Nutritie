@@ -194,23 +194,34 @@ export const Storage = {
             console.error("Failed to read user profile", e);
         }
         return {
-            age: 30,
-            gender: 'male',
-            weight: 70,
-            height: 175,
-            activityLevel: 1.375, // 1.2 (Sedentar), 1.375 (Ușor activ), 1.55 (Moderat activ), 1.725 (Activ), 1.9 (Foarte activ)
+            age: null,
+            gender: '',
+            weight: null,
+            height: null,
+            activityLevel: null,
             healthIssues: this.getHealthProfile() || [],
             allergies: [],
-            targetDeficit: 0 // 0 = mentinere, -500 = slabire, 300 = masa musculara
+            targetDeficit: null
         };
     },
 
     saveUserProfile(profile) {
         try {
-            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-            if (profile.healthIssues && Array.isArray(profile.healthIssues)) {
-                this.saveHealthProfile(profile.healthIssues);
+            const cleaned = {
+                age: (profile.age !== null && profile.age !== undefined && !isNaN(profile.age) && Number(profile.age) > 0) ? parseInt(profile.age) : null,
+                gender: (profile.gender === 'male' || profile.gender === 'female') ? profile.gender : '',
+                weight: (profile.weight !== null && profile.weight !== undefined && !isNaN(profile.weight) && Number(profile.weight) > 0) ? parseFloat(profile.weight) : null,
+                height: (profile.height !== null && profile.height !== undefined && !isNaN(profile.height) && Number(profile.height) > 0) ? parseFloat(profile.height) : null,
+                activityLevel: (profile.activityLevel !== null && profile.activityLevel !== undefined && !isNaN(profile.activityLevel) && Number(profile.activityLevel) > 0) ? parseFloat(profile.activityLevel) : null,
+                targetDeficit: (profile.targetDeficit !== null && profile.targetDeficit !== undefined && profile.targetDeficit !== '' && !isNaN(profile.targetDeficit)) ? parseInt(profile.targetDeficit) : null,
+                healthIssues: Array.isArray(profile.healthIssues) ? profile.healthIssues : [],
+                updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(cleaned));
+            if (cleaned.healthIssues) {
+                this.saveHealthProfile(cleaned.healthIssues);
             }
+            return cleaned;
         } catch (e) {
             console.error("Failed to save user profile", e);
         }
@@ -219,51 +230,64 @@ export const Storage = {
     // Calculate Medical & Nutritional Metrics
     calculateMetrics(profile) {
         const p = profile || this.getUserProfile();
-        const weight = parseFloat(p.weight) || 70;
-        const height = parseFloat(p.height) || 175;
-        const age = parseInt(p.age) || 30;
-        const gender = p.gender || 'male';
-        const activity = parseFloat(p.activityLevel) || 1.375;
-        const deficit = parseInt(p.targetDeficit) || 0;
+        const weight = (p && p.weight !== null && p.weight !== undefined && !isNaN(p.weight) && Number(p.weight) > 0) ? parseFloat(p.weight) : null;
+        const height = (p && p.height !== null && p.height !== undefined && !isNaN(p.height) && Number(p.height) > 0) ? parseFloat(p.height) : null;
+        const age = (p && p.age !== null && p.age !== undefined && !isNaN(p.age) && Number(p.age) > 0) ? parseInt(p.age) : null;
+        const gender = (p && (p.gender === 'male' || p.gender === 'female')) ? p.gender : null;
+        const activity = (p && p.activityLevel !== null && p.activityLevel !== undefined && !isNaN(p.activityLevel) && Number(p.activityLevel) > 0) ? parseFloat(p.activityLevel) : null;
+        const deficit = (p && p.targetDeficit !== null && p.targetDeficit !== undefined && p.targetDeficit !== '' && !isNaN(p.targetDeficit)) ? parseInt(p.targetDeficit) : 0;
 
         // 1. BMI / IMC
-        const heightM = height / 100;
-        const imc = heightM > 0 ? weight / (heightM * heightM) : 22;
-        let imcCategory = 'Normal';
-        let imcColor = 'text-emerald-400';
-        if (imc < 18.5) { imcCategory = 'Subponderal'; imcColor = 'text-amber-400'; }
-        else if (imc < 25) { imcCategory = 'Normoponderal'; imcColor = 'text-emerald-400'; }
-        else if (imc < 30) { imcCategory = 'Supraponderal'; imcColor = 'text-orange-400'; }
-        else { imcCategory = 'Obezitate'; imcColor = 'text-rose-400'; }
+        let imc = null;
+        let imcCategory = 'Necompletat';
+        let imcColor = 'text-slate-400';
+        if (weight && height) {
+            const heightM = height / 100;
+            if (heightM > 0) {
+                imc = parseFloat((weight / (heightM * heightM)).toFixed(1));
+                if (imc < 18.5) { imcCategory = 'Subponderal'; imcColor = 'text-amber-400'; }
+                else if (imc < 25) { imcCategory = 'Normoponderal'; imcColor = 'text-emerald-400'; }
+                else if (imc < 30) { imcCategory = 'Supraponderal'; imcColor = 'text-orange-400'; }
+                else { imcCategory = 'Obezitate'; imcColor = 'text-rose-400'; }
+            }
+        }
 
         // 2. Ideal Weight (Lorentz Formula)
-        let idealWeight = 70;
-        if (height >= 140) {
+        let idealWeight = null;
+        if (height && height >= 140 && gender) {
             if (gender === 'female') {
                 idealWeight = (height - 100) - ((height - 150) / 2.5);
             } else {
                 idealWeight = (height - 100) - ((height - 150) / 4);
             }
+            idealWeight = parseFloat(idealWeight.toFixed(1));
         }
 
         // 3. Basal Metabolic Rate (BMR - Mifflin-St Jeor)
-        let bmr = 0;
-        if (gender === 'female') {
-            bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
-        } else {
-            bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+        let bmr = null;
+        if (weight && height && age && gender) {
+            if (gender === 'female') {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+            } else {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+            }
+            bmr = Math.max(Math.round(bmr), 500);
         }
-        bmr = Math.max(Math.round(bmr), 800);
 
         // 4. Total Daily Energy Expenditure (TDEE) & Target Calories
-        const tdee = Math.round(bmr * activity);
-        const targetCalories = Math.max(Math.round(tdee + deficit), 1000);
+        let tdee = null;
+        let targetCalories = null;
+        if (bmr) {
+            const actMultiplier = activity || 1.2;
+            tdee = Math.round(bmr * actMultiplier);
+            targetCalories = Math.max(Math.round(tdee + deficit), 800);
+        }
 
         return {
-            imc: parseFloat(imc.toFixed(1)),
+            imc,
             imcCategory,
             imcColor,
-            idealWeight: parseFloat(idealWeight.toFixed(1)),
+            idealWeight,
             bmr,
             tdee,
             targetCalories,
