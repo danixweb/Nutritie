@@ -401,6 +401,16 @@ export function updateAIVisibility() {
         nutToggle.checked = Storage.isAiNutrientCalcEnabled();
     }
 
+    // 8. Meal Name Field Label (Dynamic based on AI)
+    const mealLabel = document.getElementById('meal-name-label');
+    if (mealLabel) {
+        if (isAvailable) {
+            mealLabel.innerText = "Nume masă, preparat sau poză";
+        } else {
+            mealLabel.innerText = "Nume masă";
+        }
+    }
+
     refreshIcons();
 }
 
