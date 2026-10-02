@@ -176,25 +176,40 @@ function populateActivityTypeSelect() {
     }
 }
 
-function initActivityDate() {
-    const picker = document.getElementById('activity-date-picker');
-    if (picker && !picker.value) {
-        picker.value = new Date().toISOString().slice(0, 10);
+function syncSeasonWithDate(dateStr) {
+    const climateSelect = document.getElementById('activity-climate');
+    if (climateSelect) {
+        const season = Storage.getSeasonByDate(dateStr);
+        climateSelect.value = season;
     }
 }
 
+function initActivityDate() {
+    const picker = document.getElementById('activity-date-picker');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (picker && !picker.value) {
+        picker.value = todayStr;
+    }
+    syncSeasonWithDate(picker?.value || todayStr);
+}
+
 window.handleActivityDateChange = (val) => {
+    syncSeasonWithDate(val);
     renderDayActivities();
     recalcActivityPreview();
+    updateDynamicCaloricGauge();
 };
 
 window.setActivityDateToday = () => {
     const picker = document.getElementById('activity-date-picker');
+    const todayStr = new Date().toISOString().slice(0, 10);
     if (picker) {
-        picker.value = new Date().toISOString().slice(0, 10);
-        renderDayActivities();
-        recalcActivityPreview();
+        picker.value = todayStr;
     }
+    syncSeasonWithDate(todayStr);
+    renderDayActivities();
+    recalcActivityPreview();
+    updateDynamicCaloricGauge();
 };
 
 window.adjustActivityDuration = (delta) => {

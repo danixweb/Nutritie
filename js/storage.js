@@ -439,15 +439,29 @@ export const Storage = {
         return 0;
     },
 
-    // Climate / Season Thermogenesis Factor
-    calculateClimateFactor(climateType = 'comfort') {
-        if (climateType === 'cold') return 1.07; // Iarna / Frig (<10°C) -> +7% termogeneza adaptativa
-        if (climateType === 'hot') return 1.04;  // Vara / Canicula (>28°C) -> +4% termoreglare/transpiratie
-        return 1.0; // Confort termic (18-24°C)
+    getSeasonByDate(dateString) {
+        const d = dateString ? new Date(dateString) : new Date();
+        const month = (isNaN(d.getTime()) ? new Date() : d).getMonth() + 1; // 1-12
+        if (month === 12 || month === 1 || month === 2) return 'winter';
+        if (month >= 3 && month <= 5) return 'spring';
+        if (month >= 6 && month <= 8) return 'summer';
+        return 'autumn'; // Septembrie (9), Octombrie (10), Noiembrie (11)
+    },
+
+    // Climate / 4 Seasons Thermogenesis Factor
+    calculateClimateFactor(climateType = 'auto', dateStr = null) {
+        let season = climateType;
+        if (!season || season === 'auto' || season === 'comfort') {
+            season = this.getSeasonByDate(dateStr);
+        }
+        if (season === 'winter' || season === 'cold') return { factor: 1.07, name: 'Iarnă', label: 'Iarnă (+7%)', season: 'winter' };
+        if (season === 'summer' || season === 'hot') return { factor: 1.04, name: 'Vară', label: 'Vară (+4%)', season: 'summer' };
+        if (season === 'spring') return { factor: 1.0, name: 'Primăvară', label: 'Primăvară (Standard)', season: 'spring' };
+        return { factor: 1.0, name: 'Toamnă', label: 'Toamnă (Standard)', season: 'autumn' };
     },
 
     // Comprehensive Daily Metabolic & Energy Balance
-    calculateDailyEnergyBalance(dateStr, climateType = 'comfort') {
+    calculateDailyEnergyBalance(dateStr, climateType = 'auto') {
         const dStr = (dateStr || new Date().toISOString()).slice(0, 10);
         const dayMeals = this.getMeals().filter(m => m.date && m.date.slice(0, 10) === dStr);
         const dayActivities = this.getActivities(dStr);
@@ -474,7 +488,8 @@ export const Storage = {
         // 3. Basal Metabolic Rate (BMR) & Climate Adjustment
         const metrics = this.calculateMetrics();
         const baseBmr = metrics.bmr || 1600;
-        const climateFactor = this.calculateClimateFactor(climateType);
+        const climateObj = this.calculateClimateFactor(climateType, dStr);
+        const climateFactor = climateObj.factor;
         const adjustedBmr = Math.round(baseBmr * climateFactor);
 
         // 4. Total Real Energy Expended
