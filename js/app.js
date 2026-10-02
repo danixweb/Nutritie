@@ -2778,8 +2778,10 @@ window.closePDFModal = () => {
 window.downloadMonthlyPDF = async () => {
     const monthSelect = document.getElementById('pdf-month-select');
     const yearSelect = document.getElementById('pdf-year-select');
+    const totalsOnlyCheck = document.getElementById('pdf-totals-only');
     const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
     const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
+    const totalsOnly = totalsOnlyCheck ? totalsOnlyCheck.checked : false;
     const btn = document.getElementById('download-pdf-btn');
     const origHTML = btn ? btn.innerHTML : '';
 
@@ -2790,7 +2792,7 @@ window.downloadMonthlyPDF = async () => {
     }
 
     try {
-        await PDFReport.exportToPDF(year, month);
+        await PDFReport.exportToPDF(year, month, { totalsOnly });
         window.closePDFModal();
     } catch (e) {
         alert("Eroare la exportul PDF: " + e.message);
@@ -2806,9 +2808,11 @@ window.downloadMonthlyPDF = async () => {
 window.previewMonthlyPDF = () => {
     const monthSelect = document.getElementById('pdf-month-select');
     const yearSelect = document.getElementById('pdf-year-select');
+    const totalsOnlyCheck = document.getElementById('pdf-totals-only');
     const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
     const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
-    PDFReport.previewReport(year, month);
+    const totalsOnly = totalsOnlyCheck ? totalsOnlyCheck.checked : false;
+    PDFReport.previewReport(year, month, { totalsOnly });
 };
 
 // --- Initial Startup ---

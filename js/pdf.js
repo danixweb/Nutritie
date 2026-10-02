@@ -27,13 +27,17 @@ const MONTH_NAMES_RO = [
 ];
 
 const DAY_NAMES_RO = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
+const DAY_NAMES_FULL_RO = ["Duminică", "Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă"];
 
 export const PDFReport = {
     // Generate full HTML report string
-    generateMonthlyReportHTML(year, month) {
+    generateMonthlyReportHTML(year, month, options = {}) {
+        const totalsOnly = !!(options && options.totalsOnly);
         const allMeals = Storage.getMeals();
         const allActivities = Storage.getActivities();
         const healthProfile = Storage.getHealthProfile();
+        const userProfile = Storage.getUserProfile();
+        const userMetrics = Storage.calculateMetrics(userProfile);
         const monthName = MONTH_NAMES_RO[month];
 
         // Filter meals & activities for this specific month & year
@@ -74,24 +78,52 @@ export const PDFReport = {
             }
         });
 
-        // Aggregated monthly nutrients
+        // Aggregated monthly nutrients and metabolic data
         const monthlyNutrients = {};
         let totalMonthlyCalories = 0;
         let totalMonthlyBurnedSport = 0;
+        let totalMonthlyBmr = 0;
+        let totalMonthlyTef = 0;
+        let totalMonthlyExpended = 0;
         let daysWithLoggedMeals = 0;
+
+        const baseBmr = userMetrics.bmr || 1600;
+
+        // Daily Metabolic Data calculation for all days of the month
+        const dailyMetabolicStats = [];
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dayMeals = mealsByDay[d];
             const dayActs = activitiesByDay[d];
-            if (dayMeals.length > 0 || dayActs.length > 0) daysWithLoggedMeals++;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dateObj = new Date(year, month, d);
+            const dayOfWeekName = DAY_NAMES_FULL_RO[dateObj.getDay()];
+
+            let dayCals = 0;
+            let dayProtein = 0;
+            let dayCarbs = 0;
+            let dayFat = 0;
+            const dayFoods = [];
+
+            if (dayMeals.length > 0 || dayActs.length > 0) {
+                daysWithLoggedMeals++;
+            }
 
             dayMeals.forEach(meal => {
                 (meal.foods || []).forEach(f => {
                     const cals = parseFloat(f.calories) || 0;
+                    dayCals += cals;
+                    dayFoods.push(f);
                     totalMonthlyCalories += cals;
 
                     (f.nutrients || []).forEach(n => {
                         const nName = n.name || 'Altele';
+                        const nLower = nName.toLowerCase();
+                        const q = parseFloat(n.qty) || 0;
+                        if (nLower.includes('prot')) dayProtein += q;
+                        if (nLower.includes('carb') || nLower.includes('gluc')) dayCarbs += q;
+                        if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('fat') || nLower.includes('lipid')) dayFat += q;
+
                         if (!monthlyNutrients[nName]) {
                             monthlyNutrients[nName] = {
                                 name: nName,
@@ -100,141 +132,258 @@ export const PDFReport = {
                                 type: n.type || 'Micro'
                             };
                         }
-                        monthlyNutrients[nName].totalQty += parseFloat(n.qty) || 0;
+                        monthlyNutrients[nName].totalQty += q;
                     });
                 });
             });
 
+            let daySportBurned = 0;
+            let daySportDuration = 0;
             dayActs.forEach(act => {
-                totalMonthlyBurnedSport += (act.burnedCalories || 0);
+                const bCals = parseFloat(act.burnedCalories || act.caloriesBurned) || 0;
+                const dur = parseFloat(act.durationMinutes || act.duration) || 0;
+                daySportBurned += bCals;
+                daySportDuration += dur;
+            });
+            totalMonthlyBurnedSport += daySportBurned;
+
+            // Thermal & TEF
+            const seasonInfo = Storage.calculateClimateFactor('auto', dateStr);
+            const climateFactor = seasonInfo.factor || 1.0;
+            const adjustedBmr = Math.round(baseBmr * climateFactor);
+            const dayTEF = Storage.calculateTEF(dayFoods.length > 0 ? dayFoods : dayCals);
+
+            totalMonthlyBmr += adjustedBmr;
+            totalMonthlyTef += dayTEF;
+
+            const dayTotalExpenditure = adjustedBmr + dayTEF + daySportBurned;
+            totalMonthlyExpended += dayTotalExpenditure;
+
+            const dayNetBalance = dayCals - dayTotalExpenditure;
+            const hasData = (dayMeals.length > 0 || dayActs.length > 0);
+
+            dailyMetabolicStats.push({
+                dayNum: d,
+                dateStr,
+                dayOfWeekName,
+                dayCals,
+                dayProtein,
+                dayCarbs,
+                dayFat,
+                dayActs,
+                daySportBurned,
+                daySportDuration,
+                baseBmr,
+                adjustedBmr,
+                climateFactor,
+                seasonName: seasonInfo.name,
+                dayTEF,
+                dayTotalExpenditure,
+                dayNetBalance,
+                hasData
             });
         }
 
-        // Build Calendar Grid (Weeks & 7 Columns: Mon - Sun)
-        // First day of month (0 = Sunday, 1 = Monday, etc.)
-        const firstDayObj = new Date(year, month, 1);
-        let firstDayOfWeek = firstDayObj.getDay(); // 0 is Sun, 1 is Mon
-        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // 0 is Mon, 6 is Sun
+        const activeDays = daysWithLoggedMeals > 0 ? daysWithLoggedMeals : 1;
+        const totalMonthlyNetBalance = totalMonthlyCalories - totalMonthlyExpended;
 
+        // Build Calendar Grid (Weeks & 7 Columns: Mon - Sun) - only in Full mode
         let calendarGridHTML = '';
-        let currentDay = 1;
-        let weekIndex = 1;
+        if (!totalsOnly) {
+            const firstDayObj = new Date(year, month, 1);
+            let firstDayOfWeek = firstDayObj.getDay(); // 0 is Sun, 1 is Mon
+            firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // 0 is Mon, 6 is Sun
 
-        while (currentDay <= daysInMonth) {
-            calendarGridHTML += `<div class="week-row">`;
-            for (let dayCol = 0; dayCol < 7; dayCol++) {
-                if ((weekIndex === 1 && dayCol < firstDayOfWeek) || currentDay > daysInMonth) {
-                    calendarGridHTML += `<div class="day-cell empty-cell"></div>`;
-                } else {
-                    const dayMeals = mealsByDay[currentDay];
-                    const dayActs = activitiesByDay[currentDay];
-                    let dayCalories = 0;
-                    let dayProtein = 0;
-                    let dayCarbs = 0;
-                    let dayFat = 0;
-                    let daySportBurned = dayActs.reduce((acc, a) => acc + (a.burnedCalories || 0), 0);
+            let currentDay = 1;
+            let weekIndex = 1;
 
-                    let mealsListHTML = '';
-                    if (dayMeals.length === 0 && dayActs.length === 0) {
-                        mealsListHTML = `<div class="no-meals">- Fără înregistrări -</div>`;
+            while (currentDay <= daysInMonth) {
+                calendarGridHTML += `<div class="week-row">`;
+                for (let dayCol = 0; dayCol < 7; dayCol++) {
+                    if ((weekIndex === 1 && dayCol < firstDayOfWeek) || currentDay > daysInMonth) {
+                        calendarGridHTML += `<div class="day-cell empty-cell"></div>`;
                     } else {
-                        dayMeals.forEach((m, mIdx) => {
-                            let mealCals = 0;
-                            let mealProt = 0;
-                            let mealCarb = 0;
-                            let mealFat = 0;
+                        const dayMeals = mealsByDay[currentDay];
+                        const dayActs = activitiesByDay[currentDay];
+                        const stat = dailyMetabolicStats[currentDay - 1];
 
-                            const foodsList = (m.foods || []).map(f => {
-                                const cal = f.calories || 0;
-                                mealCals += cal;
-                                (f.nutrients || []).forEach(n => {
-                                    const nLower = (n.name || '').toLowerCase();
-                                    const q = parseFloat(n.qty) || 0;
-                                    if (nLower.includes('prot')) mealProt += q;
-                                    if (nLower.includes('carb') || nLower.includes('gluc')) mealCarb += q;
-                                    if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('fat') || nLower.includes('lipid')) mealFat += q;
-                                });
-                                return `<span class="food-item">${f.name} <small>(${f.quantity}${f.unit})</small></span>`;
-                            }).join(', ');
+                        let mealsListHTML = '';
+                        if (dayMeals.length === 0 && dayActs.length === 0) {
+                            mealsListHTML = `<div class="no-meals">- Fără înregistrări -</div>`;
+                        } else {
+                            dayMeals.forEach((m, mIdx) => {
+                                let mealCals = 0;
+                                let mealProt = 0;
+                                let mealCarb = 0;
+                                let mealFat = 0;
 
-                            dayCalories += mealCals;
-                            dayProtein += mealProt;
-                            dayCarbs += mealCarb;
-                            dayFat += mealFat;
+                                const foodsList = (m.foods || []).map(f => {
+                                    const cal = f.calories || 0;
+                                    mealCals += cal;
+                                    (f.nutrients || []).forEach(n => {
+                                        const nLower = (n.name || '').toLowerCase();
+                                        const q = parseFloat(n.qty) || 0;
+                                        if (nLower.includes('prot')) mealProt += q;
+                                        if (nLower.includes('carb') || nLower.includes('gluc')) mealCarb += q;
+                                        if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('fat') || nLower.includes('lipid')) mealFat += q;
+                                    });
+                                    return `<span class="food-item">${f.name} <small>(${f.quantity}${f.unit})</small></span>`;
+                                }).join(', ');
 
-                            const mealTime = m.date ? new Date(m.date).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : '';
-                            const mealTitle = m.name || `Masă ${mIdx + 1}`;
+                                const mealTime = m.date ? new Date(m.date).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : '';
+                                const mealTitle = m.name || `Masă ${mIdx + 1}`;
 
-                            mealsListHTML += `
-                                <div class="meal-block">
-                                    <div class="meal-header">
-                                        <strong>${mealTitle}</strong> ${mealTime ? `<span class="meal-time">${mealTime}</span>` : ''} 
-                                        <span class="meal-cal-badge">${mealCals} kcal</span>
+                                mealsListHTML += `
+                                    <div class="meal-block">
+                                        <div class="meal-header">
+                                            <strong>${mealTitle}</strong> ${mealTime ? `<span class="meal-time">${mealTime}</span>` : ''} 
+                                            <span class="meal-cal-badge">${mealCals} kcal</span>
+                                        </div>
+                                        <div class="foods-row">${foodsList || 'Fără ingrediente'}</div>
+                                        <div class="meal-macros">
+                                            P: <b>${mealProt.toFixed(0)}g</b> | C: <b>${mealCarb.toFixed(0)}g</b> | G: <b>${mealFat.toFixed(0)}g</b>
+                                        </div>
                                     </div>
-                                    <div class="foods-row">${foodsList || 'Fără ingrediente'}</div>
-                                    <div class="meal-macros">
-                                        P: <b>${mealProt.toFixed(0)}g</b> | C: <b>${mealCarb.toFixed(0)}g</b> | G: <b>${mealFat.toFixed(0)}g</b>
-                                    </div>
-                                </div>
-                            `;
-                        });
+                                `;
+                            });
 
-                        if (dayActs.length > 0) {
-                            mealsListHTML += `
-                                <div class="meal-block" style="border-left: 2px solid #10b981; background: #f0fdf4;">
-                                    <div class="meal-header" style="color: #047857;">
-                                        <strong>🏃 Activități & Sport (${dayActs.length})</strong>
-                                        <span class="meal-cal-badge" style="background:#059669; color:white;">-${daySportBurned} kcal</span>
+                            if (dayActs.length > 0) {
+                                mealsListHTML += `
+                                    <div class="meal-block" style="border-left: 2px solid #10b981; background: #f0fdf4;">
+                                        <div class="meal-header" style="color: #047857;">
+                                            <strong>🏃 Activități & Sport (${dayActs.length})</strong>
+                                            <span class="meal-cal-badge" style="background:#059669; color:white;">-${stat.daySportBurned} kcal</span>
+                                        </div>
+                                        <div class="foods-row" style="color:#065f46;">
+                                            ${dayActs.map(a => `${a.name} (${a.durationMinutes}m)`).join(', ')}
+                                        </div>
                                     </div>
-                                    <div class="foods-row" style="color:#065f46;">
-                                        ${dayActs.map(a => `${a.name} (${a.durationMinutes}m)`).join(', ')}
-                                    </div>
-                                </div>
-                            `;
+                                `;
+                            }
                         }
-                    }
 
-                    const isToday = (new Date().getFullYear() === year && new Date().getMonth() === month && new Date().getDate() === currentDay);
+                        const isToday = (new Date().getFullYear() === year && new Date().getMonth() === month && new Date().getDate() === currentDay);
 
-                    calendarGridHTML += `
-                        <div class="day-cell ${isToday ? 'current-day-cell' : ''}">
-                            <div class="day-header">
-                                <span class="day-num">${currentDay}</span>
-                                <span class="day-name">${DAY_NAMES_RO[dayCol]}</span>
-                                ${dayCalories > 0 ? `<span class="day-cal-total">${dayCalories} kcal</span>` : ''}
-                            </div>
-                            <div class="day-content">
-                                ${mealsListHTML}
-                            </div>
-                            <div class="day-footer-total">
-                                <div class="tot-label">TOTAL ZI:</div>
-                                <div class="tot-macros">
-                                    <b>${dayCalories}</b> kcal • P:<b>${dayProtein.toFixed(0)}g</b> C:<b>${dayCarbs.toFixed(0)}g</b> G:<b>${dayFat.toFixed(0)}g</b>
-                                    ${daySportBurned > 0 ? `<br><span style="color:#059669; font-weight:bold;">🏃 Efort: -${daySportBurned} kcal</span>` : ''}
+                        calendarGridHTML += `
+                            <div class="day-cell ${isToday ? 'current-day-cell' : ''}">
+                                <div class="day-header">
+                                    <span class="day-num">${currentDay}</span>
+                                    <span class="day-name">${DAY_NAMES_RO[dayCol]}</span>
+                                    ${stat.dayCals > 0 ? `<span class="day-cal-total">${stat.dayCals} kcal</span>` : ''}
+                                </div>
+                                <div class="day-content">
+                                    ${mealsListHTML}
+                                </div>
+                                <div class="day-footer-total">
+                                    <div class="tot-label">TOTAL ZI:</div>
+                                    <div class="tot-macros">
+                                        <b>${stat.dayCals}</b> kcal • P:<b>${stat.dayProtein.toFixed(0)}g</b> C:<b>${stat.dayCarbs.toFixed(0)}g</b> G:<b>${stat.dayFat.toFixed(0)}g</b>
+                                        ${stat.daySportBurned > 0 ? `<br><span style="color:#059669; font-weight:bold;">🏃 Efort: -${stat.daySportBurned} kcal</span>` : ''}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
-                    currentDay++;
+                        `;
+                        currentDay++;
+                    }
                 }
+                calendarGridHTML += `</div>`;
+                weekIndex++;
             }
-            calendarGridHTML += `</div>`;
-            weekIndex++;
         }
 
+        // =========================================================================
+        // Build Daily Metabolic Balance Table (Calorii Consumate vs Necesar / Cheltuit)
+        // EXACT same table format as the food & nutrient table
+        // =========================================================================
+        let metabolicRowsHTML = '';
+        dailyMetabolicStats.forEach(stat => {
+            let statusBadge = '<span class="badge-neutral">-</span>';
+            let netFormatted = '-';
+
+            if (stat.hasData) {
+                const sign = stat.dayNetBalance > 0 ? '+' : '';
+                netFormatted = `<b>${sign}${stat.dayNetBalance} kcal</b>`;
+
+                if (stat.dayNetBalance < -500) {
+                    statusBadge = `<span class="badge-opt">▼ Deficit Accentuat (${stat.dayNetBalance} kcal)</span>`;
+                } else if (stat.dayNetBalance <= -150) {
+                    statusBadge = `<span class="badge-opt">▼ Deficit Optim (${stat.dayNetBalance} kcal)</span>`;
+                } else if (stat.dayNetBalance <= 150) {
+                    statusBadge = `<span class="badge-neutral" style="background:#e0f2fe; color:#0369a1; border: 1px solid #bae6fd;">✓ Echilibru / Menținere</span>`;
+                } else if (stat.dayNetBalance <= 500) {
+                    statusBadge = `<span class="badge-high">▲ Surplus Ușor (+${stat.dayNetBalance} kcal)</span>`;
+                } else {
+                    statusBadge = `<span class="badge-def">▲ Surplus Mare (+${stat.dayNetBalance} kcal)</span>`;
+                }
+            }
+
+            const seasonTag = stat.climateFactor > 1.0 ? `<small style="color:#64748b; font-size:6.5px;"> (${stat.seasonName} +${Math.round((stat.climateFactor - 1) * 100)}%)</small>` : '';
+            const sportTag = stat.daySportBurned > 0 ? `<div style="font-size:6.5px; color:#059669;">${stat.dayActs.map(a => a.name).join(', ')} (${stat.daySportDuration}m)</div>` : '';
+
+            metabolicRowsHTML += `
+                <tr>
+                    <td class="nut-name"><strong>${String(stat.dayNum).padStart(2, '0')} ${monthName}</strong> <span class="text-muted">(${stat.dayOfWeekName})</span></td>
+                    <td class="num ${stat.dayCals > 0 ? 'font-bold' : 'text-muted'}">${stat.dayCals > 0 ? `${stat.dayCals} kcal` : '0 kcal'}</td>
+                    <td class="num text-muted">${stat.adjustedBmr} kcal${seasonTag}</td>
+                    <td class="num text-muted">${stat.dayTEF} kcal</td>
+                    <td class="num ${stat.daySportBurned > 0 ? 'font-bold' : 'text-muted'}" style="${stat.daySportBurned > 0 ? 'color:#059669;' : ''}">
+                        ${stat.daySportBurned > 0 ? `-${stat.daySportBurned} kcal` : '0 kcal'}
+                        ${sportTag}
+                    </td>
+                    <td class="num font-bold" style="color:#1e1b4b;">${stat.dayTotalExpenditure} kcal</td>
+                    <td class="num" style="${stat.dayNetBalance > 0 ? 'color:#b91c1c;' : (stat.dayNetBalance < 0 ? 'color:#15803d;' : '')}">
+                        ${netFormatted}
+                    </td>
+                    <td class="status-cell">${statusBadge}</td>
+                </tr>
+            `;
+        });
+
+        // Monthly Total & Average Rows for Metabolic Table
+        const avgDailyConsumed = Math.round(totalMonthlyCalories / activeDays);
+        const avgDailyBmr = Math.round(totalMonthlyBmr / daysInMonth);
+        const avgDailyTef = Math.round(totalMonthlyTef / activeDays);
+        const avgDailySport = Math.round(totalMonthlyBurnedSport / activeDays);
+        const avgDailyExpenditure = Math.round(totalMonthlyExpended / daysInMonth);
+        const avgDailyNet = Math.round(totalMonthlyNetBalance / daysInMonth);
+
+        const metabolicFooterHTML = `
+            <tr style="background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                <td class="nut-name" style="font-size: 8.5px; color: #0f172a;"><strong>TOTAL LUNAR (${daysInMonth} zile)</strong></td>
+                <td class="num" style="font-size: 8.5px; color: #4338ca;">${totalMonthlyCalories} kcal</td>
+                <td class="num" style="font-size: 8.5px;">${totalMonthlyBmr} kcal</td>
+                <td class="num" style="font-size: 8.5px;">${totalMonthlyTef} kcal</td>
+                <td class="num" style="font-size: 8.5px; color: #059669;">-${totalMonthlyBurnedSport} kcal</td>
+                <td class="num" style="font-size: 8.5px; color: #0f172a;">${totalMonthlyExpended} kcal</td>
+                <td class="num" style="font-size: 8.5px; color: ${totalMonthlyNetBalance >= 0 ? '#b91c1c' : '#15803d'};">
+                    ${totalMonthlyNetBalance >= 0 ? '+' : ''}${totalMonthlyNetBalance} kcal
+                </td>
+                <td class="status-cell">
+                    <span class="${totalMonthlyNetBalance <= 0 ? 'badge-opt' : 'badge-def'}">
+                        ${totalMonthlyNetBalance <= 0 ? `Deficit Total (${Math.abs(totalMonthlyNetBalance)} kcal)` : `Surplus Total (+${totalMonthlyNetBalance} kcal)`}
+                    </span>
+                </td>
+            </tr>
+            <tr style="background: #ffffff; font-weight: 600; border-bottom: 2px solid #94a3b8;">
+                <td class="nut-name" style="color: #475569;"><strong>MEDIE ZILNICĂ (${activeDays} zile active)</strong></td>
+                <td class="num" style="color: #4338ca;">${avgDailyConsumed} kcal/zi</td>
+                <td class="num">${avgDailyBmr} kcal/zi</td>
+                <td class="num">${avgDailyTef} kcal/zi</td>
+                <td class="num" style="color: #059669;">-${avgDailySport} kcal/zi</td>
+                <td class="num">${avgDailyExpenditure} kcal/zi</td>
+                <td class="num" style="color: ${avgDailyNet >= 0 ? '#b91c1c' : '#15803d'};">
+                    ${avgDailyNet >= 0 ? '+' : ''}${avgDailyNet} kcal/zi
+                </td>
+                <td class="status-cell">
+                    <small style="color: #64748b; font-weight: bold;">TDEE Țintă: ${userMetrics.targetCalories || 2000} kcal</small>
+                </td>
+            </tr>
+        `;
+
+        // =========================================================================
         // Build Nutrient Needs vs Consumed Analysis Table (Necesar vs Consumat)
-        const activeDays = daysWithLoggedMeals > 0 ? daysWithLoggedMeals : 1;
+        // =========================================================================
         let nutrientRowsHTML = '';
-
-        // Add core macros first
-        const coreNutrients = [
-            { name: "Calorii", total: totalMonthlyCalories, unit: "kcal" },
-            { name: "Proteine", total: (monthlyNutrients["Proteine"]?.totalQty || 0), unit: "g" },
-            { name: "Carbohidrați", total: (monthlyNutrients["Carbohidrați"]?.totalQty || 0), unit: "g" },
-            { name: "Grăsimi", total: (monthlyNutrients["Grăsimi"]?.totalQty || 0), unit: "g" }
-        ];
-
-        // Combine with micronutrients found in logs or in standard RDA
         const allTrackedKeys = new Set([...Object.keys(DAILY_RDA), ...Object.keys(monthlyNutrients)]);
 
         allTrackedKeys.forEach(nutName => {
@@ -274,6 +423,20 @@ export const PDFReport = {
                 </tr>
             `;
         });
+
+        // Biometric Profile Overview Bar
+        const genderLabel = userProfile.gender === 'female' ? 'Feminin' : (userProfile.gender === 'male' ? 'Masculin' : 'Nespecificat');
+        const biometricsBarHTML = `
+            <div class="biometrics-bar">
+                <div class="bio-item">Vârstă: <b>${userProfile.age ? `${userProfile.age} ani` : '-'}</b></div>
+                <div class="bio-item">Sex: <b>${genderLabel}</b></div>
+                <div class="bio-item">Înălțime: <b>${userProfile.height ? `${userProfile.height} cm` : '-'}</b></div>
+                <div class="bio-item">Greutate: <b>${userProfile.weight ? `${userProfile.weight} kg` : '-'}</b></div>
+                <div class="bio-item">IMC: <b>${userMetrics.imc ? `${userMetrics.imc} (${userMetrics.imcCategory})` : '-'}</b></div>
+                <div class="bio-item">BMR Bazal: <b>${baseBmr} kcal/zi</b></div>
+                <div class="bio-item">TDEE Țintă: <b>${userMetrics.targetCalories || 2000} kcal/zi</b></div>
+            </div>
+        `;
 
         // Assemble Full Document HTML
         return `
@@ -319,7 +482,7 @@ export const PDFReport = {
                     align-items: center;
                     border-bottom: 2px solid #4f46e5;
                     padding-bottom: 6px;
-                    margin-bottom: 8px;
+                    margin-bottom: 6px;
                 }
                 .report-title-group h1 {
                     margin: 0;
@@ -340,6 +503,7 @@ export const PDFReport = {
                 .meta-pills {
                     display: flex;
                     gap: 6px;
+                    flex-wrap: wrap;
                 }
                 .meta-pill {
                     background: #f1f5f9;
@@ -352,6 +516,23 @@ export const PDFReport = {
                 }
                 .meta-pill b {
                     color: #4f46e5;
+                }
+
+                /* Biometrics Bar */
+                .biometrics-bar {
+                    display: flex;
+                    gap: 8px;
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    margin-bottom: 8px;
+                    font-size: 7.5px;
+                    color: #475569;
+                    flex-wrap: wrap;
+                }
+                .bio-item b {
+                    color: #0f172a;
                 }
 
                 /* Week days header */
@@ -512,7 +693,7 @@ export const PDFReport = {
 
                 /* Summary Table Section */
                 .summary-section {
-                    margin-top: 10px;
+                    margin-top: 8px;
                     border: 1px solid #cbd5e1;
                     border-radius: 6px;
                     overflow: hidden;
@@ -522,36 +703,36 @@ export const PDFReport = {
                 .section-header {
                     background: #0f172a;
                     color: #ffffff;
-                    padding: 6px 10px;
+                    padding: 5px 10px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                 }
                 .section-header h2 {
                     margin: 0;
-                    font-size: 11px;
+                    font-size: 10.5px;
                     font-weight: 700;
                 }
                 .section-header span {
-                    font-size: 8.5px;
+                    font-size: 8px;
                     color: #94a3b8;
                 }
 
                 table.summary-table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-size: 8px;
+                    font-size: 7.5px;
                 }
                 table.summary-table th {
                     background: #f1f5f9;
                     color: #334155;
                     font-weight: 700;
-                    padding: 4px 6px;
+                    padding: 3.5px 5px;
                     text-align: left;
                     border-bottom: 1px solid #cbd5e1;
                 }
                 table.summary-table td {
-                    padding: 3.5px 6px;
+                    padding: 3px 5px;
                     border-bottom: 1px solid #f1f5f9;
                     color: #1e293b;
                 }
@@ -563,18 +744,21 @@ export const PDFReport = {
                 }
                 .nut-name {
                     color: #0f172a;
-                    width: 22%;
+                    width: 20%;
                 }
                 .num {
                     font-family: 'Consolas', monospace;
                     text-align: right;
+                }
+                .font-bold {
+                    font-weight: 700;
                 }
                 .text-muted {
                     color: #64748b;
                 }
                 .status-cell {
                     text-align: center;
-                    width: 16%;
+                    width: 17%;
                 }
 
                 .badge-opt {
@@ -603,6 +787,8 @@ export const PDFReport = {
                 }
                 .badge-neutral {
                     color: #94a3b8;
+                    font-weight: 600;
+                    padding: 1px 4px;
                 }
 
                 /* Footer */
@@ -610,7 +796,7 @@ export const PDFReport = {
                     margin-top: 8px;
                     display: flex;
                     justify-content: space-between;
-                    font-size: 7.5px;
+                    font-size: 7px;
                     color: #94a3b8;
                     border-top: 1px solid #e2e8f0;
                     padding-top: 4px;
@@ -622,16 +808,22 @@ export const PDFReport = {
                 <!-- Main Header -->
                 <div class="report-header">
                     <div class="report-title-group">
-                        <h1>Nutriție <span>Pro</span> — Jurnal Nutrițional Lunar</h1>
-                        <p>Raport complet de activitate și aport nutrițional • <strong>${monthName} ${year}</strong></p>
+                        <h1>Nutriție <span>Pro</span> — ${totalsOnly ? 'Sinteză Balanță Metabolică & Totaluri' : 'Jurnal Nutrițional Lunar'}</h1>
+                        <p>Raport complet de activitate, aport alimentar și cheltuială metabolică • <strong>${monthName} ${year}</strong></p>
                     </div>
                     <div class="meta-pills">
-                        <div class="meta-pill">Zile înregistrate: <b>${daysWithLoggedMeals} / ${daysInMonth}</b></div>
-                        <div class="meta-pill">Total Calorii: <b>${totalMonthlyCalories} kcal</b></div>
-                        <div class="meta-pill">Medie Zilnică: <b>${Math.round(totalMonthlyCalories / activeDays)} kcal/zi</b></div>
+                        <div class="meta-pill">Zile active: <b>${daysWithLoggedMeals} / ${daysInMonth}</b></div>
+                        <div class="meta-pill">Consum Ingerat: <b>${totalMonthlyCalories} kcal</b></div>
+                        <div class="meta-pill">Sport Arse: <b style="color:#059669;">-${totalMonthlyBurnedSport} kcal</b></div>
+                        <div class="meta-pill">Necesar Total: <b>${totalMonthlyExpended} kcal</b></div>
+                        <div class="meta-pill">Balanță Lunară: <b style="color:${totalMonthlyNetBalance >= 0 ? '#b91c1c' : '#15803d'};">${totalMonthlyNetBalance >= 0 ? '+' : ''}${totalMonthlyNetBalance} kcal</b></div>
                     </div>
                 </div>
 
+                <!-- Biometrics Bar -->
+                ${biometricsBarHTML}
+
+                ${!totalsOnly ? `
                 <!-- Column Headers (7 Days of Week) -->
                 <div class="week-header-row">
                     ${DAY_NAMES_RO.map(d => `<div class="col-header">${d}</div>`).join('')}
@@ -642,10 +834,39 @@ export const PDFReport = {
                     ${calendarGridHTML}
                 </div>
 
-                <!-- Page Break for Clear Printable Summary -->
+                <!-- Page Break for Clean Printable Summary Tables -->
                 <div class="page-break"></div>
+                ` : ''}
 
-                <!-- End of Report: Nutrient Needs vs Consumed (Necesar / Consumat) -->
+                <!-- TABEL 1: BALANȚĂ METABOLICĂ ZILNICĂ (Consumat vs Necesar: BMR + Sport + TEF + Sezon) -->
+                <div class="summary-section">
+                    <div class="section-header" style="background: #1e1b4b;">
+                        <h2>🔥 Tabel Balanță Metabolică & Cheltuieli Energetice (Consum vs Necesar Zilnic)</h2>
+                        <span>Metabolism Bazal (BMR Mifflin-St Jeor) + Activitate Fizică + Digestie (TEF) + Factor Termic</span>
+                    </div>
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>Ziua / Data</th>
+                                <th style="text-align: right;">Aport Ingerat (Consumat)</th>
+                                <th style="text-align: right;">BMR Bazal (Ajustat)</th>
+                                <th style="text-align: right;">Digestie (TEF ~10%)</th>
+                                <th style="text-align: right;">Activitate Fizică / Sport</th>
+                                <th style="text-align: right;">Necesar Total (Consum)</th>
+                                <th style="text-align: right;">Balanță Netă (Diferență)</th>
+                                <th style="text-align: center;">Evaluare & Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${metabolicRowsHTML}
+                        </tbody>
+                        <tfoot>
+                            ${metabolicFooterHTML}
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- TABEL 2: RAPORT NECESAR NUTRIȚIONAL VS CANTITATE CONSUMATĂ (DZR / RDA) -->
                 <div class="summary-section">
                     <div class="section-header">
                         <h2>📊 Raport Necesar Nutrițional vs Cantitate Consumată</h2>
@@ -656,7 +877,7 @@ export const PDFReport = {
                             <tr>
                                 <th>Nutrient</th>
                                 <th style="text-align: right;">Total Consumat (${monthName})</th>
-                                <th style="text-align: right;">Medie / Zi Înregistrată</th>
+                                <th style="text-align: right;">Medie / Zi Activă</th>
                                 <th style="text-align: right;">DZR Zilnic Recomandat</th>
                                 <th style="text-align: right;">Necesar Total Lună</th>
                                 <th style="text-align: right;">% Realizat / Zi</th>
@@ -671,14 +892,14 @@ export const PDFReport = {
 
                 <!-- Health Profile Attached (if any) -->
                 ${healthProfile.length > 0 ? `
-                <div style="margin-top: 8px; padding: 6px 10px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 4px; font-size: 8px; color: #9f1239;">
+                <div style="margin-top: 8px; padding: 5px 10px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 4px; font-size: 7.5px; color: #9f1239;">
                     <strong>🩺 Parametri Medicali Activi:</strong> ${healthProfile.join(', ')}
                 </div>
                 ` : ''}
 
                 <!-- Footer Note -->
                 <div class="report-footer">
-                    <div>Generat automat din <strong>Nutriție Pro 2.1</strong> la data de: ${new Date().toLocaleString('ro-RO')}</div>
+                    <div>Generat automat din <strong>Nutriție Pro 2.3</strong> la data de: ${new Date().toLocaleString('ro-RO')} ${totalsOnly ? '• [Mod Doar Totaluri & Balanță Metabolică]' : ''}</div>
                     <div>Document privat generat local pe dispozitivul utilizatorului.</div>
                 </div>
             </div>
@@ -688,9 +909,9 @@ export const PDFReport = {
     },
 
     // Open print window / Direct PDF export
-    async exportToPDF(year, month) {
+    async exportToPDF(year, month, options = {}) {
         const monthName = MONTH_NAMES_RO[month];
-        const htmlContent = this.generateMonthlyReportHTML(year, month);
+        const htmlContent = this.generateMonthlyReportHTML(year, month, options);
 
         // Check if html2pdf is available
         if (window.html2pdf) {
@@ -700,7 +921,7 @@ export const PDFReport = {
 
             const opt = {
                 margin: [6, 8, 6, 8],
-                filename: `Raport_Nutritie_${monthName}_${year}.pdf`,
+                filename: `Raport_Nutritie_${monthName}_${year}${options.totalsOnly ? '_Totaluri' : ''}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
@@ -729,8 +950,8 @@ export const PDFReport = {
     },
 
     // Preview in dedicated iframe modal or new tab
-    previewReport(year, month) {
-        const htmlContent = this.generateMonthlyReportHTML(year, month);
+    previewReport(year, month, options = {}) {
+        const htmlContent = this.generateMonthlyReportHTML(year, month, options);
         const win = window.open('', '_blank');
         if (win) {
             win.document.open();
