@@ -221,23 +221,34 @@ export function parseRomanianFoodVoiceInput(transcript, pendingContext = '') {
 
 // Generic offline sports & physical activities database with MET coefficients
 export const localActivityDB = {
-    // 1. Atletism & Alergare
+    // 1. Gimnastică, Calisthenics & Exerciții cu Greutatea Corpului
+    "flotari": { name: "Flotări (Push-ups)", category: "Gimnastică & Calisthenics", met: 8.0, icon: "dumbbell" },
+    "genuflexiuni": { name: "Genuflexiuni (Squats / Greutatea Corpului)", category: "Gimnastică & Calisthenics", met: 6.0, icon: "user-check" },
+    "squat": { name: "Squats / Genuflexiuni (Bodyweight)", category: "Gimnastică & Calisthenics", met: 6.0, icon: "user-check" },
+    "genuflexiuni_greutati": { name: "Genuflexiuni cu Greutăți / Halteră (Squats)", category: "Fitness & Sală", met: 7.5, icon: "dumbbell" },
+    "tractiuni": { name: "Tracțiuni la Bară (Pull-ups / Chin-ups)", category: "Gimnastică & Calisthenics", met: 8.0, icon: "user-check" },
+    "flotari_paralele": { name: "Flotări la Paralele (Dips)", category: "Gimnastică & Calisthenics", met: 7.0, icon: "dumbbell" },
+    "fandari": { name: "Fandări (Lunges)", category: "Gimnastică & Calisthenics", met: 5.5, icon: "user-check" },
+    "abdomene_plank": { name: "Abdomene, Crunch & Plank (Scândură)", category: "Gimnastică & Calisthenics", met: 4.5, icon: "heart" },
+    "burpees": { name: "Burpees / Circuit Calisthenic Intens", category: "Gimnastică & Calisthenics", met: 8.5, icon: "flame" },
+
+    // 2. Atletism & Alergare
     "alergare_usoara": { name: "Alergare Ușoară / Jogging (~8 km/h)", category: "Atletism & Alergare", met: 8.0, icon: "footprints" },
     "alergare_moderata": { name: "Alergare Moderată (~10 km/h)", category: "Atletism & Alergare", met: 10.0, icon: "footprints" },
     "alergare_rapida": { name: "Alergare Rapidă / Sprint (>12 km/h)", category: "Atletism & Alergare", met: 12.5, icon: "zap" },
     "alergare_banda": { name: "Alergare pe Bandă / Înclinație", category: "Atletism & Alergare", met: 9.0, icon: "gauge" },
     "atletism_sarituri": { name: "Sărituri / Atletism Pistă", category: "Atletism & Alergare", met: 7.5, icon: "activity" },
 
-    // 2. Sală, Fitness & Forță
+    // 3. Sală, Fitness & Forță
     "fitness_greutati_moderat": { name: "Antrenament Forță / Greutăți (Moderat)", category: "Fitness & Sală", met: 5.0, icon: "dumbbell" },
     "fitness_greutati_intens": { name: "Antrenament Forță / Culturism (Intens)", category: "Fitness & Sală", met: 6.5, icon: "dumbbell" },
     "crossfit": { name: "CrossFit / Circuit Training", category: "Fitness & Sală", met: 8.5, icon: "flame" },
-    "calisthenics": { name: "Calisthenics / Greutatea Corpului", category: "Fitness & Sală", met: 6.0, icon: "user-check" },
+    "calisthenics": { name: "Calisthenics General / Exerciții Complexe", category: "Fitness & Sală", met: 6.5, icon: "user-check" },
     "pilates": { name: "Pilates / Core & Mobilitate", category: "Fitness & Sală", met: 3.5, icon: "heart" },
     "yoga": { name: "Yoga (Hatha / Vinyasa)", category: "Fitness & Sală", met: 3.0, icon: "sparkles" },
     "stretching": { name: "Stretching / Gimnastică Ușoară", category: "Fitness & Sală", met: 2.5, icon: "smile" },
 
-    // 3. Cardio & Anduranță
+    // 4. Cardio & Anduranță
     "ciclism_lejer": { name: "Ciclism Lejer (< 16 km/h)", category: "Cardio & Anduranță", met: 4.5, icon: "bike" },
     "ciclism_moderat": { name: "Ciclism Moderat / Spinning (16-20 km/h)", category: "Cardio & Anduranță", met: 7.0, icon: "bike" },
     "ciclism_intens": { name: "Ciclism Intens / Șosea (> 20 km/h)", category: "Cardio & Anduranță", met: 10.0, icon: "bike" },
@@ -247,7 +258,7 @@ export const localActivityDB = {
     "vaslit": { name: "Canotaj / Ergometru (Vâslit)", category: "Cardio & Anduranță", met: 7.0, icon: "anchor" },
     "urcat_scari": { name: "Urcat Scări / Stepper", category: "Cardio & Anduranță", met: 8.5, icon: "trending-up" },
 
-    // 4. Sporturi & Jocuri
+    // 5. Sporturi & Jocuri
     "fotbal": { name: "Fotbal (Meci / Antrenament)", category: "Sporturi & Jocuri", met: 7.5, icon: "trophy" },
     "baschet": { name: "Baschet (Meci)", category: "Sporturi & Jocuri", met: 7.0, icon: "trophy" },
     "tenis_camp": { name: "Tenis de Câmp", category: "Sporturi & Jocuri", met: 7.0, icon: "activity" },
@@ -255,7 +266,7 @@ export const localActivityDB = {
     "volei": { name: "Volei", category: "Sporturi & Jocuri", met: 4.5, icon: "activity" },
     "box_arte_martiale": { name: "Box / Kickboxing / Arte Marțiale", category: "Sporturi & Jocuri", met: 9.5, icon: "shield" },
 
-    // 5. Activități Cotidiene & Mers
+    // 6. Activități Cotidiene & Mers
     "mers_lejer": { name: "Mers Lejer / Plimbare (3-4 km/h)", category: "Activități Cotidiene", met: 3.0, icon: "footprints" },
     "mers_alert": { name: "Mers Alert / Marș (5-6 km/h)", category: "Activități Cotidiene", met: 4.5, icon: "footprints" },
     "drumetie": { name: "Drumeție Montană / Hiking", category: "Activități Cotidiene", met: 6.5, icon: "mountain" },

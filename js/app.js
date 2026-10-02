@@ -156,8 +156,9 @@ window.switchMainTab = (tabName) => {
 // --- Daily Physical Activities & Sport Controller ---
 function populateActivityTypeSelect() {
     const sel = document.getElementById('activity-type-select');
-    if (!sel || sel.children.length > 0) return;
+    if (!sel) return;
 
+    const currentVal = sel.value;
     const categories = {};
     for (const [key, act] of Object.entries(localActivityDB)) {
         const cat = act.category || 'Altele';
@@ -176,6 +177,9 @@ function populateActivityTypeSelect() {
             group.appendChild(opt);
         });
         sel.appendChild(group);
+    }
+    if (currentVal && localActivityDB[currentVal]) {
+        sel.value = currentVal;
     }
 }
 
