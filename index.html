@@ -299,10 +299,30 @@
 
                     <!-- Manual Food Item Input -->
                     <div class="bg-indigo-950/30 rounded-xl p-3.5 sm:p-4 border border-indigo-900/50 mb-5 relative">
-                        <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 flex justify-between items-center">
-                            <span>Adaugă Aliment</span>
-                            <span id="edit-mode-indicator" class="text-orange-400 hidden animate-pulse font-semibold">● Mod Editare</span>
-                        </label>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                <span>Adaugă Aliment</span>
+                                <span id="edit-mode-indicator" class="text-orange-400 hidden animate-pulse font-semibold ml-2">● Mod Editare</span>
+                            </label>
+                            <!-- Interactive Voice Dictation Button -->
+                            <button type="button" onclick="toggleMealVoiceInput()" id="meal-voice-btn" class="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg border border-indigo-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95" title="Dictează vocal alimentele (ex: '200g piept de pui și 150g orez')">
+                                <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-400" id="meal-voice-icon"></i>
+                                <span id="meal-voice-text" class="text-[11px]">Dictare Vocală</span>
+                            </button>
+                        </div>
+
+                        <!-- Live Voice Listening Status Banner -->
+                        <div id="voice-live-status" class="hidden mb-3 p-2.5 bg-indigo-950/90 border border-indigo-500/60 rounded-xl flex items-center justify-between gap-2 text-xs text-indigo-200 shadow-md">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                                <span id="voice-transcript-preview" class="font-medium text-white truncate">Te ascult... spune alimentele (ex: „200g pui, două ouă”)</span>
+                            </div>
+                            <button type="button" onclick="stopMealVoiceInput()" class="text-[10px] font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-lg border border-slate-700 transition-colors shrink-0">
+                                Stop
+                            </button>
+                        </div>
+
                         <div class="grid grid-cols-12 gap-2 sm:gap-3 items-end">
                             <div class="col-span-12 sm:col-span-5">
                                 <input type="text" id="food-name" placeholder="Aliment (ex: Piept de pui)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">

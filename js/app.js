@@ -1,7 +1,7 @@
 // ==========================================
 // Application Core Logic
 // ==========================================
-import { Storage, localFoodDB, localActivityDB } from './storage.js';
+import { Storage, localFoodDB, localActivityDB, estimateFoodLocally, parseRomanianFoodVoiceInput } from './storage.js';
 import { AI } from './ai.js';
 import { PDFReport } from './pdf.js';
 
@@ -14,6 +14,8 @@ let currentOpenNutrient = null;
 let healthProfile = [];
 let recognition = null;
 let isLoopActive = false;
+let mealVoiceRecognition = null;
+let isMealVoiceActive = false;
 
 // Helpers & Time of Day Meal Suggestion
 export function formatRomanianDateTime(dateTimeString) {
@@ -1161,28 +1163,7 @@ window.processFoodItem = async () => {
 
     // Fallback to local food database
     if (!resultData) {
-        const nLower = name.toLowerCase();
-        let match = localFoodDB.default;
-        for (const k in localFoodDB) {
-            if (nLower.includes(k) && k !== 'default') {
-                match = localFoodDB[k];
-                break;
-            }
-        }
-        let factor = qty / 100;
-        if (unit === 'bucati' || unit === 'buc') factor = qty * 0.6;
-        if (unit === 'ml') factor = qty / 100;
-
-        const nuts = [];
-        if (match.pro) nuts.push({ name: "Proteine", type: "Macro", qty: match.pro * factor, unit: "g", rda_percent: ((match.pro * factor / 50) * 100).toFixed(0), role: "Construcție musculară" });
-        if (match.carb) nuts.push({ name: "Carbohidrați", type: "Macro", qty: match.carb * factor, unit: "g", rda_percent: ((match.carb * factor / 275) * 100).toFixed(0), role: "Sursă primară de energie" });
-        if (match.fat) nuts.push({ name: "Grăsimi", type: "Macro", qty: match.fat * factor, unit: "g", rda_percent: ((match.fat * factor / 70) * 100).toFixed(0), role: "Sănătate celulară și hormonală" });
-        if (match.vitC) nuts.push({ name: "Vitamina C", type: "Micro", qty: match.vitC * factor, unit: "mg", rda_percent: ((match.vitC * factor / 80) * 100).toFixed(0), role: "Imunitate și colagen" });
-
-        resultData = {
-            calories: Math.round((match.cal || 100) * factor),
-            nutrients: nuts
-        };
+        resultData = estimateFoodLocally(name, qty, unit);
     }
 
     if (!resultData.nutrients) resultData.nutrients = [];
@@ -1245,6 +1226,212 @@ function exitFoodEditMode() {
     btn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i><span class="md:hidden">Adaugă</span>';
     btn.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center gap-2";
     refreshIcons();
+}
+
+// --- Voice Food Input (Instant 0ms Local NLP & Multi-food parsing) ---
+window.toggleMealVoiceInput = () => {
+    if (isMealVoiceActive) {
+        window.stopMealVoiceInput();
+        return;
+    }
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert("Recunoașterea vocală nu este suportată în acest browser. Recomandăm Google Chrome sau Microsoft Edge.");
+        return;
+    }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    try {
+        mealVoiceRecognition = new SR();
+        mealVoiceRecognition.lang = 'ro-RO';
+        mealVoiceRecognition.continuous = true;
+        mealVoiceRecognition.interimResults = true;
+        mealVoiceRecognition.maxAlternatives = 1;
+
+        const btn = document.getElementById('meal-voice-btn');
+        const icon = document.getElementById('meal-voice-icon');
+        const text = document.getElementById('meal-voice-text');
+        const statusBanner = document.getElementById('voice-live-status');
+        const preview = document.getElementById('voice-transcript-preview');
+
+        mealVoiceRecognition.onstart = () => {
+            isMealVoiceActive = true;
+            if (btn) {
+                btn.className = "px-2.5 py-1.5 rounded-lg font-bold text-xs bg-rose-950/80 text-rose-300 border border-rose-600/80 shadow-lg flex items-center gap-1.5 transition-all animate-pulse";
+            }
+            if (icon) icon.className = "w-3.5 h-3.5 text-rose-400";
+            if (text) text.innerText = "Ascult...";
+            if (statusBanner) statusBanner.classList.remove('hidden');
+            if (preview) preview.innerText = "Te ascult... spune alimentele (ex: „200g pui, două ouă”)";
+            refreshIcons();
+        };
+
+        mealVoiceRecognition.onresult = (event) => {
+            if (!event.results) return;
+
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const item = event.results[i];
+                const transcript = item[0].transcript;
+
+                if (item.isFinal) {
+                    handleVoiceFoodFinalTranscript(transcript.trim());
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            if (interimTranscript && preview) {
+                preview.innerText = `🎤 „${interimTranscript}”`;
+            }
+        };
+
+        mealVoiceRecognition.onerror = (err) => {
+            console.warn("Meal speech recognition event:", err.error);
+            if (err.error === 'not-allowed') {
+                alert("Accesul la microfon a fost refuzat. Permite accesul din setările browserului.");
+                window.stopMealVoiceInput();
+            }
+        };
+
+        mealVoiceRecognition.onend = () => {
+            if (isMealVoiceActive) {
+                window.stopMealVoiceInput();
+            }
+        };
+
+        mealVoiceRecognition.start();
+    } catch (e) {
+        console.error("Failed to start speech recognition:", e);
+        alert("Nu s-a putut porni microfonul.");
+        window.stopMealVoiceInput();
+    }
+};
+
+window.stopMealVoiceInput = () => {
+    isMealVoiceActive = false;
+    if (mealVoiceRecognition) {
+        try {
+            mealVoiceRecognition.stop();
+        } catch (e) {}
+        mealVoiceRecognition = null;
+    }
+
+    const btn = document.getElementById('meal-voice-btn');
+    const icon = document.getElementById('meal-voice-icon');
+    const text = document.getElementById('meal-voice-text');
+    const statusBanner = document.getElementById('voice-live-status');
+
+    if (btn) {
+        btn.className = "px-2.5 py-1.5 rounded-lg font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all";
+    }
+    if (icon) icon.className = "w-3.5 h-3.5 text-indigo-400";
+    if (text) text.innerText = "Dictare Vocală";
+    if (statusBanner) statusBanner.classList.add('hidden');
+    refreshIcons();
+};
+
+function handleVoiceFoodFinalTranscript(transcript) {
+    if (!transcript) return;
+    const preview = document.getElementById('voice-transcript-preview');
+    const sourceMsg = document.getElementById('data-source-msg');
+
+    const parsed = parseRomanianFoodVoiceInput(transcript);
+
+    // 1. Control Commands
+    if (parsed && parsed.isControlCommand) {
+        if (parsed.command === 'stop') {
+            window.stopMealVoiceInput();
+            if (sourceMsg) sourceMsg.innerHTML = `<span class="text-slate-400">🛑 Dictare oprită</span>`;
+            return;
+        }
+        if (parsed.command === 'delete_last') {
+            if (currentMeal.foods.length > 0) {
+                const removed = currentMeal.foods.pop();
+                renderCurrentMeal();
+                updateAnalysis();
+                updateDynamicCaloricGauge();
+                updateAIVisibility();
+                if (preview) preview.innerText = `🗑️ Șters: ${removed.name}`;
+                if (sourceMsg) sourceMsg.innerHTML = `<span class="text-amber-400">🗑️ Șters ultimul aliment (${removed.name})</span>`;
+            }
+            return;
+        }
+        if (parsed.command === 'save_meal') {
+            window.stopMealVoiceInput();
+            window.saveMeal();
+            return;
+        }
+    }
+
+    // 2. Food Items parsed
+    if (Array.isArray(parsed) && parsed.length > 0) {
+        const addedNames = [];
+        const startIndex = currentMeal.foods.length;
+
+        parsed.forEach((item, idx) => {
+            const est = estimateFoodLocally(item.name, item.quantity, item.unit);
+            const foodObj = {
+                name: item.name,
+                quantity: item.quantity,
+                unit: item.unit,
+                calories: est.calories,
+                nutrients: est.nutrients
+            };
+            currentMeal.foods.push(foodObj);
+            addedNames.push(`${item.quantity}${item.unit} ${item.name}`);
+
+            // Optional background AI enrichment
+            if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
+                enrichFoodWithAiInBackground(startIndex + idx);
+            }
+        });
+
+        renderCurrentMeal();
+        updateAnalysis();
+        updateDynamicCaloricGauge();
+        updateAIVisibility();
+
+        if (preview) {
+            preview.innerText = `✅ Adăugat: ${addedNames.join(', ')}`;
+        }
+        if (sourceMsg) {
+            sourceMsg.innerHTML = `<span class="text-emerald-400">🎤 +${parsed.length} aliment(e) adăugat(e) vocal</span>`;
+        }
+    } else {
+        if (preview) {
+            preview.innerText = `Nu am înțeles clar: „${transcript}”. Spune de exemplu „150g orez”`;
+        }
+    }
+}
+
+async function enrichFoodWithAiInBackground(index) {
+    if (!Storage.isAiAvailable() || !Storage.isAiNutrientCalcEnabled()) return;
+    const targetFood = currentMeal.foods[index];
+    if (!targetFood) return;
+
+    try {
+        const prompt = `Analizează nutrițional alimentul: "${targetFood.quantity} ${targetFood.unit} de ${targetFood.name}". Returnează JSON strict: { "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] }`;
+        const txt = await AI.callText(prompt);
+        const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+        if (s !== -1 && e !== -1) {
+            const aiData = JSON.parse(txt.substring(s, e + 1));
+            // Check if food at index still matches
+            if (currentMeal.foods[index] && currentMeal.foods[index].name === targetFood.name) {
+                if (aiData.calories !== undefined) currentMeal.foods[index].calories = aiData.calories;
+                if (Array.isArray(aiData.nutrients) && aiData.nutrients.length > 0) {
+                    currentMeal.foods[index].nutrients = aiData.nutrients;
+                }
+                renderCurrentMeal();
+                updateAnalysis();
+                updateDynamicCaloricGauge();
+                const sourceMsg = document.getElementById('data-source-msg');
+                if (sourceMsg) sourceMsg.innerHTML = `<span class="text-indigo-400">✨ ${targetFood.name} rafinat prin AI</span>`;
+            }
+        }
+    } catch (err) {
+        console.warn("Background AI food enrichment skipped:", err);
+    }
 }
 
 window.removeFood = (i) => {
