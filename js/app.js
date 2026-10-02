@@ -1916,20 +1916,35 @@ window.sendChatMessage = async () => {
     const loadingId = addMessageToChat("Gândesc...", 'ai', true);
 
     const mealContext = currentMeal.foods.length > 0
-        ? `Masa curentă are: ${JSON.stringify(currentMeal.foods.map(f => ({ name: f.name, qty: f.quantity, unit: f.unit })))}`
+        ? `Masa curentă conține: ${JSON.stringify(currentMeal.foods.map(f => ({ name: f.name, qty: f.quantity, unit: f.unit })))}`
         : `Masa este goală momentan.`;
-    const healthContext = healthProfile.length > 0 ? `Profil medical: ${healthProfile.join(', ')}.` : '';
+    const healthContext = healthProfile.length > 0 ? `Profil medical utilizator: ${healthProfile.join(', ')}.` : '';
 
-    const prompt = `Ești un asistent nutrițional prietenos și expert.
-Context masă: ${mealContext}
+    const prompt = `Ești un asistent nutrițional prietenos și expert în limba română.
+Context masă curentă: ${mealContext}
 Context medical: ${healthContext}
 Mesajul utilizatorului: "${msg}".
 
-Răspunde strict în JSON:
+REGULI OBLIGATORII:
+1. Dacă utilizatorul cere o masă, o rețetă, ingrediente sau modificarea mesei, pune alimentele în array-ul "ingredients".
+2. În proprietatea "reply", scrie EXCLUSIV un mesaj prietenos, scurt și natural în limba română (ex: "Ți-am adăugat în listă un mic dejun sănătos cu ovăz, lapte de migdale și afine.").
+3. NU afișa NICIODATĂ cod JSON, paranteze { } sau detalii tehnice în textul din "reply".
+
+Returnează STRICT JSON valid:
 {
-  "action": "generate/delete/modify/scale/chat",
-  "reply": "Răspunsul tău clar și concis către utilizator în limba română",
-  "ingredients": [ { "name": "string", "quantity": number, "unit": "string", "calories": number, "nutrients": [] } ],
+  "action": "generate" | "delete" | "modify" | "scale" | "chat",
+  "reply": "Răspuns prietenos în limba română fără cod sau JSON",
+  "ingredients": [
+    {
+      "name": "string",
+      "quantity": number,
+      "unit": "g" | "ml" | "buc",
+      "calories": number,
+      "nutrients": [
+        { "name": "string", "type": "Macro" | "Micro", "qty": number, "unit": "string", "rda_percent": number, "role": "string" }
+      ]
+    }
+  ],
   "target": "string",
   "new_quantity": number,
   "factor": number
@@ -1947,26 +1962,30 @@ Răspunde strict în JSON:
         speakBtn.innerHTML = `<i data-lucide="volume-2" class="w-3 h-3"></i> Ascultă`;
 
         let jsonStart = responseText.indexOf('{'), jsonEnd = responseText.lastIndexOf('}');
-        let finalText = "";
+        let cleanReply = "";
 
         if (jsonStart !== -1 && jsonEnd !== -1) {
             try {
                 const jsonResponse = JSON.parse(responseText.substring(jsonStart, jsonEnd + 1));
-                let replyText = jsonResponse.reply || "Am procesat cererea!";
+                let replyText = jsonResponse.reply || "";
 
-                if (jsonResponse.action === 'generate' && jsonResponse.ingredients) {
+                if ((jsonResponse.action === 'generate' || !jsonResponse.action) && Array.isArray(jsonResponse.ingredients) && jsonResponse.ingredients.length > 0) {
                     jsonResponse.ingredients.forEach(ing => {
                         if (!ing.nutrients) ing.nutrients = [];
                         if (!ing.unit) ing.unit = 'g';
                         currentMeal.foods.push(ing);
                     });
+                    if (!replyText || replyText.includes('{') || replyText.includes('"action"')) {
+                        replyText = `Am adăugat în lista mesei tale: ${jsonResponse.ingredients.map(i => `${i.name} (${i.quantity}${i.unit})`).join(', ')}.`;
+                    }
                 } else if (jsonResponse.action === 'delete') {
                     if (jsonResponse.target === 'all') {
                         currentMeal.foods = [];
-                        replyText = "Am golit lista mesei.";
+                        replyText = replyText || "Am golit lista mesei.";
                     } else if (jsonResponse.target) {
                         const t = jsonResponse.target.toLowerCase();
                         currentMeal.foods = currentMeal.foods.filter(f => !f.name.toLowerCase().includes(t));
+                        replyText = replyText || `Am șters ${jsonResponse.target} din listă.`;
                     }
                 } else if (jsonResponse.action === 'modify' && jsonResponse.target) {
                     const t = jsonResponse.target.toLowerCase();
@@ -1985,24 +2004,47 @@ Răspunde strict în JSON:
                     });
                 }
 
+                // Strip any accidental JSON snippets from the reply
+                cleanReply = replyText.replace(/```json[\s\S]*?```/gi, '')
+                                      .replace(/```[\s\S]*?```/gi, '')
+                                      .replace(/\{[\s\S]*?\}/g, '')
+                                      .replace(/"action":.*?,/gi, '')
+                                      .replace(/"reply":/gi, '')
+                                      .replace(/[{}"]/g, '')
+                                      .trim();
+
+                if (!cleanReply) {
+                    cleanReply = "Am procesat cererea și am actualizat lista mesei!";
+                }
+
                 renderCurrentMeal();
                 updateAnalysis();
-                if (bubble) bubble.innerText = replyText;
-                finalText = replyText;
+                updateDynamicCaloricGauge();
+                updateAIVisibility();
+                if (bubble) bubble.innerText = cleanReply;
                 document.getElementById('data-source-msg').innerHTML = `<span class="text-purple-400 font-semibold">💬 Comandă prin Asistent</span>`;
             } catch (e) {
-                if (bubble) bubble.innerText = responseText;
-                finalText = responseText;
+                cleanReply = responseText.replace(/```json[\s\S]*?```/gi, '')
+                                         .replace(/```[\s\S]*?```/gi, '')
+                                         .replace(/\{[\s\S]*?\}/g, '')
+                                         .replace(/[{}"]/g, '')
+                                         .trim();
+                if (!cleanReply) cleanReply = "Am adăugat alimentele în lista mesei tale.";
+                if (bubble) bubble.innerText = cleanReply;
             }
         } else {
-            if (bubble) bubble.innerText = responseText;
-            finalText = responseText;
+            cleanReply = responseText.replace(/```json[\s\S]*?```/gi, '')
+                                     .replace(/```[\s\S]*?```/gi, '')
+                                     .replace(/\{[\s\S]*?\}/g, '')
+                                     .trim();
+            if (!cleanReply) cleanReply = responseText;
+            if (bubble) bubble.innerText = cleanReply;
         }
 
         if (bubble) {
             bubble.appendChild(speakBtn);
             refreshIcons();
-            setTimeout(() => window.speakTextWithAutoListen(finalText, btnId, true), 200);
+            setTimeout(() => window.speakTextWithAutoListen(cleanReply, btnId, true), 200);
         }
     } catch (e) {
         const bubble = document.getElementById(loadingId);
