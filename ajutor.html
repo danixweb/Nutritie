@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ro" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghid & Centru de Ajutor | Nutriție Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        .help-card { transition: all 0.2s ease-in-out; }
+        .help-card:hover { border-color: #4f46e5; }
+        mark { background-color: #3b82f640; color: #60a5fa; padding: 0 4px; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white antialiased">
+
+    <!-- TOP STICKY HEADER -->
+    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="flex items-center gap-2.5 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                        <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
+                            <i data-lucide="leaf" class="w-5 h-5 text-emerald-400"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">Nutriție Pro</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">Centru Asistență</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-medium hidden sm:block">Manual Oficial de Utilizare & Întrebări Frecvente</p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Search input in header -->
+            <div class="flex-1 max-w-md hidden md:block">
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="help-search-input" oninput="filterHelpContent(this.value)" placeholder="Caută în ghid (ex: dictare vocală, calorii, cheie API, BMR)..." class="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-400 focus:border-indigo-500 focus:bg-slate-800 outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Back to App Button -->
+            <div class="flex items-center gap-2">
+                <a href="index.html" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Deschide Aplicația</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Mobile search bar -->
+        <div class="p-3 border-t border-slate-800 md:hidden bg-slate-900">
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="help-search-mobile" oninput="filterHelpContent(this.value)" placeholder="Caută în ghid..." class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:border-indigo-500 outline-none">
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO BANNER -->
+    <div class="bg-gradient-to-b from-indigo-950/40 via-slate-950 to-slate-950 border-b border-slate-800/80 py-10 px-4 sm:px-6">
+        <div class="max-w-4xl mx-auto text-center space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 text-xs font-semibold">
+                <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                <span>Documentație Completă v2.3</span>
+            </div>
+            <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">Cum te putem ajuta astăzi?</h1>
+            <p class="text-slate-400 text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed">
+                Ghidul complet pentru monitorizarea nutriției, dictare vocală fără latență, calcularea activităților sportive, analiza micronutrienților și integrarea cu Google Gemini AI.
+            </p>
+
+            <!-- Quick Jump Badges -->
+            <div class="flex flex-wrap items-center justify-center gap-2 pt-3">
+                <a href="#ghid-rapid" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Ghid Rapid
+                </a>
+                <a href="#dictare-vocala" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="mic" class="w-3.5 h-3.5 text-rose-400"></i> Dictare Vocală
+                </a>
+                <a href="#activitate-sport" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="activity" class="w-3.5 h-3.5 text-emerald-400"></i> Sport & TEF
+                </a>
+                <a href="#inteligenta-artificiala" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="bot" class="w-3.5 h-3.5 text-indigo-400"></i> Gemini AI
+                </a>
+                <a href="#faq" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="help-circle" class="w-3.5 h-3.5 text-sky-400"></i> FAQ
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER WITH SIDEBAR NAV -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col lg:flex-row gap-8">
+        
+        <!-- STICKY TABLE OF CONTENTS (DESKTOP) -->
+        <aside class="lg:w-64 shrink-0 hidden lg:block">
+            <div class="sticky top-24 space-y-1 bg-slate-900/60 p-3 rounded-2xl border border-slate-800 text-xs font-medium">
+                <div class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-lucide="list" class="w-3.5 h-3.5"></i> Cuprins Ghid
+                </div>
+                <nav class="space-y-0.5" id="toc-nav">
+                    <a href="#ghid-rapid" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i> 1. Ghid Rapid
+                    </a>
+                    <a href="#dictare-vocala" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="mic" class="w-4 h-4 text-rose-400"></i> 2. Dictare Vocală
+                    </a>
+                    <a href="#editor-mese" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="utensils" class="w-4 h-4 text-indigo-400"></i> 3. Editor Mese & Jurnal
+                    </a>
+                    <a href="#activitate-sport" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i> 4. Activitate Fizică & TEF
+                    </a>
+                    <a href="#inteligenta-artificiala" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i> 5. Configurare Gemini AI
+                    </a>
+                    <a href="#profil-biometric" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="gauge" class="w-4 h-4 text-sky-400"></i> 6. Profil Biometric & BMR
+                    </a>
+                    <a href="#rapoarte-backup" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="file-text" class="w-4 h-4 text-teal-400"></i> 7. Rapoarte PDF & Backup
+                    </a>
+                    <a href="#faq" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="help-circle" class="w-4 h-4 text-amber-400"></i> 8. Întrebări Frecvente
+                    </a>
+                    <a href="#scurtaturi" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i data-lucide="command" class="w-4 h-4 text-slate-400"></i> 9. Scurtături & Tastatură
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- ARTICLES AREA -->
+        <main class="flex-1 space-y-12 min-w-0" id="help-articles-container">
+
+            <!-- 1. GHID RAPID -->
+            <section id="ghid-rapid" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-700/80 flex items-center justify-center text-amber-400">
+                        <i data-lucide="zap" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">1. Ghid Rapid de Pornire</h2>
+                        <p class="text-xs text-slate-400">Învață să folosești Nutriție Pro în mai puțin de 2 minute.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                        <div class="flex items-center gap-2 text-indigo-400 font-bold text-xs">
+                            <span class="w-6 h-6 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-300 font-mono">1</span>
+                            Setează Profilul
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            Mergi în <strong>Meniu &gt; Setări &gt; Date personale</strong> și introdu vârsta, înălțimea, greutatea și nivelul de activitate pentru a calcula automat BMR și ținta calorică.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                        <div class="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                            <span class="w-6 h-6 rounded-full bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-300 font-mono">2</span>
+                            Adaugă o Masă
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            Apasă <strong>Dictare Vocală</strong> și spune alimentele (ex: <em>„pâine 100g și două ouă”</em>) sau completează manual numele și cantitatea în formular.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                        <div class="flex items-center gap-2 text-purple-400 font-bold text-xs">
+                            <span class="w-6 h-6 rounded-full bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-300 font-mono">3</span>
+                            Urmărește Balanța
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            Bara dinamică indică în timp real atingerea metabolismului bazal (BMR) și a necesarului zilnic (TDEE). Salvează masa pentru a o înregistra în jurnal.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. DICTARE VOCALĂ -->
+            <section id="dictare-vocala" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-rose-950/80 border border-rose-700/80 flex items-center justify-center text-rose-400">
+                        <i data-lucide="mic" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">2. Modul Dictare Vocală (Instant 0ms)</h2>
+                        <p class="text-xs text-slate-400">Adăugare rapidă prin voce, fără latență și fără obligativitatea AI-ului.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
+                    <div class="p-3.5 bg-rose-950/40 rounded-xl border border-rose-800/60 flex items-start gap-3">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-rose-400 shrink-0 mt-0.5"></i>
+                        <div>
+                            <div class="font-bold text-rose-200">Condiționare strictă pe Unitatea de Măsură</div>
+                            <p class="text-slate-400 text-[11px] mt-0.5">
+                                Pentru a preveni adăugările accidentale sau duplicatele când iei o pauză în vorbire, alimentul se adaugă în listă <strong>doar după ce spui o unitate de măsură</strong>. Dacă spui doar <em>„Pâine”</em>, aplicația afișează <em>„⏳ Aștept cantitatea și unitatea...”</em> și completează alimentul doar când specifici unitatea.
+                            </p>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-white text-sm">Unități de măsură recunoscute prin voce:</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-[11px]">
+                        <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 text-slate-200">
+                            <span class="text-indigo-400 font-bold block">Grame / Kg</span>
+                            grame, gram, g, kg, kilo
+                        </div>
+                        <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 text-slate-200">
+                            <span class="text-indigo-400 font-bold block">Mililitri / Litri</span>
+                            ml, mililitri, litri, l
+                        </div>
+                        <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 text-slate-200">
+                            <span class="text-indigo-400 font-bold block">Bucăți & Felii</span>
+                            buc, bucăți, felii, ouă, mere
+                        </div>
+                        <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 text-slate-200">
+                            <span class="text-indigo-400 font-bold block">Porții de Casă</span>
+                            cană, lingură, linguriță, farfurie
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-white text-sm">Comenzi Vocale de Control:</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 font-mono text-amber-300 font-bold">„Stop”</span> sau <span class="px-2 py-0.5 rounded bg-slate-800 font-mono text-amber-300 font-bold">„Gata”</span>
+                            <span class="text-slate-400">&mdash; Oprește sesiunea de ascultare a microfonului.</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 font-mono text-amber-300 font-bold">„Șterge ultimul”</span>
+                            <span class="text-slate-400">&mdash; Elimină imediat ultimul aliment adăugat în masa curentă.</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 font-mono text-amber-300 font-bold">„Salvează masa”</span>
+                            <span class="text-slate-400">&mdash; Oprește dictarea și salvează masa curentă în jurnal.</span>
+                        </li>
+                    </ul>
+
+                    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                        <span class="text-emerald-400 font-bold">💡 Exemplu dictare multiplă:</span>
+                        <p class="text-slate-300 italic mt-1 font-mono">„200g piept de pui, o cană de orez, două ouă și o farfurie de ciorbă”</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Aplicația recunoaște și adaugă instantaneu 4 alimente distincte cu gramajele și caloriile corespunzătoare.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. EDITOR MESE -->
+            <section id="editor-mese" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-950/80 border border-indigo-700/80 flex items-center justify-center text-indigo-400">
+                        <i data-lucide="utensils" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">3. Editor Mese & Jurnal Nutrițional</h2>
+                        <p class="text-xs text-slate-400">Gestionarea meselor, etichete calorice și filtrarea nutrienților.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <h3 class="font-bold text-white text-sm flex items-center gap-1.5">
+                                <i data-lucide="mouse-pointer-click" class="w-4 h-4 text-indigo-400"></i> Izolare Nutrienți pe Aliment
+                            </h3>
+                            <p class="text-slate-400">
+                                În lista de alimente din masa curentă, fă clic pe <strong>insigna cu calorii (kcal)</strong> a oricărui aliment. Panoul lateral se va deschide automat și va afișa exclusiv vitaminele, mineralele și macronutrienții ce aparțin <em>doar acelui aliment</em>.
+                            </p>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="font-bold text-white text-sm flex items-center gap-1.5">
+                                <i data-lucide="refresh-cw" class="w-4 h-4 text-purple-400"></i> Buton AI Refresh
+                            </h3>
+                            <p class="text-slate-400">
+                                Dacă AI-ul este activat, în panoul de nutrienți ai la dispoziție butonul <strong>AI Refresh</strong>. Acesta re-analizează instantaneu întreaga masă prin Gemini pentru a actualiza spectrul complet de micronutrienți.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. ACTIVITATE FIZICĂ & TEF -->
+            <section id="activitate-sport" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-950/80 border border-emerald-700/80 flex items-center justify-center text-emerald-400">
+                        <i data-lucide="activity" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">4. Activitate Fizică, Sport & Balanță Energetică</h2>
+                        <p class="text-xs text-slate-400">Calcul conform coeficienților MET, efect termic al digestiei (TEF) și confort termic pe 4 anotimpuri.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
+                    <p class="leading-relaxed">
+                        Tab-ul <strong>Activitate Zilnică</strong> funcționează la nivel de zi și permite adăugarea mai multor sesiuni de mișcare (antrenamente, alergare, mers, înot, ciclism, sporturi de echipă, etc.).
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                            <div class="font-bold text-emerald-400 mb-1">Formula MET Standardizată</div>
+                            <div class="font-mono text-[11px] text-slate-300">Kcal = MET &times; Greutate(kg) &times; Ore &times; Coef. Intensitate</div>
+                        </div>
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                            <div class="font-bold text-sky-400 mb-1">Efect Termic Digestiv (TEF)</div>
+                            <div class="text-[11px] text-slate-400">Consumul energetic al digestiei (~10% din totalul caloriilor ingerate în acea zi).</div>
+                        </div>
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                            <div class="font-bold text-amber-400 mb-1">Confort Termic Anotimpuri</div>
+                            <div class="text-[11px] text-slate-400">Ajustează consumul termic în funcție de anotimpul selectat (iarna +5%, vara +2%).</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. CONFIGURARE GEMINI AI -->
+            <section id="inteligenta-artificiala" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-purple-950/80 border border-purple-700/80 flex items-center justify-center text-purple-400">
+                        <i data-lucide="bot" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">5. Configurare Inteligență Artificială (Google Gemini)</h2>
+                        <p class="text-xs text-slate-400">Obținerea cheii API gratuite și deblocarea funcțiilor Chef Mode & Coach.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-white text-sm">Cum obții gratuit o cheie Google Gemini API:</h3>
+                        <ol class="list-decimal list-inside space-y-1.5 text-slate-300">
+                            <li>Accesează portalul oficial gratuit <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline font-semibold">Google AI Studio</a>.</li>
+                            <li>Autentifică-te cu contul tău Google și apasă pe <strong>„Create API Key”</strong>.</li>
+                            <li>Copiază cheia generată (începe de obicei cu <code>AIzaSy...</code>).</li>
+                            <li>În Nutriție Pro, deschide <strong>Meniu &gt; Setări &gt; Utilizare AI</strong>, lipește cheia în câmp și apasă <strong>Salvează & Conectează</strong>.</li>
+                        </ol>
+                    </div>
+
+                    <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+                        <div class="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> Funcții deblocate de AI:
+                        </div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
+                            <li><strong>Chef Mode:</strong> Sugestii creative de rețete și mod de preparare din alimentele din listă.</li>
+                            <li><strong>Nutri Coach:</strong> Evaluare holistică a sănătății, compatibilitate cu afecțiunile din profil și sfaturi.</li>
+                            <li><strong>Scanare Meniu & Poze:</strong> Detectare automată a alimentelor dintr-o fotografie cu farfuria sau meniul.</li>
+                            <li><strong>Calcul avansat micronutrienți:</strong> Determinarea spectrului complet de vitamine (A, B1-B12, C, D, E, K) și minerale.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. PROFIL BIOMETRIC -->
+            <section id="profil-biometric" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-sky-950/80 border border-sky-700/80 flex items-center justify-center text-sky-400">
+                        <i data-lucide="gauge" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">6. Profil Biometric & Formule de Calcul</h2>
+                        <p class="text-xs text-slate-400">Înțelegerea indicilor IMC, BMR (Metabolism Bazal) și TDEE.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
+                        <div class="font-bold text-white flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-indigo-400"></span> BMR (Metabolism Bazal)
+                        </div>
+                        <p class="text-slate-400">
+                            Numărul minim de calorii de care corpul are nevoie pentru funcțiile vitale în repaus absolut. Calculat cu ecuația <strong>Mifflin-St Jeor</strong>, adaptată după sex, greutate, înălțime și vârstă.
+                        </p>
+                    </div>
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
+                        <div class="font-bold text-white flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> TDEE (Consum Total Zilnic)
+                        </div>
+                        <p class="text-slate-400">
+                            BMR înmulțit cu factorul nivelului tău de activitate zilnică. Reprezintă pragul caloric de menținere a greutății corporale.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. RAPOARTE PDF & BACKUP -->
+            <section id="rapoarte-backup" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-teal-950/80 border border-teal-700/80 flex items-center justify-center text-teal-400">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">7. Rapoarte PDF, Salvare & Restaurare Date</h2>
+                        <p class="text-xs text-slate-400">Confidențialitate 100% locală, export medical și backup fără cont.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-3 text-xs text-slate-300">
+                    <p class="leading-relaxed">
+                        Toate datele tale sunt stocate <strong>exclusiv în browserul tău local (LocalStorage)</strong>. Nicio masă și niciun detaliu personal nu este trimis către servere externe.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                            <div class="font-bold text-teal-400 flex items-center gap-1.5">
+                                <i data-lucide="download" class="w-4 h-4"></i> Salvare Backup (.json)
+                            </div>
+                            <p class="text-[11px] text-slate-400">Descarcă un fișier JSON securizat ce conține toate mesele, activitățile și setările tale.</p>
+                        </div>
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                            <div class="font-bold text-indigo-400 flex items-center gap-1.5">
+                                <i data-lucide="printer" class="w-4 h-4"></i> Raport PDF Profesional
+                            </div>
+                            <p class="text-[11px] text-slate-400">Generează un document PDF elegant, structurat pentru medic, nutriționist sau arhivă personală.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. FAQ INTERACTIVE ACCORDION -->
+            <section id="faq" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-700/80 flex items-center justify-center text-amber-400">
+                        <i data-lucide="help-circle" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">8. Întrebări Frecvente (FAQ)</h2>
+                        <p class="text-xs text-slate-400">Răspunsuri la cele mai comune întrebări despre aplicație.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2.5" id="faq-list">
+                    <!-- FAQ 1 -->
+                    <div class="faq-item bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                        <button onclick="toggleFaq(this)" class="w-full text-left p-4 text-xs font-bold text-white flex justify-between items-center hover:bg-slate-800/60 transition-colors">
+                            <span>Aplicația funcționează dacă nu am conexiune la internet sau cheie AI?</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 faq-icon transition-transform"></i>
+                        </button>
+                        <div class="faq-answer hidden px-4 pb-4 text-xs text-slate-400 border-t border-slate-800/60 pt-3 leading-relaxed">
+                            <strong>Da, 100%!</strong> Nutriție Pro are o bază de date locală integrată și un motor de calcul offline. Poți adăuga mese, poți folosi dictarea vocală (în browserele compatibile) și poți calcula caloriile și BMR-ul complet offline.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 2 -->
+                    <div class="faq-item bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                        <button onclick="toggleFaq(this)" class="w-full text-left p-4 text-xs font-bold text-white flex justify-between items-center hover:bg-slate-800/60 transition-colors">
+                            <span>De ce nu mi se adaugă alimentul imediat când spun doar numele?</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 faq-icon transition-transform"></i>
+                        </button>
+                        <div class="faq-answer hidden px-4 pb-4 text-xs text-slate-400 border-t border-slate-800/60 pt-3 leading-relaxed">
+                            Aceasta este o măsură de siguranță pentru a preveni introducerile duplicate sau eronate. Sistemul așteaptă să specifici și cantitatea/unitatea de măsură (ex: <em>„100 de grame”</em>, <em>„două felii”</em>, <em>„o cană”</em>) înainte de a finaliza înregistrarea în masă.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 3 -->
+                    <div class="faq-item bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                        <button onclick="toggleFaq(this)" class="w-full text-left p-4 text-xs font-bold text-white flex justify-between items-center hover:bg-slate-800/60 transition-colors">
+                            <span>Cum pot transfera datele pe un alt telefon sau calculator?</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 faq-icon transition-transform"></i>
+                        </button>
+                        <div class="faq-answer hidden px-4 pb-4 text-xs text-slate-400 border-t border-slate-800/60 pt-3 leading-relaxed">
+                            Apasă pe <strong>Meniu &gt; Salvare (Backup)</strong> pe dispozitivul curent. Pe noul dispozitiv, deschide aplicația și apasă pe <strong>Meniu &gt; Încărcare (Import)</strong>, selectând fișierul descărcat anterior. Toate mesele și setările vor fi restaurate intacte.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. SCURTĂTURI & ERGONOMIE -->
+            <section id="scurtaturi" class="help-section scroll-mt-24 space-y-4">
+                <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+                        <i data-lucide="command" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">9. Sfaturi de Ergonomie</h2>
+                        <p class="text-xs text-slate-400">Interacțiune eficientă și navigare rapidă.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 text-xs text-slate-300 space-y-2">
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span>Adăugare rapidă la tastatură</span>
+                        <span class="font-mono text-[11px] text-indigo-400 font-bold">Apasă Enter în câmpul Cantitate</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span>Editare aliment existent</span>
+                        <span class="font-mono text-[11px] text-emerald-400 font-bold">Clic pe numele alimentului din listă</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span>Filtrare nutrienți aliment</span>
+                        <span class="font-mono text-[11px] text-purple-400 font-bold">Clic pe eticheta kcal a alimentului</span>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 px-4 mt-12 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <i data-lucide="leaf" class="w-4 h-4 text-emerald-400"></i>
+                <span class="text-slate-300 font-bold">Nutriție Pro</span>
+                <span>&copy; 2026 &bull; Asistență & Ghid Integrat</span>
+            </div>
+            <a href="index.html" class="text-indigo-400 hover:text-indigo-300 font-medium">Înapoi la Jurnalul Nutrițional &rarr;</a>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE JAVASCRIPT LOGIC -->
+    <script>
+        // Init Lucide icons
+        lucide.createIcons();
+
+        // FAQ Toggle Logic
+        function toggleFaq(btn) {
+            const answer = btn.nextElementSibling;
+            const icon = btn.querySelector('.faq-icon');
+            if (answer.classList.contains('hidden')) {
+                answer.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                answer.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        // Live Search / Filter across sections
+        function filterHelpContent(query) {
+            const q = (query || '').toLowerCase().trim();
+            const sections = document.querySelectorAll('.help-section');
+            const navLinks = document.querySelectorAll('#toc-nav a');
+
+            sections.forEach(sec => {
+                const text = sec.innerText.toLowerCase();
+                if (!q || text.includes(q)) {
+                    sec.classList.remove('hidden');
+                } else {
+                    sec.classList.add('hidden');
+                }
+            });
+
+            // Open FAQ if match inside FAQ
+            if (q.length > 2) {
+                document.querySelectorAll('.faq-item').forEach(item => {
+                    if (item.innerText.toLowerCase().includes(q)) {
+                        const ans = item.querySelector('.faq-answer');
+                        const icon = item.querySelector('.faq-icon');
+                        if (ans) ans.classList.remove('hidden');
+                        if (icon) icon.classList.add('rotate-180');
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
