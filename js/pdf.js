@@ -271,12 +271,24 @@ export const PDFReport = {
 
                         const isToday = (new Date().getFullYear() === year && new Date().getMonth() === month && new Date().getDate() === currentDay);
 
+                        let balanceBadgeHTML = '';
+                        if (stat && stat.hasData) {
+                            const sign = stat.dayNetBalance > 0 ? '+' : '';
+                            const isSurplus = stat.dayNetBalance > 0;
+                            const isDeficit = stat.dayNetBalance < 0;
+                            const badgeBg = isSurplus ? '#fff1f2' : (isDeficit ? '#ecfdf5' : '#f1f5f9');
+                            const badgeColor = isSurplus ? '#be123c' : (isDeficit ? '#047857' : '#475569');
+                            const badgeBorder = isSurplus ? '#fecdd3' : (isDeficit ? '#a7f3d0' : '#cbd5e1');
+
+                            balanceBadgeHTML = `<span class="day-cal-total" style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:1px 3px; border-radius:2px; font-weight:800; font-size:7.5px; font-family:monospace;" title="Balanță: Aport ${stat.dayCals} kcal - Consum ${stat.dayTotalExpenditure} kcal">${sign}${stat.dayNetBalance} kcal</span>`;
+                        }
+
                         calendarGridHTML += `
                             <div class="day-cell ${isToday ? 'current-day-cell' : ''}">
                                 <div class="day-header">
                                     <span class="day-num">${currentDay}</span>
                                     <span class="day-name">${DAY_NAMES_RO[dayCol]}</span>
-                                    ${stat.dayCals > 0 ? `<span class="day-cal-total">${stat.dayCals} kcal</span>` : ''}
+                                    ${balanceBadgeHTML}
                                 </div>
                                 <div class="day-content">
                                     ${mealsListHTML}
