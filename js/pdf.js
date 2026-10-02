@@ -850,15 +850,11 @@ export const PDFReport = {
                     ${DAY_NAMES_RO.map(d => `<div class="col-header">${d}</div>`).join('')}
                 </div>
 
-                <!-- Monthly 7-Column Calendar Grid -->
+                <!-- Monthly 7-Column Calendar Grid (Doar Mesele Lunii) -->
                 <div class="calendar-grid">
                     ${calendarGridHTML}
                 </div>
-
-                <!-- Page Break for Clean Printable Summary Tables -->
-                <div class="page-break"></div>
-                ` : ''}
-
+                ` : `
                 <!-- TABEL 1: BALANȚĂ METABOLICĂ ZILNICĂ (Consumat vs Necesar: BMR + Sport + TEF + Sezon) -->
                 <div class="summary-section">
                     <div class="section-header" style="background: #1e1b4b;">
@@ -910,6 +906,7 @@ export const PDFReport = {
                         </tbody>
                     </table>
                 </div>
+                `}
 
                 <!-- Health Profile Attached (if any) -->
                 ${healthProfile.length > 0 ? `
