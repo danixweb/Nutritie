@@ -163,6 +163,51 @@ function initCaloricCardState() {
     }
 }
 
+// --- Activity Summary Stats Collapse/Expand Toggle ---
+window.toggleActivityStats = () => {
+    const card = document.getElementById('dynamic-activity-stats-card');
+    const icon = document.getElementById('activity-stats-toggle-icon');
+    const btnText = document.getElementById('activity-stats-toggle-text');
+    if (!card) return;
+
+    const isHidden = card.classList.contains('hidden');
+    if (isHidden) {
+        card.classList.remove('hidden');
+        if (icon) {
+            icon.setAttribute('data-lucide', 'chevron-up');
+        }
+        if (btnText) btnText.innerText = 'Ascunde';
+        localStorage.setItem('activity_stats_collapsed', 'false');
+    } else {
+        card.classList.add('hidden');
+        if (icon) {
+            icon.setAttribute('data-lucide', 'chevron-down');
+        }
+        if (btnText) btnText.innerText = 'Statistici';
+        localStorage.setItem('activity_stats_collapsed', 'true');
+    }
+    refreshIcons();
+};
+
+function initActivityStatsState() {
+    const savedState = localStorage.getItem('activity_stats_collapsed');
+    // Implicit / Default este RETRACTATĂ (collapsed) dacă nu a fost explicit expandată de utilizator
+    const isExpanded = (savedState === 'false');
+    const card = document.getElementById('dynamic-activity-stats-card');
+    const icon = document.getElementById('activity-stats-toggle-icon');
+    const btnText = document.getElementById('activity-stats-toggle-text');
+
+    if (isExpanded) {
+        if (card) card.classList.remove('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-up');
+        if (btnText) btnText.innerText = 'Ascunde';
+    } else {
+        if (card) card.classList.add('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+        if (btnText) btnText.innerText = 'Statistici';
+    }
+}
+
 // --- Main Tab Navigation (Editor Mese vs Activitate Zilnică) ---
 window.switchMainTab = (tabName) => {
     const mealsBtn = document.getElementById('main-tab-meals-btn');
@@ -3022,6 +3067,7 @@ function initApp() {
     populateActivityTypeSelect();
     initActivityDate();
     initCaloricCardState();
+    initActivityStatsState();
     updateDynamicCaloricGauge();
     refreshIcons();
     console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile, Health Metrics & Daily Activities.");

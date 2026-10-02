@@ -432,15 +432,19 @@
                             </h2>
                             <p class="text-xs text-slate-400 mt-0.5">Înregistrează sesiuni de sport sau mișcare pe parcursul zilei.</p>
                         </div>
-                        <!-- Day Selector & Quick Today -->
+                        <!-- Day Selector & Quick Today & Toggle Stats Button -->
                         <div class="flex items-center gap-2">
                             <input type="date" id="activity-date-picker" onchange="handleActivityDateChange(this.value)" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-emerald-500">
                             <button onclick="setActivityDateToday()" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 font-semibold transition-colors">Azi</button>
+                            <button id="toggle-activity-stats-btn" onclick="toggleActivityStats()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm" title="Retractează / Expandează Statistica Zilei">
+                                <i id="activity-stats-toggle-icon" data-lucide="chevron-down" class="w-4 h-4 text-emerald-400 transition-transform"></i>
+                                <span id="activity-stats-toggle-text" class="text-[11px] font-medium">Statistici</span>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Daily Activity Summary Stat Cards -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+                    <!-- Daily Activity Summary Stat Cards (Default Retracted) -->
+                    <div id="dynamic-activity-stats-card" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5 transition-all duration-300">
                         <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
                             <div class="text-[9px] text-slate-400 font-bold uppercase">Sesiuni Zi</div>
                             <div id="act-stat-count" class="font-mono text-lg font-bold text-white mt-0.5">0</div>
