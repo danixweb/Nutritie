@@ -404,6 +404,7 @@ export const PDFReport = {
         // =========================================================================
         let nutrientRowsHTML = '';
         const allTrackedKeys = new Set([...Object.keys(DAILY_RDA), ...Object.keys(monthlyNutrients)]);
+        const criticalAlerts = [];
 
         allTrackedKeys.forEach(nutName => {
             const rdaInfo = DAILY_RDA[nutName];
@@ -420,12 +421,23 @@ export const PDFReport = {
             const percentDaily = rdaDaily ? ((dailyAvg / rdaDaily) * 100) : null;
 
             let statusBadge = '<span class="badge-neutral">-</span>';
+            let rowStyle = '';
+
             if (percentDaily !== null) {
-                if (percentDaily >= 85 && percentDaily <= 120) {
-                    statusBadge = '<span class="badge-opt">✓ Optim</span>';
+                if (totalConsumed === 0 || percentDaily === 0) {
+                    statusBadge = '<span class="badge-critical">🚨 Lipsă Totală (0%)</span>';
+                    rowStyle = 'background-color: #fff1f2;';
+                    criticalAlerts.push({ name: nutName, type: 'total_lack', message: `Lipsă totală înregistrată în această lună (0 ${unit} din ${rdaDaily} ${unit}/zi recomandat).` });
+                } else if (percentDaily < 50) {
+                    const deficitPercent = Math.max(0, 100 - percentDaily);
+                    statusBadge = `<span class="badge-critical">⚠️ Deficit Sever (-${deficitPercent.toFixed(0)}%)</span>`;
+                    rowStyle = 'background-color: #fff7ed;';
+                    criticalAlerts.push({ name: nutName, type: 'severe', message: `Nivel critic scăzut (${dailyAvg.toFixed(1)} ${unit}/zi vs ${rdaDaily} ${unit}/zi DZR - acoperire doar ${percentDaily.toFixed(0)}%).` });
                 } else if (percentDaily < 85) {
                     const deficitPercent = Math.max(0, 100 - percentDaily);
-                    statusBadge = `<span class="badge-def">▼ Deficit (${deficitPercent.toFixed(0)}%)</span>`;
+                    statusBadge = `<span class="badge-def">▼ Deficit (-${deficitPercent.toFixed(0)}%)</span>`;
+                } else if (percentDaily <= 120) {
+                    statusBadge = '<span class="badge-opt">✓ Optim</span>';
                 } else {
                     const surplusPercent = percentDaily - 100;
                     statusBadge = `<span class="badge-high">▲ Peste DZR (+${surplusPercent.toFixed(0)}%)</span>`;
@@ -433,7 +445,7 @@ export const PDFReport = {
             }
 
             nutrientRowsHTML += `
-                <tr>
+                <tr style="${rowStyle}">
                     <td class="nut-name"><strong>${nutName}</strong></td>
                     <td class="num">${totalConsumed.toFixed(1)} ${unit}</td>
                     <td class="num font-bold">${dailyAvg.toFixed(1)} ${unit}</td>
@@ -798,6 +810,14 @@ export const PDFReport = {
                     border-radius: 3px;
                     border: 1px solid #fecaca;
                 }
+                .badge-critical {
+                    background: #881337;
+                    color: #ffffff;
+                    font-weight: 800;
+                    padding: 1px 5px;
+                    border-radius: 3px;
+                    border: 1px solid #4c0519;
+                }
                 .badge-high {
                     background: #fef3c7;
                     color: #92400e;
@@ -906,12 +926,28 @@ export const PDFReport = {
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Panou Avertizări Carențe & Niveluri Critice -->
+                ${criticalAlerts.length > 0 ? `
+                <div style="margin-top: 8px; padding: 6px 10px; background: #fff1f2; border: 1.5px solid #fda4af; border-radius: 6px; page-break-inside: avoid;">
+                    <div style="font-size: 8.5px; font-weight: 800; color: #9f1239; margin-bottom: 3px; display: flex; align-items: center; gap: 4px;">
+                        <span>🚨 ATENȚIE MEDICALĂ / NUTRIȚIONALĂ: Carențe & Niveluri Critice Înregistrate (${criticalAlerts.length})</span>
+                    </div>
+                    <ul style="margin: 0; padding-left: 14px; font-size: 7.5px; color: #881337; line-height: 1.35;">
+                        ${criticalAlerts.map(a => `<li><strong>${a.name}:</strong> ${a.message}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : `
+                <div style="margin-top: 8px; padding: 4px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 7.5px; color: #166534;">
+                    <strong>✓ Niciun deficit critic detectat:</strong> Toți micronutrienții esențiali au un aport înregistrat de peste 50% din DZR recomandat.
+                </div>
+                `}
                 `}
 
                 <!-- Health Profile Attached (if any) -->
                 ${healthProfile.length > 0 ? `
-                <div style="margin-top: 8px; padding: 5px 10px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 4px; font-size: 7.5px; color: #9f1239;">
-                    <strong>🩺 Parametri Medicali Activi:</strong> ${healthProfile.join(', ')}
+                <div style="margin-top: 8px; padding: 5px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 7.5px; color: #334155;">
+                    <strong>🩺 Profil Medical / Afecțiuni Declarate:</strong> ${healthProfile.join(', ')}
                 </div>
                 ` : ''}
 
