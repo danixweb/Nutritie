@@ -1890,6 +1890,7 @@ window.editHistoryMeal = (id) => {
     currentMeal = JSON.parse(JSON.stringify(m));
     selectedFoodNutrientIndex = -1;
     const targetDate = currentMeal.date || getTodayDateTimeLocal();
+    expandedJournalDays.add(targetDate.slice(0, 10));
     document.getElementById('meal-datetime').value = targetDate;
     window.handleMealDateChange(targetDate);
     document.getElementById('meal-name').value = currentMeal.name || '';
@@ -1908,6 +1909,186 @@ window.editHistoryMeal = (id) => {
     refreshIcons();
 };
 
+// --- Journal Daily Cards & Accordion State ---
+let expandedJournalDays = new Set();
+let journalDaysInitialized = false;
+
+function formatRomanianDayHeader(dateKey) {
+    if (!dateKey) return { isToday: false, isYesterday: false, displayTitle: 'Dată nespecificată', badgeText: '' };
+    const parts = dateKey.split('-');
+    if (parts.length < 3) return { isToday: false, isYesterday: false, displayTitle: dateKey, badgeText: '' };
+    
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    if (isNaN(d.getTime())) return { isToday: false, isYesterday: false, displayTitle: dateKey, badgeText: '' };
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+    const days = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
+    const months = [
+        'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
+        'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
+    ];
+
+    const isToday = dateKey === todayStr;
+    const isYesterday = dateKey === yesterdayStr;
+    const dayName = days[d.getDay()];
+    const monthName = months[d.getMonth()];
+
+    let badgeText = '';
+    if (isToday) badgeText = 'Astăzi';
+    else if (isYesterday) badgeText = 'Ieri';
+
+    return {
+        isToday,
+        isYesterday,
+        displayTitle: `${dayName}, ${day} ${monthName} ${year}`,
+        shortTitle: `${dayName}, ${day} ${monthName}`,
+        badgeText
+    };
+}
+
+function getMealIconAndColor(mealName) {
+    const nameLower = (mealName || '').toLowerCase();
+    if (nameLower.includes('dejun') || nameLower.includes('mic')) {
+        return { icon: 'sun', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+    } else if (nameLower.includes('prânz') || nameLower.includes('pranz')) {
+        return { icon: 'utensils', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
+    } else if (nameLower.includes('cină') || nameLower.includes('cina')) {
+        return { icon: 'moon', color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' };
+    } else if (nameLower.includes('gustar') || nameLower.includes('snack') || nameLower.includes('noapte')) {
+        return { icon: 'apple', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };
+    }
+    return { icon: 'utensils-crossed', color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' };
+}
+
+function evaluateDayCaloricGoal(consumedCals, targetCalories, deficit) {
+    const target = targetCalories > 0 ? targetCalories : 2000;
+    const diff = consumedCals - target;
+    const pct = Math.min(Math.round((consumedCals / target) * 100), 100);
+
+    let goalType = 'maintenance';
+    if (deficit < 0) goalType = 'loss';
+    else if (deficit > 0) goalType = 'gain';
+
+    let statusColor = 'text-emerald-400';
+    let badgeBg = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+    let barColor = 'bg-emerald-500';
+    let statusText = '';
+    let isGoalMet = true;
+
+    if (goalType === 'loss') {
+        // Slăbire (Deficit): Verde dacă a consumat sub sau egal cu ținta de deficit. Roșu dacă a depășit
+        if (diff <= 0) {
+            isGoalMet = true;
+            statusColor = 'text-emerald-400';
+            badgeBg = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+            barColor = 'bg-emerald-500';
+            statusText = diff === 0 
+                ? '🎯 Țintă atinsă la fix' 
+                : `🟢 În deficit (-${Math.abs(diff)} kcal rămase)`;
+        } else {
+            isGoalMet = false;
+            statusColor = 'text-rose-400';
+            badgeBg = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+            barColor = 'bg-rose-500';
+            statusText = `⚠️ Depășire cu +${diff} kcal`;
+        }
+    } else if (goalType === 'gain') {
+        // Creștere (Surplus): Verde dacă a atins sau depășit ținta. Galben dacă e sub
+        if (diff >= 0) {
+            isGoalMet = true;
+            statusColor = 'text-emerald-400';
+            badgeBg = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+            barColor = 'bg-emerald-500';
+            statusText = diff === 0 
+                ? '🎯 Surplus atins la fix' 
+                : `🟢 Surplus atins (+${diff} kcal)`;
+        } else {
+            isGoalMet = false;
+            statusColor = 'text-amber-400';
+            badgeBg = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+            barColor = 'bg-amber-500';
+            statusText = `⚡ Sub surplus (${Math.abs(diff)} kcal necesare)`;
+        }
+    } else {
+        // Menținere: Verde dacă e în interval optim, Roșu dacă depășește
+        if (Math.abs(diff) <= 150 || diff <= 0) {
+            isGoalMet = true;
+            statusColor = 'text-emerald-400';
+            badgeBg = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+            barColor = 'bg-emerald-500';
+            statusText = diff <= 0 
+                ? `🟢 În echilibru (${Math.abs(diff)} kcal rămase)` 
+                : `🟢 În echilibru (+${diff} kcal)`;
+        } else {
+            isGoalMet = false;
+            statusColor = 'text-rose-400';
+            badgeBg = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+            barColor = 'bg-rose-500';
+            statusText = `⚠️ Peste menținere (+${diff} kcal)`;
+        }
+    }
+
+    return {
+        consumedCals,
+        targetCalories: target,
+        diff,
+        pct,
+        goalType,
+        statusColor,
+        badgeBg,
+        barColor,
+        statusText,
+        isGoalMet
+    };
+}
+
+window.toggleJournalDay = (dateKey) => {
+    if (expandedJournalDays.has(dateKey)) {
+        expandedJournalDays.delete(dateKey);
+    } else {
+        expandedJournalDays.add(dateKey);
+    }
+    renderHistory();
+};
+
+window.toggleAllJournalDays = () => {
+    historyData = Storage.getMeals();
+    const dayKeys = Array.from(new Set(historyData.map(m => (m.date || '').slice(0, 10)).filter(Boolean)));
+    const allExpanded = dayKeys.length > 0 && dayKeys.every(k => expandedJournalDays.has(k));
+    
+    if (allExpanded) {
+        expandedJournalDays.clear();
+    } else {
+        dayKeys.forEach(k => expandedJournalDays.add(k));
+    }
+    renderHistory();
+};
+
+window.addMealForDate = (dateKey) => {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const fullDate = `${dateKey}T${h}:${m}`;
+    
+    window.resetForm();
+    const dateInput = document.getElementById('meal-datetime');
+    if (dateInput) {
+        dateInput.value = fullDate;
+        window.handleMealDateChange(fullDate);
+    }
+    expandedJournalDays.add(dateKey);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
 window.deleteMeal = (id) => {
     if (confirm("Sigur dorești să ștergi această masă din jurnal?")) {
         Storage.deleteMeal(id);
@@ -1919,44 +2100,271 @@ window.deleteMeal = (id) => {
 
 function renderHistory() {
     const container = document.getElementById('meal-history');
+    const daysBadge = document.getElementById('journal-days-count-badge');
+    const toggleAllBtn = document.getElementById('btn-toggle-all-journal-days');
+    const toggleAllText = document.getElementById('toggle-all-journal-text');
+    const toggleAllIcon = document.getElementById('toggle-all-journal-icon');
+
     if (!container) return;
     container.innerHTML = '';
     historyData = Storage.getMeals();
 
     if (historyData.length === 0) {
-        container.innerHTML = `<div class="text-center py-10 text-slate-600 text-sm border border-slate-800/80 rounded-xl bg-slate-900/30">Nu există mese în jurnal. Datele salvate vor apărea aici.</div>`;
+        if (daysBadge) daysBadge.classList.add('hidden');
+        if (toggleAllBtn) toggleAllBtn.classList.add('hidden');
+        container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm border border-slate-800/80 rounded-2xl bg-slate-900/40 px-4">
+            <i data-lucide="book-open" class="w-8 h-8 mx-auto mb-2.5 text-slate-600"></i>
+            <div class="font-semibold text-slate-400">Nu există mese în jurnal</div>
+            <div class="text-xs text-slate-600 mt-1">Înregistrează și salvează mese pentru a urmări istoricul zilnic.</div>
+        </div>`;
+        refreshIcons();
         return;
     }
 
-    historyData.forEach(meal => {
-        const totalCal = (meal.foods || []).reduce((acc, f) => acc + (f.calories || 0), 0);
-        const d = document.createElement('div');
-        d.className = "bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm hover:border-indigo-500/50 transition-all";
-        const dateFormatted = formatRomanianDateTime(meal.date);
-        
-        d.innerHTML = `
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h4 class="font-bold text-white text-sm">${meal.name || 'Masă'}</h4>
-                    <div class="text-xs text-indigo-300 font-medium capitalize flex items-center gap-1.5 mt-0.5">
-                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-400"></i>
-                        <span>${dateFormatted}</span>
+    // Group meals by date (YYYY-MM-DD)
+    const mealsByDate = {};
+    historyData.forEach(m => {
+        const rawDate = m.date || getTodayDateTimeLocal();
+        const dateKey = rawDate.slice(0, 10);
+        if (!mealsByDate[dateKey]) mealsByDate[dateKey] = [];
+        mealsByDate[dateKey].push(m);
+    });
+
+    // Sort days descending (newest first)
+    const sortedDays = Object.keys(mealsByDate).sort((a, b) => b.localeCompare(a));
+
+    // Initialize default expanded state: expand newest day if first render
+    if (!journalDaysInitialized) {
+        if (sortedDays.length > 0) {
+            expandedJournalDays.add(sortedDays[0]);
+        }
+        journalDaysInitialized = true;
+    }
+
+    // Update Header Badges & Toggle Button
+    if (daysBadge) {
+        daysBadge.classList.remove('hidden');
+        daysBadge.innerText = `${sortedDays.length} ${sortedDays.length === 1 ? 'zi salvată' : 'zile salvate'}`;
+    }
+
+    const allExpanded = sortedDays.every(k => expandedJournalDays.has(k));
+    if (toggleAllBtn) {
+        toggleAllBtn.classList.remove('hidden');
+        if (toggleAllText) toggleAllText.innerText = allExpanded ? 'Restrânge Tot' : 'Extinde Tot';
+        if (toggleAllIcon) {
+            toggleAllIcon.setAttribute('data-lucide', allExpanded ? 'chevrons-down-up' : 'chevrons-up-down');
+        }
+    }
+
+    // Get user metrics for target calories & goal evaluation
+    const userProfile = Storage.getUserProfile();
+    const metrics = Storage.calculateMetrics(userProfile);
+    const targetCalories = metrics.targetCalories || 2000;
+    const deficit = (userProfile && userProfile.targetDeficit !== null && userProfile.targetDeficit !== undefined && userProfile.targetDeficit !== '' && !isNaN(userProfile.targetDeficit)) 
+        ? parseInt(userProfile.targetDeficit) 
+        : 0;
+
+    sortedDays.forEach(dateKey => {
+        const dayMeals = mealsByDate[dateKey];
+        // Sort day's meals chronologically
+        dayMeals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+        // Calculate day nutritional totals
+        let dayTotalCals = 0;
+        let dayProtein = 0;
+        let dayCarbs = 0;
+        let dayFat = 0;
+
+        dayMeals.forEach(meal => {
+            (meal.foods || []).forEach(f => {
+                dayTotalCals += (f.calories || 0);
+                (f.nutrients || []).forEach(n => {
+                    const nLower = (n.name || '').toLowerCase();
+                    const q = parseFloat(n.qty) || 0;
+                    if (nLower.includes('prot')) dayProtein += q;
+                    if (nLower.includes('carb') || nLower.includes('gluc')) dayCarbs += q;
+                    if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('lipid') || nLower.includes('fat')) dayFat += q;
+                });
+            });
+        });
+
+        // Check if there are sports activities for this day
+        const dayActivities = Storage.getActivities ? Storage.getActivities(dateKey) : [];
+        const sportBurned = dayActivities.reduce((acc, a) => acc + (parseFloat(a.burnedCalories || a.caloriesBurned) || 0), 0);
+
+        const headerInfo = formatRomanianDayHeader(dateKey);
+        const calEval = evaluateDayCaloricGoal(dayTotalCals, targetCalories, deficit);
+        const isExpanded = expandedJournalDays.has(dateKey);
+
+        const dayCard = document.createElement('div');
+        dayCard.className = `rounded-2xl border transition-all duration-200 overflow-hidden ${
+            isExpanded 
+                ? 'bg-slate-900 border-slate-700/90 shadow-lg shadow-black/20 ring-1 ring-slate-700/50' 
+                : 'bg-slate-900/80 border-slate-800/80 hover:border-slate-700/80 hover:bg-slate-900 shadow-sm'
+        }`;
+
+        // Header Row (Clickable Accordion Trigger)
+        const headerEl = document.createElement('div');
+        headerEl.className = "p-3.5 sm:p-4 cursor-pointer select-none transition-colors hover:bg-slate-800/40";
+        headerEl.onclick = () => window.toggleJournalDay(dateKey);
+
+        headerEl.innerHTML = `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <!-- Left: Day Info & Badges -->
+                <div class="flex items-start sm:items-center gap-2.5 min-w-0">
+                    <div class="p-2 rounded-xl bg-slate-800 border border-slate-700 text-indigo-400 shrink-0">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h4 class="font-bold text-white text-sm sm:text-base leading-tight">${headerInfo.displayTitle}</h4>
+                            ${headerInfo.badgeText ? `<span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${headerInfo.isToday ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}">${headerInfo.badgeText}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-400 mt-1 flex-wrap">
+                            <span class="font-medium text-slate-300">${dayMeals.length} ${dayMeals.length === 1 ? 'masă' : 'mese'}</span>
+                            <span class="text-slate-600">•</span>
+                            <span class="text-slate-400">P: <strong class="text-slate-200">${dayProtein.toFixed(0)}g</strong></span>
+                            <span class="text-slate-400">C: <strong class="text-slate-200">${dayCarbs.toFixed(0)}g</strong></span>
+                            <span class="text-slate-400">G: <strong class="text-slate-200">${dayFat.toFixed(0)}g</strong></span>
+                            ${sportBurned > 0 ? `
+                                <span class="text-slate-600">•</span>
+                                <span class="text-amber-400 font-medium flex items-center gap-1">
+                                    <i data-lucide="flame" class="w-3 h-3 text-amber-400"></i> -${Math.round(sportBurned)} kcal sport
+                                </span>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
-                <div class="bg-slate-800 text-slate-300 font-mono text-xs px-2 py-1 rounded font-bold border border-slate-700">
-                    ${totalCal} kcal
+
+                <!-- Right: Calorie Synthesis & Accordion Icon -->
+                <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+                    <div class="text-left sm:text-right">
+                        <div class="flex items-baseline gap-1 sm:justify-end">
+                            <span class="font-mono font-bold text-base sm:text-lg ${calEval.statusColor}">${dayTotalCals.toLocaleString('ro-RO')}</span>
+                            <span class="text-xs text-slate-400 font-medium">/ ${targetCalories.toLocaleString('ro-RO')} kcal</span>
+                        </div>
+                        <div class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border mt-0.5 ${calEval.badgeBg}">
+                            <span>${calEval.statusText}</span>
+                        </div>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-800/80 border border-slate-700/80 text-slate-400 hover:text-white transition-all ml-1">
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-indigo-400' : ''}"></i>
+                    </div>
                 </div>
             </div>
-            <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800">
-                <div class="text-xs text-slate-500">${(meal.foods || []).length} ingrediente</div>
-                <div class="flex gap-2">
-                    <button onclick="editHistoryMeal('${meal.id}')" class="text-xs text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded transition-colors font-medium">Editează</button>
-                    <button onclick="deleteMeal('${meal.id}')" class="text-slate-400 hover:text-red-400 p-1 transition-colors" title="Șterge"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </div>
+
+            <!-- Mini Progress Bar Indicator -->
+            <div class="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden mt-3">
+                <div class="${calEval.barColor} h-1.5 rounded-full transition-all duration-500" style="width: ${Math.min(calEval.pct, 100)}%"></div>
             </div>
         `;
-        container.appendChild(d);
+        dayCard.appendChild(headerEl);
+
+        // Expandable Meals Container
+        if (isExpanded) {
+            const bodyEl = document.createElement('div');
+            bodyEl.className = "border-t border-slate-800/90 p-3.5 sm:p-4 bg-slate-950/40 space-y-3";
+
+            // List of meals
+            dayMeals.forEach(meal => {
+                const totalMealCal = (meal.foods || []).reduce((acc, f) => acc + (f.calories || 0), 0);
+                let mealProt = 0, mealCarb = 0, mealFat = 0;
+                (meal.foods || []).forEach(f => {
+                    (f.nutrients || []).forEach(n => {
+                        const nLower = (n.name || '').toLowerCase();
+                        const q = parseFloat(n.qty) || 0;
+                        if (nLower.includes('prot')) mealProt += q;
+                        if (nLower.includes('carb') || nLower.includes('gluc')) mealCarb += q;
+                        if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('lipid') || nLower.includes('fat')) mealFat += q;
+                    });
+                });
+
+                const mealStyle = getMealIconAndColor(meal.name);
+                let timeStr = '';
+                if (meal.date && meal.date.includes('T')) {
+                    const t = meal.date.split('T')[1];
+                    if (t) timeStr = t.slice(0, 5);
+                }
+
+                const mealItem = document.createElement('div');
+                mealItem.className = "bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-sm hover:border-slate-700 transition-all";
+
+                const foodsChips = (meal.foods || []).map(f => `
+                    <span class="inline-flex items-center gap-1 bg-slate-800 text-slate-300 text-[11px] px-2 py-0.5 rounded-lg border border-slate-700">
+                        <span>${f.name}</span>
+                        <span class="text-indigo-300 font-mono">(${f.quantity}${f.unit || 'g'}${f.calories ? ` • ${f.calories} kcal` : ''})</span>
+                    </span>
+                `).join('');
+
+                mealItem.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-start gap-2 mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-1.5 rounded-lg ${mealStyle.bg} ${mealStyle.color} shrink-0">
+                                <i data-lucide="${mealStyle.icon}" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-white text-sm">${meal.name || 'Masă'}</h5>
+                                <div class="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                    ${timeStr ? `<i data-lucide="clock" class="w-3 h-3 text-slate-500"></i> <span>${timeStr}</span> <span class="text-slate-600">•</span>` : ''}
+                                    <span>${(meal.foods || []).length} ${(meal.foods || []).length === 1 ? 'ingredient' : 'ingrediente'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="bg-slate-800 text-slate-200 font-mono text-xs px-2.5 py-1 rounded-lg font-bold border border-slate-700">
+                                ${totalMealCal} kcal
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Macro breakdown for meal -->
+                    <div class="flex items-center gap-3 text-[11px] text-slate-400 my-2 pt-2 border-t border-slate-800/60">
+                        <span>Proteine: <strong class="text-slate-300">${mealProt.toFixed(0)}g</strong></span>
+                        <span class="text-slate-600">•</span>
+                        <span>Carbohidrați: <strong class="text-slate-300">${mealCarb.toFixed(0)}g</strong></span>
+                        <span class="text-slate-600">•</span>
+                        <span>Grăsimi: <strong class="text-slate-300">${mealFat.toFixed(0)}g</strong></span>
+                    </div>
+
+                    <!-- Foods Badges -->
+                    ${foodsChips ? `
+                        <div class="flex flex-wrap gap-1.5 mt-2.5">
+                            ${foodsChips}
+                        </div>
+                    ` : ''}
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800/80">
+                        <span class="text-[11px] text-slate-500">ID: ${meal.id.slice(-6)}</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="editHistoryMeal('${meal.id}')" class="text-xs text-white bg-indigo-600 hover:bg-indigo-500 active:scale-95 px-3 py-1.5 rounded-lg transition-all font-semibold flex items-center gap-1 shadow-sm">
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Modifică
+                            </button>
+                            <button onclick="deleteMeal('${meal.id}')" class="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all" title="Șterge Masa">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                bodyEl.appendChild(mealItem);
+            });
+
+            // Quick Add Meal Footer for this date
+            const addMealRow = document.createElement('div');
+            addMealRow.className = "flex justify-center pt-2";
+            addMealRow.innerHTML = `
+                <button onclick="addMealForDate('${dateKey}')" class="text-xs bg-slate-900 hover:bg-slate-800 text-indigo-300 hover:text-indigo-200 border border-slate-800 hover:border-indigo-500/50 px-4 py-2 rounded-xl flex items-center gap-1.5 font-medium transition-all shadow-sm">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Adaugă altă masă în această zi (${headerInfo.shortTitle})
+                </button>
+            `;
+            bodyEl.appendChild(addMealRow);
+
+            dayCard.appendChild(bodyEl);
+        }
+
+        container.appendChild(dayCard);
     });
+
     refreshIcons();
 }
 

@@ -407,10 +407,19 @@
 
                 <!-- Saved Journal Section -->
                 <div class="mt-8 pb-16 max-w-3xl mx-auto">
-                    <div class="flex justify-between items-center mb-4 px-1">
-                        <h3 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                            <i data-lucide="history" class="w-5 h-5 text-slate-400"></i> Jurnal Mese Salvate
-                        </h3>
+                    <div class="flex flex-wrap justify-between items-center mb-4 px-1 gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <h3 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i> Jurnal Mese Salvate
+                            </h3>
+                            <span id="journal-days-count-badge" class="hidden text-xs bg-slate-800/90 text-indigo-300 px-2.5 py-0.5 rounded-full border border-slate-700/80 font-medium"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-toggle-all-journal-days" onclick="toggleAllJournalDays()" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm">
+                                <i id="toggle-all-journal-icon" data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                <span id="toggle-all-journal-text">Extinde Tot</span>
+                            </button>
+                        </div>
                     </div>
                     <div id="meal-history" class="space-y-3">
                         <div class="flex flex-col items-center justify-center py-8 text-slate-500">
