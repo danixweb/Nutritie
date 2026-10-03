@@ -1744,6 +1744,10 @@ window.resetForm = () => {
     document.getElementById('editor-title').innerText = "Editor Masă";
     document.getElementById('cancel-edit-btn').classList.add('hidden');
     document.getElementById('save-meal-btn').innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvează Masa';
+    const editorEl = document.getElementById('meal-editor');
+    if (editorEl) {
+        editorEl.classList.remove('ring-2', 'ring-indigo-500', 'border-indigo-500');
+    }
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
@@ -1887,25 +1891,61 @@ window.saveMeal = window.saveMealToLocal;
 window.editHistoryMeal = (id) => {
     const m = historyData.find(x => x.id === id);
     if (!m) return;
+    
+    // Switch to meals tab if in another tab
+    if (typeof window.switchMainTab === 'function') {
+        window.switchMainTab('meals');
+    }
+    
     currentMeal = JSON.parse(JSON.stringify(m));
     selectedFoodNutrientIndex = -1;
     const targetDate = currentMeal.date || getTodayDateTimeLocal();
     expandedJournalDays.add(targetDate.slice(0, 10));
-    document.getElementById('meal-datetime').value = targetDate;
+    
+    const dtInput = document.getElementById('meal-datetime');
+    if (dtInput) dtInput.value = targetDate;
     window.handleMealDateChange(targetDate);
-    document.getElementById('meal-name').value = currentMeal.name || '';
-    document.getElementById('editor-title').innerText = "Modifică Masă";
-    document.getElementById('cancel-edit-btn').classList.remove('hidden');
-    document.getElementById('save-meal-btn').innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizează Masa';
+    
+    const nameInput = document.getElementById('meal-name');
+    if (nameInput) nameInput.value = currentMeal.name || '';
+    
+    const titleEl = document.getElementById('editor-title');
+    if (titleEl) titleEl.innerText = "Modifică Masă: " + (currentMeal.name || 'Fără titlu');
+    
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+    
+    const saveBtn = document.getElementById('save-meal-btn');
+    if (saveBtn) saveBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizează Masa';
+    
+    // Add visual highlight to editor container
+    const editorEl = document.getElementById('meal-editor');
+    if (editorEl) {
+        editorEl.classList.add('ring-2', 'ring-indigo-500', 'border-indigo-500');
+    }
+    
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
+    updateDynamicCaloricGauge();
+    
     if (currentMeal.foods.length > 0 && Storage.isAiAvailable()) {
-        document.getElementById('ai-actions-panel').classList.remove('hidden');
+        document.getElementById('ai-actions-panel')?.classList.remove('hidden');
     } else {
-        document.getElementById('ai-actions-panel').classList.add('hidden');
+        document.getElementById('ai-actions-panel')?.classList.add('hidden');
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Scroll directly to the meal editor and focus the top meal name input
+    if (editorEl) {
+        editorEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (nameInput) {
+        setTimeout(() => {
+            nameInput.focus();
+            nameInput.select();
+        }, 150);
+    }
+    
     refreshIcons();
 };
 
