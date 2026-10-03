@@ -2525,7 +2525,7 @@ function renderHistory() {
         return;
     }
 
-    filteredDays.forEach(dateKey => {
+    filteredDays.forEach((dateKey, dayIdx) => {
         const dayMeals = mealsByDate[dateKey];
         // Sort day's meals chronologically
         dayMeals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -2556,24 +2556,27 @@ function renderHistory() {
         const headerInfo = formatRomanianDayHeader(dateKey);
         const calEval = evaluateDayCaloricGoal(dayTotalCals, targetCalories, deficit);
         const isExpanded = expandedJournalDays.has(dateKey);
+        const isEven = dayIdx % 2 === 0;
 
         const dayCard = document.createElement('div');
         dayCard.className = `rounded-2xl border transition-all duration-200 overflow-hidden ${
             isExpanded 
                 ? 'bg-slate-900 border-slate-700/90 shadow-lg shadow-black/20 ring-1 ring-slate-700/50' 
-                : 'bg-slate-900/80 border-slate-800/80 hover:border-slate-700/80 hover:bg-slate-900 shadow-sm'
+                : (isEven 
+                    ? 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-slate-900 shadow-sm' 
+                    : 'bg-slate-950/90 border-slate-800/70 hover:border-slate-700/90 hover:bg-slate-900/60 shadow-sm')
         }`;
 
         // Header Row (Clickable Accordion Trigger)
         const headerEl = document.createElement('div');
-        headerEl.className = "p-3.5 sm:p-4 cursor-pointer select-none transition-colors hover:bg-slate-800/40";
+        headerEl.className = `p-3.5 sm:p-4 cursor-pointer select-none transition-colors ${isEven ? 'hover:bg-slate-800/40' : 'hover:bg-slate-800/30'}`;
         headerEl.onclick = () => window.toggleJournalDay(dateKey);
 
         headerEl.innerHTML = `
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <!-- Left: Day Info & Badges -->
                 <div class="flex items-start sm:items-center gap-2.5 min-w-0">
-                    <div class="p-2 rounded-xl bg-slate-800 border border-slate-700 text-indigo-400 shrink-0">
+                    <div class="p-2 rounded-xl ${isEven ? 'bg-slate-800 border-slate-700 text-indigo-400' : 'bg-slate-900 border-slate-800 text-indigo-400'} shrink-0">
                         <i data-lucide="calendar" class="w-4 h-4"></i>
                     </div>
                     <div class="min-w-0">
@@ -2624,7 +2627,7 @@ function renderHistory() {
         // Expandable Meals Container
         if (isExpanded) {
             const bodyEl = document.createElement('div');
-            bodyEl.className = "border-t border-slate-800/90 p-3.5 sm:p-4 bg-slate-950/40 space-y-3";
+            bodyEl.className = `border-t border-slate-800/90 p-3.5 sm:p-4 ${isEven ? 'bg-slate-950/50' : 'bg-slate-950/70'} space-y-3`;
 
             // List of meals
             dayMeals.forEach(meal => {
