@@ -874,7 +874,11 @@ export const PDFReport = {
                 <div class="calendar-grid">
                     ${calendarGridHTML}
                 </div>
-                ` : `
+
+                <!-- Page Break to Page 2 for Synthesis & Nutrient Analysis in Full Mode -->
+                <div class="page-break"></div>
+                ` : ''}
+
                 <!-- TABEL 1: BALANȚĂ METABOLICĂ ZILNICĂ (Consumat vs Necesar: BMR + Sport + TEF + Sezon) -->
                 <div class="summary-section">
                     <div class="section-header" style="background: #1e1b4b;">
@@ -907,7 +911,7 @@ export const PDFReport = {
                 <div class="summary-section">
                     <div class="section-header">
                         <h2>📊 Raport Necesar Nutrițional vs Cantitate Consumată</h2>
-                        <span>Analiză raportată la Doza Zilnică Recomandată (DZR / RDA)</span>
+                        <span>Analiză raportată la Doza Zilnică Recomandată (DZR / RDA) • Evidențiere Lipsuri & Carențe</span>
                     </div>
                     <table class="summary-table">
                         <thead>
@@ -941,7 +945,6 @@ export const PDFReport = {
                 <div style="margin-top: 8px; padding: 4px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 7.5px; color: #166534;">
                     <strong>✓ Niciun deficit critic detectat:</strong> Toți micronutrienții esențiali au un aport înregistrat de peste 50% din DZR recomandat.
                 </div>
-                `}
                 `}
 
                 <!-- Health Profile Attached (if any) -->
