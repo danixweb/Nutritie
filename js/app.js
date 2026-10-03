@@ -2096,6 +2096,7 @@ window.clearCustomDateSelection = () => {
 window.applyJournalFilterPreset = (presetType) => {
     activeJournalFilter = { type: presetType, customDates: [] };
     if (Storage.saveJournalFilter) Storage.saveJournalFilter(activeJournalFilter);
+    expandedJournalDays.clear();
     window.closeJournalFilterModal();
     renderHistory();
 };
@@ -2110,6 +2111,7 @@ window.applyCustomCalendarFilter = () => {
         customDates: Array.from(tempSelectedDates)
     };
     if (Storage.saveJournalFilter) Storage.saveJournalFilter(activeJournalFilter);
+    expandedJournalDays.clear();
     window.closeJournalFilterModal();
     renderHistory();
 };
@@ -2118,6 +2120,7 @@ window.resetJournalFilterToAll = () => {
     activeJournalFilter = { type: 'all', customDates: [] };
     if (Storage.saveJournalFilter) Storage.saveJournalFilter(activeJournalFilter);
     tempSelectedDates.clear();
+    expandedJournalDays.clear();
     window.closeJournalFilterModal();
     renderHistory();
 };
@@ -2354,13 +2357,29 @@ window.toggleJournalDay = (dateKey) => {
 
 window.toggleAllJournalDays = () => {
     historyData = Storage.getMeals();
-    const dayKeys = Array.from(new Set(historyData.map(m => (m.date || '').slice(0, 10)).filter(Boolean)));
-    const allExpanded = dayKeys.length > 0 && dayKeys.every(k => expandedJournalDays.has(k));
+    const mealsByDate = {};
+    historyData.forEach(m => {
+        const rawDate = m.date || getTodayDateTimeLocal();
+        const dateKey = rawDate.slice(0, 10);
+        if (!mealsByDate[dateKey]) mealsByDate[dateKey] = [];
+        mealsByDate[dateKey].push(m);
+    });
+    const sortedDays = Object.keys(mealsByDate).sort((a, b) => b.localeCompare(a));
+    const userProfile = Storage.getUserProfile();
+    const metrics = Storage.calculateMetrics(userProfile);
+    const targetCalories = metrics.targetCalories || 2000;
+    const deficit = (userProfile && userProfile.targetDeficit !== null && userProfile.targetDeficit !== undefined && userProfile.targetDeficit !== '' && !isNaN(userProfile.targetDeficit)) 
+        ? parseInt(userProfile.targetDeficit) 
+        : 0;
+    const currentFilter = Storage.getJournalFilter ? Storage.getJournalFilter() : (activeJournalFilter || { type: 'last_7_days', customDates: [] });
+    const filteredDays = sortedDays.filter(dateKey => dateMatchesFilter(dateKey, currentFilter, mealsByDate[dateKey], targetCalories, deficit));
+    
+    const allExpanded = filteredDays.length > 0 && filteredDays.every(k => expandedJournalDays.has(k));
     
     if (allExpanded) {
         expandedJournalDays.clear();
     } else {
-        dayKeys.forEach(k => expandedJournalDays.add(k));
+        filteredDays.forEach(k => expandedJournalDays.add(k));
     }
     renderHistory();
 };
@@ -2465,13 +2484,7 @@ function renderHistory() {
         }
     }
 
-    // Initialize default expanded state: expand newest day if first render
-    if (!journalDaysInitialized) {
-        if (filteredDays.length > 0) {
-            expandedJournalDays.add(filteredDays[0]);
-        }
-        journalDaysInitialized = true;
-    }
+    journalDaysInitialized = true;
 
     // Update Header Badges & Toggle Button
     if (daysBadge) {
