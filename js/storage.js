@@ -13,7 +13,8 @@ const STORAGE_KEYS = {
     CUSTOM_MODEL_NAME: 'gemini_custom_model_name',
     AI_ENABLED: 'gemini_ai_enabled',
     AI_CONNECTED: 'gemini_ai_connected',
-    AI_NUTRIENT_CALC: 'gemini_ai_nutrient_calc'
+    AI_NUTRIENT_CALC: 'gemini_ai_nutrient_calc',
+    JOURNAL_FILTER: 'nutritie_journal_filter'
 };
 
 // Local food database for offline calorie / macro estimation
@@ -770,6 +771,25 @@ export const Storage = {
 
     setAiNutrientCalcEnabled(enabled) {
         localStorage.setItem(STORAGE_KEYS.AI_NUTRIENT_CALC, enabled ? 'true' : 'false');
+    },
+
+    // --- Saved Journal Smart Filter Persistence ---
+    getJournalFilter() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEYS.JOURNAL_FILTER);
+            if (!data) return { type: 'last_7_days', customDates: [] };
+            return JSON.parse(data);
+        } catch (e) {
+            return { type: 'last_7_days', customDates: [] };
+        }
+    },
+
+    saveJournalFilter(filter) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.JOURNAL_FILTER, JSON.stringify(filter));
+        } catch (e) {
+            console.error("Failed to save journal filter", e);
+        }
     },
 
     // --- Full Mirror Export / Import (100% Data, Settings, Meals, Sports & API Key) ---

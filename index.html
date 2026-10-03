@@ -418,7 +418,7 @@
 
                 <!-- Saved Journal Section -->
                 <div class="mt-8 pb-16 max-w-3xl mx-auto">
-                    <div class="flex flex-wrap justify-between items-center mb-4 px-1 gap-2">
+                    <div class="flex flex-wrap justify-between items-center mb-3 px-1 gap-2">
                         <div class="flex items-center gap-2.5">
                             <h3 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
                                 <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i> Jurnal Mese Salvate
@@ -426,9 +426,36 @@
                             <span id="journal-days-count-badge" class="hidden text-xs bg-slate-800/90 text-indigo-300 px-2.5 py-0.5 rounded-full border border-slate-700/80 font-medium"></span>
                         </div>
                         <div class="flex items-center gap-2">
+                            <button id="btn-journal-filter" onclick="openJournalFilterModal()" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm">
+                                <i data-lucide="filter" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                <span>Filtrează</span>
+                                <span id="journal-filter-active-dot" class="hidden w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            </button>
                             <button id="btn-toggle-all-journal-days" onclick="toggleAllJournalDays()" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm">
                                 <i id="toggle-all-journal-icon" data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-indigo-400"></i>
                                 <span id="toggle-all-journal-text">Extinde Tot</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Filter Banner Bar (Hidden when 'all') -->
+                    <div id="journal-active-filter-bar" class="hidden mb-4 p-2.5 sm:p-3 bg-slate-900/90 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-2 shadow-sm transition-all">
+                        <div class="flex items-center gap-2 min-w-0 text-xs">
+                            <div class="p-1 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
+                                <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                            </div>
+                            <div class="text-slate-300 truncate">
+                                <span>Filtru activ:</span>
+                                <strong id="journal-active-filter-name" class="text-white ml-1 font-semibold">Ultimele 7 zile</strong>
+                                <span id="journal-filtered-count-text" class="text-indigo-300 text-[11px] ml-1.5"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="openJournalFilterModal()" class="text-[11px] text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-md border border-slate-700 transition-colors">
+                                Schimbă
+                            </button>
+                            <button onclick="resetJournalFilterToAll()" class="text-[11px] text-rose-300 hover:text-rose-200 bg-rose-950/40 hover:bg-rose-900/50 px-2 py-1 rounded-md border border-rose-800/50 transition-colors">
+                                Resetează
                             </button>
                         </div>
                     </div>
@@ -1054,6 +1081,131 @@
                     <button onclick="closePDFModal()" class="text-slate-400 text-xs sm:text-sm px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors">Închide</button>
                     <button id="download-pdf-btn" onclick="downloadMonthlyPDF()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-4 sm:px-5 rounded-lg transition-all shadow-md flex items-center gap-2">
                         <i data-lucide="download" class="w-4 h-4"></i> Descarcă PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Journal Smart Calendar Filter Modal -->
+    <div id="journal-filter-modal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl p-4 sm:p-6 border border-slate-800 flex flex-col max-h-[90vh] transition-all">
+            <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="filter" class="w-5 h-5 text-emerald-400"></i> Filtrare Inteligentă Jurnal
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Selectează rapid zile din calendar sau folosește filtrele inteligente.</p>
+                </div>
+                <button onclick="closeJournalFilterModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-4">
+                <!-- 1. Quick Smart Presets -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Preset-uri Rapide Inteligente</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                        <button type="button" onclick="applyJournalFilterPreset('last_7_days')" class="journal-preset-btn text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500/50 transition-all text-xs font-semibold text-slate-200 flex flex-col gap-1" data-preset="last_7_days">
+                            <span class="flex items-center gap-1.5 text-indigo-300">
+                                <i data-lucide="calendar-days" class="w-3.5 h-3.5"></i> 7 Zile
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-normal">Ultima săptămână</span>
+                        </button>
+                        <button type="button" onclick="applyJournalFilterPreset('weekends')" class="journal-preset-btn text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500/50 transition-all text-xs font-semibold text-slate-200 flex flex-col gap-1" data-preset="weekends">
+                            <span class="flex items-center gap-1.5 text-amber-300">
+                                <i data-lucide="sun-medium" class="w-3.5 h-3.5"></i> Weekend-uri
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-normal">Sâmbătă & Duminică</span>
+                        </button>
+                        <button type="button" onclick="applyJournalFilterPreset('weekdays')" class="journal-preset-btn text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500/50 transition-all text-xs font-semibold text-slate-200 flex flex-col gap-1" data-preset="weekdays">
+                            <span class="flex items-center gap-1.5 text-cyan-300">
+                                <i data-lucide="briefcase" class="w-3.5 h-3.5"></i> Lucrătoare
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-normal">Luni până Vineri</span>
+                        </button>
+                        <button type="button" onclick="applyJournalFilterPreset('current_month')" class="journal-preset-btn text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500/50 transition-all text-xs font-semibold text-slate-200 flex flex-col gap-1" data-preset="current_month">
+                            <span class="flex items-center gap-1.5 text-emerald-300">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> Luna Curentă
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-normal">Luna activă</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 mt-2">
+                        <button type="button" onclick="applyJournalFilterPreset('surplus_only')" class="journal-preset-btn text-left p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-rose-500/50 transition-all text-xs font-semibold text-slate-200 flex items-center justify-between" data-preset="surplus_only">
+                            <span class="flex items-center gap-1 text-rose-300 text-[11px]">
+                                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Peste Țintă / Surplus
+                            </span>
+                        </button>
+                        <button type="button" onclick="applyJournalFilterPreset('target_met')" class="journal-preset-btn text-left p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500/50 transition-all text-xs font-semibold text-slate-200 flex items-center justify-between" data-preset="target_met">
+                            <span class="flex items-center gap-1 text-emerald-300 text-[11px]">
+                                <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> În Țintă / Deficit
+                            </span>
+                        </button>
+                        <button type="button" onclick="applyJournalFilterPreset('all')" class="journal-preset-btn text-left p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-indigo-500/50 transition-all text-xs font-semibold text-slate-200 flex items-center justify-between col-span-2 sm:col-span-1" data-preset="all">
+                            <span class="flex items-center gap-1 text-slate-300 text-[11px]">
+                                <i data-lucide="globe" class="w-3.5 h-3.5"></i> Toate Zilele
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Interactive Month Calendar for Custom Multi-Select -->
+                <div class="bg-slate-950/70 rounded-xl p-3.5 border border-slate-800">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeFilterCalendarMonth(-1)" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                            <span id="filter-cal-month-title" class="font-bold text-white text-xs sm:text-sm min-w-[130px] text-center">-</span>
+                            <button onclick="changeFilterCalendarMonth(1)" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <button onclick="setFilterCalendarToToday()" class="text-indigo-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-md border border-slate-700 font-semibold transition-colors">Luna Curentă</button>
+                        </div>
+                    </div>
+
+                    <!-- Day of week headers -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 mb-1.5">
+                        <span>Lu</span><span>Ma</span><span>Mi</span><span>Jo</span><span>Vi</span><span class="text-amber-400">Sâ</span><span class="text-amber-400">Du</span>
+                    </div>
+
+                    <!-- Calendar Day Cells Grid -->
+                    <div id="filter-cal-grid" class="grid grid-cols-7 gap-1"></div>
+
+                    <!-- Legend -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-slate-400">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span>Are mese salvate</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3.5 h-3.5 rounded bg-indigo-600 border border-indigo-400 inline-block"></span>
+                            <span>Zi selectată</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full border border-indigo-400"></span>
+                            <span>Azi</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selection Status Info -->
+                <div id="filter-selection-status" class="text-xs text-slate-300 flex items-center justify-between p-2.5 bg-slate-800/40 rounded-xl border border-slate-800">
+                    <span id="filter-selection-text">Zile selectate: 0</span>
+                    <button onclick="clearCustomDateSelection()" class="text-[11px] text-indigo-300 hover:text-white underline">Deselectează tot</button>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="flex flex-wrap justify-between items-center gap-2 pt-3 border-t border-slate-800 mt-2">
+                <button onclick="resetJournalFilterToAll()" class="text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl border border-slate-700 transition-colors">
+                    Resetează (Toate Zilele)
+                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeJournalFilterModal()" class="text-slate-400 text-xs px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
+                        Anulează
+                    </button>
+                    <button onclick="applyCustomCalendarFilter()" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs py-2 px-5 rounded-xl transition-all shadow-md flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i> Aplică Selecția
                     </button>
                 </div>
             </div>

@@ -1871,6 +1871,11 @@ Returnează strict un JSON array cu obiectele în aceeași ordine:
 
     try {
         Storage.saveMeal(payload);
+        const dateKey = (payload.date || '').slice(0, 10);
+        if (dateKey) {
+            sessionSavedDateKeys.add(dateKey);
+            expandedJournalDays.add(dateKey);
+        }
         window.resetForm();
         renderHistory();
         // Visual notification toast/feedback
@@ -1949,9 +1954,256 @@ window.editHistoryMeal = (id) => {
     refreshIcons();
 };
 
-// --- Journal Daily Cards & Accordion State ---
+// --- Journal Daily Cards & Smart Filter State ---
 let expandedJournalDays = new Set();
 let journalDaysInitialized = false;
+let sessionSavedDateKeys = new Set();
+
+let activeJournalFilter = Storage.getJournalFilter ? Storage.getJournalFilter() : { type: 'last_7_days', customDates: [] };
+let filterCalendarYear = new Date().getFullYear();
+let filterCalendarMonth = new Date().getMonth();
+let tempSelectedDates = new Set();
+
+function getFilterLabel(filter) {
+    if (!filter || filter.type === 'all') return 'Toate Zilele';
+    switch (filter.type) {
+        case 'last_7_days': return 'Ultimele 7 zile';
+        case 'weekends': return 'Weekend-uri (Sâmbătă & Duminică)';
+        case 'weekdays': return 'Zile lucrătoare (Luni - Vineri)';
+        case 'current_month': return 'Luna Curentă';
+        case 'previous_month': return 'Luna Anterioară';
+        case 'surplus_only': return 'Peste Țintă / Surplus';
+        case 'target_met': return 'În Țintă / Deficit';
+        case 'custom': 
+            const count = (filter.customDates || []).length;
+            return `Selecție Calendar (${count} ${count === 1 ? 'zi' : 'zile'})`;
+        default: return 'Filtru activ';
+    }
+}
+
+function dateMatchesFilter(dateKey, filter, dayMeals, targetCalories, deficit) {
+    // Current session saved dates are always visible
+    if (sessionSavedDateKeys.has(dateKey)) return true;
+
+    if (!filter || filter.type === 'all') return true;
+
+    const parts = dateKey.split('-');
+    if (parts.length < 3) return true;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    if (isNaN(d.getTime())) return true;
+
+    const today = new Date();
+    const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dayZero = new Date(year, month, day);
+    const diffDays = Math.round((todayZero - dayZero) / (1000 * 60 * 60 * 24));
+
+    const dayOfWeek = d.getDay(); // 0 is Sunday, 6 is Saturday
+
+    if (filter.type === 'custom') {
+        return Array.isArray(filter.customDates) && filter.customDates.includes(dateKey);
+    } else if (filter.type === 'last_7_days') {
+        return diffDays >= 0 && diffDays <= 7;
+    } else if (filter.type === 'weekends') {
+        return dayOfWeek === 0 || dayOfWeek === 6;
+    } else if (filter.type === 'weekdays') {
+        return dayOfWeek >= 1 && dayOfWeek <= 5;
+    } else if (filter.type === 'current_month') {
+        return year === today.getFullYear() && month === today.getMonth();
+    } else if (filter.type === 'previous_month') {
+        const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        return year === prevMonthDate.getFullYear() && month === prevMonthDate.getMonth();
+    } else if (filter.type === 'surplus_only') {
+        const dayCals = (dayMeals || []).reduce((acc, m) => acc + (m.foods || []).reduce((facc, f) => facc + (f.calories || 0), 0), 0);
+        return dayCals > targetCalories;
+    } else if (filter.type === 'target_met') {
+        const dayCals = (dayMeals || []).reduce((acc, m) => acc + (m.foods || []).reduce((facc, f) => facc + (f.calories || 0), 0), 0);
+        if (deficit < 0) return dayCals <= targetCalories;
+        if (deficit > 0) return dayCals >= targetCalories;
+        return Math.abs(dayCals - targetCalories) <= 150 || dayCals <= targetCalories;
+    }
+
+    return true;
+}
+
+// Smart Filter Modal Controls
+window.openJournalFilterModal = () => {
+    const modal = document.getElementById('journal-filter-modal');
+    if (!modal) return;
+    activeJournalFilter = Storage.getJournalFilter ? Storage.getJournalFilter() : { type: 'last_7_days', customDates: [] };
+    
+    // Sync temporary selected dates
+    tempSelectedDates.clear();
+    if (activeJournalFilter.type === 'custom' && Array.isArray(activeJournalFilter.customDates)) {
+        activeJournalFilter.customDates.forEach(d => tempSelectedDates.add(d));
+    }
+    
+    // Update active preset button styling
+    document.querySelectorAll('.journal-preset-btn').forEach(btn => {
+        const preset = btn.getAttribute('data-preset');
+        if (preset === activeJournalFilter.type) {
+            btn.classList.add('ring-2', 'ring-emerald-400', 'border-emerald-500', 'bg-slate-800');
+        } else {
+            btn.classList.remove('ring-2', 'ring-emerald-400', 'border-emerald-500');
+        }
+    });
+
+    renderFilterCalendarGrid();
+    modal.classList.remove('hidden');
+    refreshIcons();
+};
+
+window.closeJournalFilterModal = () => {
+    const modal = document.getElementById('journal-filter-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.changeFilterCalendarMonth = (delta) => {
+    filterCalendarMonth += delta;
+    if (filterCalendarMonth > 11) {
+        filterCalendarMonth = 0;
+        filterCalendarYear++;
+    } else if (filterCalendarMonth < 0) {
+        filterCalendarMonth = 11;
+        filterCalendarYear--;
+    }
+    renderFilterCalendarGrid();
+};
+
+window.setFilterCalendarToToday = () => {
+    const now = new Date();
+    filterCalendarYear = now.getFullYear();
+    filterCalendarMonth = now.getMonth();
+    renderFilterCalendarGrid();
+};
+
+window.toggleFilterDateSelection = (dateKey) => {
+    if (tempSelectedDates.has(dateKey)) {
+        tempSelectedDates.delete(dateKey);
+    } else {
+        tempSelectedDates.add(dateKey);
+    }
+    renderFilterCalendarGrid();
+};
+
+window.clearCustomDateSelection = () => {
+    tempSelectedDates.clear();
+    renderFilterCalendarGrid();
+};
+
+window.applyJournalFilterPreset = (presetType) => {
+    activeJournalFilter = { type: presetType, customDates: [] };
+    if (Storage.saveJournalFilter) Storage.saveJournalFilter(activeJournalFilter);
+    window.closeJournalFilterModal();
+    renderHistory();
+};
+
+window.applyCustomCalendarFilter = () => {
+    if (tempSelectedDates.size === 0) {
+        alert("Te rugăm să selectezi cel puțin o zi din calendar sau să alegi un preset rapid.");
+        return;
+    }
+    activeJournalFilter = {
+        type: 'custom',
+        customDates: Array.from(tempSelectedDates)
+    };
+    if (Storage.saveJournalFilter) Storage.saveJournalFilter(activeJournalFilter);
+    window.closeJournalFilterModal();
+    renderHistory();
+};
+
+window.resetJournalFilterToAll = () => {
+    activeJournalFilter = { type: 'all', customDates: [] };
+    if (Storage.saveJournalFilter) Storage.saveJournalFilter(activeJournalFilter);
+    tempSelectedDates.clear();
+    window.closeJournalFilterModal();
+    renderHistory();
+};
+
+function renderFilterCalendarGrid() {
+    const titleEl = document.getElementById('filter-cal-month-title');
+    const gridEl = document.getElementById('filter-cal-grid');
+    const statusTextEl = document.getElementById('filter-selection-text');
+    if (!titleEl || !gridEl) return;
+
+    const monthNames = [
+        "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie",
+        "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"
+    ];
+
+    titleEl.innerText = `${monthNames[filterCalendarMonth]} ${filterCalendarYear}`;
+
+    // Get days with meals in history
+    const allMeals = Storage.getMeals();
+    const mealsByDayMap = {};
+    allMeals.forEach(m => {
+        const dStr = (m.date || '').slice(0, 10);
+        if (dStr) {
+            mealsByDayMap[dStr] = (mealsByDayMap[dStr] || 0) + 1;
+        }
+    });
+
+    gridEl.innerHTML = '';
+
+    const firstDayObj = new Date(filterCalendarYear, filterCalendarMonth, 1);
+    let firstDayOfWeek = firstDayObj.getDay(); // 0 Sun, 1 Mon
+    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // 0 Mon, 6 Sun
+
+    const daysInMonth = new Date(filterCalendarYear, filterCalendarMonth + 1, 0).getDate();
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    // Empty lead cells
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = "h-9 rounded-lg bg-slate-900/30 border border-slate-800/40";
+        gridEl.appendChild(emptyCell);
+    }
+
+    // Days of month
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+        const dateKey = `${filterCalendarYear}-${String(filterCalendarMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        const hasMeals = !!mealsByDayMap[dateKey];
+        const mealsCount = mealsByDayMap[dateKey] || 0;
+        const isSelected = tempSelectedDates.has(dateKey);
+        const isToday = dateKey === todayStr;
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.onclick = () => window.toggleFilterDateSelection(dateKey);
+
+        let cellClass = "h-9 rounded-lg text-xs font-semibold flex flex-col items-center justify-center relative transition-all border ";
+        if (isSelected) {
+            cellClass += "bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-400/50 ";
+        } else if (hasMeals) {
+            cellClass += "bg-slate-800 hover:bg-slate-700 text-slate-100 border-slate-700 hover:border-emerald-500/50 ";
+        } else {
+            cellClass += "bg-slate-900/50 hover:bg-slate-800/40 text-slate-500 border-slate-800/60 ";
+        }
+
+        if (isToday && !isSelected) {
+            cellClass += "ring-1 ring-indigo-400/80 ";
+        }
+
+        cell.className = cellClass;
+        cell.innerHTML = `
+            <span class="${isToday && !isSelected ? 'text-indigo-300 font-bold' : ''}">${dayNum}</span>
+            ${hasMeals ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-400'} mt-0.5"></span>` : ''}
+        `;
+        cell.title = `${dateKey}${hasMeals ? ` • ${mealsCount} ${mealsCount === 1 ? 'masă' : 'mese'}` : ' • Fără înregistrări'}`;
+
+        gridEl.appendChild(cell);
+    }
+
+    if (statusTextEl) {
+        statusTextEl.innerText = `Zile selectate: ${tempSelectedDates.size}`;
+    }
+
+    refreshIcons();
+}
 
 function formatRomanianDayHeader(dateKey) {
     if (!dateKey) return { isToday: false, isYesterday: false, displayTitle: 'Dată nespecificată', badgeText: '' };
@@ -2144,6 +2396,11 @@ function renderHistory() {
     const toggleAllBtn = document.getElementById('btn-toggle-all-journal-days');
     const toggleAllText = document.getElementById('toggle-all-journal-text');
     const toggleAllIcon = document.getElementById('toggle-all-journal-icon');
+    
+    const filterDot = document.getElementById('journal-filter-active-dot');
+    const activeFilterBar = document.getElementById('journal-active-filter-bar');
+    const activeFilterName = document.getElementById('journal-active-filter-name');
+    const filteredCountText = document.getElementById('journal-filtered-count-text');
 
     if (!container) return;
     container.innerHTML = '';
@@ -2152,6 +2409,8 @@ function renderHistory() {
     if (historyData.length === 0) {
         if (daysBadge) daysBadge.classList.add('hidden');
         if (toggleAllBtn) toggleAllBtn.classList.add('hidden');
+        if (activeFilterBar) activeFilterBar.classList.add('hidden');
+        if (filterDot) filterDot.classList.add('hidden');
         container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm border border-slate-800/80 rounded-2xl bg-slate-900/40 px-4">
             <i data-lucide="book-open" class="w-8 h-8 mx-auto mb-2.5 text-slate-600"></i>
             <div class="font-semibold text-slate-400">Nu există mese în jurnal</div>
@@ -2172,29 +2431,10 @@ function renderHistory() {
 
     // Sort days descending (newest first)
     const sortedDays = Object.keys(mealsByDate).sort((a, b) => b.localeCompare(a));
+    const allDaysCount = sortedDays.length;
 
-    // Initialize default expanded state: expand newest day if first render
-    if (!journalDaysInitialized) {
-        if (sortedDays.length > 0) {
-            expandedJournalDays.add(sortedDays[0]);
-        }
-        journalDaysInitialized = true;
-    }
-
-    // Update Header Badges & Toggle Button
-    if (daysBadge) {
-        daysBadge.classList.remove('hidden');
-        daysBadge.innerText = `${sortedDays.length} ${sortedDays.length === 1 ? 'zi salvată' : 'zile salvate'}`;
-    }
-
-    const allExpanded = sortedDays.every(k => expandedJournalDays.has(k));
-    if (toggleAllBtn) {
-        toggleAllBtn.classList.remove('hidden');
-        if (toggleAllText) toggleAllText.innerText = allExpanded ? 'Restrânge Tot' : 'Extinde Tot';
-        if (toggleAllIcon) {
-            toggleAllIcon.setAttribute('data-lucide', allExpanded ? 'chevrons-down-up' : 'chevrons-up-down');
-        }
-    }
+    // Get active filter
+    activeJournalFilter = Storage.getJournalFilter ? Storage.getJournalFilter() : { type: 'last_7_days', customDates: [] };
 
     // Get user metrics for target calories & goal evaluation
     const userProfile = Storage.getUserProfile();
@@ -2204,7 +2444,75 @@ function renderHistory() {
         ? parseInt(userProfile.targetDeficit) 
         : 0;
 
-    sortedDays.forEach(dateKey => {
+    // Apply smart filter to days
+    const filteredDays = sortedDays.filter(dateKey => {
+        return dateMatchesFilter(dateKey, activeJournalFilter, mealsByDate[dateKey], targetCalories, deficit);
+    });
+
+    // Update Active Filter Bar & Dot
+    const isFiltered = activeJournalFilter.type !== 'all';
+    if (filterDot) {
+        if (isFiltered) filterDot.classList.remove('hidden');
+        else filterDot.classList.add('hidden');
+    }
+    if (activeFilterBar) {
+        if (isFiltered) {
+            activeFilterBar.classList.remove('hidden');
+            if (activeFilterName) activeFilterName.innerText = getFilterLabel(activeJournalFilter);
+            if (filteredCountText) filteredCountText.innerText = `(${filteredDays.length} din ${allDaysCount} zile)`;
+        } else {
+            activeFilterBar.classList.add('hidden');
+        }
+    }
+
+    // Initialize default expanded state: expand newest day if first render
+    if (!journalDaysInitialized) {
+        if (filteredDays.length > 0) {
+            expandedJournalDays.add(filteredDays[0]);
+        }
+        journalDaysInitialized = true;
+    }
+
+    // Update Header Badges & Toggle Button
+    if (daysBadge) {
+        daysBadge.classList.remove('hidden');
+        if (isFiltered) {
+            daysBadge.innerText = `${filteredDays.length} din ${allDaysCount} ${allDaysCount === 1 ? 'zi' : 'zile'}`;
+        } else {
+            daysBadge.innerText = `${allDaysCount} ${allDaysCount === 1 ? 'zi salvată' : 'zile salvate'}`;
+        }
+    }
+
+    const allExpanded = filteredDays.length > 0 && filteredDays.every(k => expandedJournalDays.has(k));
+    if (toggleAllBtn) {
+        if (filteredDays.length === 0) {
+            toggleAllBtn.classList.add('hidden');
+        } else {
+            toggleAllBtn.classList.remove('hidden');
+            if (toggleAllText) toggleAllText.innerText = allExpanded ? 'Restrânge Tot' : 'Extinde Tot';
+            if (toggleAllIcon) {
+                toggleAllIcon.setAttribute('data-lucide', allExpanded ? 'chevrons-down-up' : 'chevrons-up-down');
+            }
+        }
+    }
+
+    // If no days match filter
+    if (filteredDays.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 text-slate-400 text-sm border border-slate-800/80 rounded-2xl bg-slate-900/40 px-4">
+                <i data-lucide="filter-x" class="w-8 h-8 mx-auto mb-2.5 text-slate-500"></i>
+                <div class="font-bold text-white">Nicio zi nu corespunde filtrului „${getFilterLabel(activeJournalFilter)}”</div>
+                <div class="text-xs text-slate-400 mt-1">Încearcă alt filtru sau afișează toate înregistrările din jurnal (${allDaysCount} zile în istoric).</div>
+                <button onclick="resetJournalFilterToAll()" class="mt-3.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-semibold shadow-md transition-all">
+                    Afișează Toate Zilele
+                </button>
+            </div>
+        `;
+        refreshIcons();
+        return;
+    }
+
+    filteredDays.forEach(dateKey => {
         const dayMeals = mealsByDate[dateKey];
         // Sort day's meals chronologically
         dayMeals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
