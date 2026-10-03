@@ -279,6 +279,9 @@
                 <a href="#chat-nutritional" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
                     <i data-lucide="message-square" class="w-3.5 h-3.5 text-purple-400"></i> Chat AI & Voce
                 </a>
+                <a href="#istoric-pdf-backup" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-400"></i> Jurnal & Calendar
+                </a>
                 <a href="#compatibilitate-iphone" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
                     <i data-lucide="smartphone" class="w-3.5 h-3.5 text-rose-400"></i> iPhone & iOS
                 </a>
@@ -333,7 +336,7 @@
                         <i data-lucide="gauge" class="w-4 h-4 text-yellow-400"></i> 10. Profil Biometric, BMR & Bare
                     </a>
                     <a href="#istoric-pdf-backup" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
-                        <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i> 11. Istoric, Raport PDF & Backup
+                        <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i> 11. Jurnal, Calendar Filtrare & PDF
                     </a>
                     <a href="#faq" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
                         <i data-lucide="help-circle" class="w-4 h-4 text-amber-400"></i> 12. Întrebări Frecvente & Tastatură
@@ -848,41 +851,158 @@
                 </div>
             </section>
 
-            <!-- 11. ISTORIC, RAPORT PDF & BACKUP -->
+            <!-- 11. ISTORIC, JURNAL MESE, RAPORT PDF & BACKUP -->
             <section id="istoric-pdf-backup" class="help-section scroll-mt-24 space-y-4">
                 <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
                     <div class="w-9 h-9 rounded-xl bg-blue-950/80 border border-blue-700/80 flex items-center justify-center text-blue-400">
                         <i data-lucide="file-text" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">11. Istoric, Raport PDF Medical & Backup Local</h2>
-                        <p class="text-xs text-slate-400">Editarea meselor salvate, exportul rapoartelor și siguranța datelor tale.</p>
+                        <h2 class="text-xl font-bold text-white">11. Jurnal Mese Salvate, Calendar Filtrare, Raport PDF & Backup</h2>
+                        <p class="text-xs text-slate-400">Organizarea cardurilor zilnice, filtrarea avansată din calendar, raportul medical lunar și siguranța datelor.</p>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs text-slate-300">
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-5 text-xs text-slate-300">
+                    
+                    <!-- Carduri de bază -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                            <div class="font-bold text-blue-400 flex items-center gap-1.5">
-                                <i data-lucide="history" class="w-4 h-4"></i> Reeditare Masă Salvată
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                            <div class="font-bold text-blue-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="calendar" class="w-4 h-4"></i> Carduri Zilnice & Acordeon
                             </div>
-                            <p class="text-[11px] text-slate-400">În lista de istoric, fă clic pe pictograma creion a oricărei mese pentru a o reîncărca în editor și a o modifica.</p>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">Mesele sunt grupate automat pe zile. Fiecare card zilnic afișează sinteza completă (calorii, macronutrienți, procent din necesar) și se extinde individual la clic.</p>
                         </div>
 
-                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                            <div class="font-bold text-purple-400 flex items-center gap-1.5">
-                                <i data-lucide="printer" class="w-4 h-4"></i> Raport PDF Medical
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                            <div class="font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="filter" class="w-4 h-4"></i> Filtrare Inteligentă & Calendar
                             </div>
-                            <p class="text-[11px] text-slate-400">Generează un document PDF complet, structurat pentru consult medical, nutriționist sau arhivă proprie.</p>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">Selectează exact zilele pe care dorești să le vizualizezi printr-un calendar lunar interactiv cu marcaje verzi și preset-uri inteligente de selecție.</p>
                         </div>
 
-                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                            <div class="font-bold text-teal-400 flex items-center gap-1.5">
-                                <i data-lucide="shield" class="w-4 h-4"></i> Backup JSON & Confidențialitate
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                            <div class="font-bold text-purple-400 flex items-center gap-1.5 text-sm">
+                                <i data-lucide="printer" class="w-4 h-4"></i> Raport PDF Lunar & Alerte
                             </div>
-                            <p class="text-[11px] text-slate-400">Descarcă backup JSON pentru transfer facil între telefon și PC. Datele nu sunt trimise către servere terțe.</p>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">Generează rapoarte lunare complete cu evidențierea automată în culori de alertă a lipsurilor totale (0%) și deficitelor severe de micronutrienți.</p>
                         </div>
                     </div>
+
+                    <!-- Detaliere: Selectarea Zilelor din Calendar & Filtrare Inteligentă -->
+                    <div class="p-4 bg-gradient-to-br from-slate-950 via-slate-950 to-indigo-950/30 rounded-xl border border-indigo-900/50 space-y-3">
+                        <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                            <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                                <i data-lucide="calendar-range" class="w-4 h-4 text-indigo-400"></i>
+                                Selectarea Zilelor de Afișat & Filtrare Inteligentă în Jurnal
+                            </h3>
+                            <span class="feature-badge bg-indigo-950 text-indigo-300 border border-indigo-800">Funcționalitate Avansată</span>
+                        </div>
+
+                        <p class="text-slate-300 leading-relaxed text-[11px]">
+                            Pentru a păstra interfața aerisită și rapidă, Jurnalul de Mese Salvate nu încarcă haotic toate înregistrările istorice. Ai la dispoziție butonul <strong>„Filtrează”</strong> (situat lângă <em>Extinde tot</em>), care deschide un asistent dedicat de selecție temporală:
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                            <!-- Bloc 1: Calendar Interactiv -->
+                            <div class="p-3 bg-slate-900/90 rounded-lg border border-slate-800 space-y-2">
+                                <div class="font-semibold text-emerald-400 flex items-center gap-1.5 text-xs">
+                                    <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i>
+                                    Calendar Lunar Interactiv & Selecție Multiplă
+                                </div>
+                                <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
+                                    <li><strong class="text-slate-200">Puncte Verzi pe Zile:</strong> Zilele în care ai cel puțin o masă salvată sunt marcate distinct cu un punct verde strălucitor.</li>
+                                    <li><strong class="text-slate-200">Selecție Manuală:</strong> Poți face clic direct pe orice dată din calendar pentru a include sau exclude ziua respectivă din jurnal.</li>
+                                    <li><strong class="text-slate-200">Navigare Lunar:</strong> Butoanele <em>‹</em> și <em>›</em> permit răsfoirea rapidă a lunilor trecute sau viitoare.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Bloc 2: Preset-uri Rapide -->
+                            <div class="p-3 bg-slate-900/90 rounded-lg border border-slate-800 space-y-2">
+                                <div class="font-semibold text-indigo-400 flex items-center gap-1.5 text-xs">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                    Criterii & Preset-uri Inteligente Rapide
+                                </div>
+                                <div class="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                                    <div class="p-1.5 bg-slate-950 rounded border border-slate-800 text-slate-300">
+                                        <span class="text-indigo-300 font-bold block">📅 Ultimele 7 zile</span> Urmărire evoluție recentă
+                                    </div>
+                                    <div class="p-1.5 bg-slate-950 rounded border border-slate-800 text-slate-300">
+                                        <span class="text-indigo-300 font-bold block">🏖️ Weekend-uri</span> Sâmbătă & Duminică (cheat meals)
+                                    </div>
+                                    <div class="p-1.5 bg-slate-950 rounded border border-slate-800 text-slate-300">
+                                        <span class="text-indigo-300 font-bold block">💼 Luni - Vineri</span> Zile lucrătoare de birou
+                                    </div>
+                                    <div class="p-1.5 bg-slate-950 rounded border border-slate-800 text-slate-300">
+                                        <span class="text-indigo-300 font-bold block">🗓️ Luna Curentă</span> Toată activitatea lunii active
+                                    </div>
+                                    <div class="p-1.5 bg-slate-950 rounded border border-slate-800 text-slate-300">
+                                        <span class="text-rose-300 font-bold block">⚠️ Doar depășiri</span> Zile cu surplus caloric peste necesar
+                                    </div>
+                                    <div class="p-1.5 bg-slate-950 rounded border border-slate-800 text-slate-300">
+                                        <span class="text-emerald-300 font-bold block">✅ Țintă respectată</span> Zile în deficit/normă optimă
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Persistență & Sesiune Curentă -->
+                        <div class="p-2.5 bg-indigo-950/40 rounded-lg border border-indigo-800/50 flex items-start gap-2 text-[11px] text-indigo-200">
+                            <i data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5"></i>
+                            <div>
+                                <strong>Memorare Automată & Sesiunea Curentă:</strong> Criteriul de filtrare ales rămâne memorat chiar dacă reîncărci pagina. De asemenea, <em>toate mesele salvate în timpul sesiunii curente de lucru sunt incluse automat în jurnal</em>, asigurând că nu pierzi niciodată din vedere ceea ce tocmai ai înregistrat.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detaliere: Cardurile de Zi & Operațiuni pe Mese -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-white flex items-center gap-2 text-xs">
+                                <i data-lucide="layout-list" class="w-4 h-4 text-amber-400"></i>
+                                Structura Cardurilor Zilnice (Acordeon)
+                            </div>
+                            <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px] leading-relaxed">
+                                <li><strong>Bara de status colorată:</strong> Verde dacă obiectivul caloric a fost respectat (deficit pentru slăbire / aport optim), portocaliu/roșu în caz de depășire semnificativă.</li>
+                                <li><strong>Sinteză completă:</strong> Număr de mese, total calorii consumate raportate la necesarul zilnic, plus totalul de proteine, carbohidrați și grăsimi.</li>
+                                <li><strong>Expandare flexibilă:</strong> Faci clic oriunde pe bara zilei pentru a extinde mesele, sau folosești butoanele globale <em>Extinde tot / Restrânge tot</em>.</li>
+                            </ul>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                            <div class="font-bold text-white flex items-center gap-2 text-xs">
+                                <i data-lucide="edit-3" class="w-4 h-4 text-teal-400"></i>
+                                Editare, Ștergere & Reutilizare Mese
+                            </div>
+                            <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px] leading-relaxed">
+                                <li><strong>Modifică Masă:</strong> La clic pe butonul <em>Modifică</em>, masa este trimisă în panoul de sus al editorului, ecranul derulează lin, iar cursorul se focalizează automat pe câmpul <em>Nume Masă, Preparat sau Poză</em>.</li>
+                                <li><strong>Adaugă la masa curentă:</strong> Butonul <em>+ Adaugă</em> importă instantaneu ingredientele mesei salvate în editorul activ.</li>
+                                <li><strong>Ștergere individuală sau de zi:</strong> Poți șterge o singură masă sau întreaga zi din jurnalul local.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Raport PDF Lunar & Alertă Deficite -->
+                    <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                        <div class="font-bold text-purple-400 flex items-center gap-2 text-xs">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+                            Rapoarte PDF Lunare & Evidențierea Deficitelor Medicale
+                        </div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            Documentul PDF lunar generat calculează media pe zile a tuturor vitaminelor și mineralelor esențiale. Aplicația aplică automat reguli medicale de evidențiere:
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            <div class="p-2 bg-rose-950/40 rounded border border-rose-800/60 text-rose-200">
+                                <strong class="text-rose-400 block">🚨 Lipsă Totală (0% DZR):</strong>
+                                Evidențiată cu fundal roșu și text roșu îngroșat pentru a semnala nutrienții complet absenți din alimentația pe durata lunii.
+                            </div>
+                            <div class="p-2 bg-amber-950/40 rounded border border-amber-800/60 text-amber-200">
+                                <strong class="text-amber-400 block">⚠️ Deficit Sever (&lt; 50% DZR):</strong>
+                                Evidențiat cu fundal galben-auriu și chenar portocaliu pentru valori sub jumătatea dozei zilnice recomandate.
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
