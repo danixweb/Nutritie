@@ -2,6 +2,8 @@
 // Storage Module - Local & Offline Persistence
 // ==========================================
 
+import { DEFAULT_ANALYZED_FOODS } from './defaultFoods.js';
+
 const STORAGE_KEYS = {
     MEALS: 'nutritie_meals_history_v2',
     ACTIVITIES: 'nutritie_activities_v2',
@@ -15,8 +17,10 @@ const STORAGE_KEYS = {
     AI_CONNECTED: 'gemini_ai_connected',
     AI_NUTRIENT_CALC: 'gemini_ai_nutrient_calc',
     JOURNAL_FILTER: 'nutritie_journal_filter',
-    ANALYZED_FOODS: 'nutritie_analyzed_foods_db_v1'
+    ANALYZED_FOODS: 'nutritie_analyzed_foods_db_v2'
 };
+
+export { DEFAULT_ANALYZED_FOODS };
 
 // =========================================================================
 // Canonical Nutrients Standard Reference Dictionary (Romanian Medical / DZR)
@@ -137,33 +141,28 @@ export function normalizeNutrientsArray(nutrients) {
     return Array.from(map.values());
 }
 
-// Local food database for offline calorie / macro estimation (baseline)
+// Local food database for offline calorie / macro estimation (derived from DEFAULT_ANALYZED_FOODS)
 export const localFoodDB = {
-    "mar": { cal: 52, pro: 0.3, carb: 14, fat: 0.2, vitC: 4.6, pot: 107 },
-    "măr": { cal: 52, pro: 0.3, carb: 14, fat: 0.2, vitC: 4.6, pot: 107 },
-    "banan": { cal: 89, pro: 1.1, carb: 22.8, fat: 0.3, vitC: 8.7, mag: 27 },
-    "paine": { cal: 265, pro: 9, carb: 49, fat: 3.2, iron: 3.6 },
-    "pâine": { cal: 265, pro: 9, carb: 49, fat: 3.2, iron: 3.6 },
-    "ou": { cal: 155, pro: 13, carb: 1.1, fat: 11, vitA: 160, vitB12: 0.89 },
-    "oua": { cal: 155, pro: 13, carb: 1.1, fat: 11, vitA: 160, vitB12: 0.89 },
-    "ouă": { cal: 155, pro: 13, carb: 1.1, fat: 11, vitA: 160, vitB12: 0.89 },
-    "pui": { cal: 165, pro: 31, carb: 0, fat: 3.6, vitB12: 0.3 },
-    "piept de pui": { cal: 165, pro: 31, carb: 0, fat: 3.6, vitB12: 0.3 },
-    "cartof": { cal: 77, pro: 2, carb: 17, fat: 0.1, vitC: 19.7 },
-    "cartofi": { cal: 77, pro: 2, carb: 17, fat: 0.1, vitC: 19.7 },
-    "orez": { cal: 130, pro: 2.7, carb: 28, fat: 0.3, mag: 12 },
-    "ovaz": { cal: 389, pro: 16.9, carb: 66, fat: 6.9, mag: 177, iron: 4.7 },
-    "lapte": { cal: 64, pro: 3.3, carb: 4.8, fat: 3.6, calciu: 120 },
-    "iaurt": { cal: 61, pro: 3.5, carb: 4.7, fat: 3.3, calciu: 110 },
-    "somon": { cal: 208, pro: 20, carb: 0, fat: 13, vitD: 10, vitB12: 3.2 },
-    "ton": { cal: 132, pro: 28, carb: 0, fat: 1, vitB12: 2.5 },
-    "avocado": { cal: 160, pro: 2, carb: 8.5, fat: 14.7, pot: 485 },
-    "rosie": { cal: 18, pro: 0.9, carb: 3.9, fat: 0.2, vitC: 13.7 },
-    "roșie": { cal: 18, pro: 0.9, carb: 3.9, fat: 0.2, vitC: 13.7 },
-    "castravete": { cal: 15, pro: 0.7, carb: 3.6, fat: 0.1, vitC: 2.8 },
-    "ulei": { cal: 884, pro: 0, carb: 0, fat: 100, vitE: 14.3 },
     "default": { cal: 100, pro: 5, carb: 10, fat: 5 }
 };
+
+// Seed localFoodDB from the canonical 155 foods
+DEFAULT_ANALYZED_FOODS.forEach(f => {
+    if (!f || !f.name) return;
+    const key = f.name.toLowerCase().trim();
+    const macros = f.macros || {};
+    localFoodDB[key] = {
+        cal: f.calories || 0,
+        pro: macros.protein || 0,
+        carb: macros.carbs || 0,
+        fat: macros.fat || 0,
+        fiber: macros.fiber || 0
+    };
+    const normKey = removeDiacritics(key);
+    if (normKey && normKey !== key && !localFoodDB[normKey]) {
+        localFoodDB[normKey] = localFoodDB[key];
+    }
+});
 
 // Local food macro and nutrient estimator (Priority 1: Analyzed Food Cache, Priority 2: Baseline DB)
 export function estimateFoodLocally(name, quantity, unit) {
@@ -456,8 +455,11 @@ export const Storage = {
     getAnalyzedFoods() {
         try {
             const data = localStorage.getItem(STORAGE_KEYS.ANALYZED_FOODS);
-            const list = data ? JSON.parse(data) : [];
-            if (!Array.isArray(list)) return [];
+            let list = data ? JSON.parse(data) : null;
+            if (!list || !Array.isArray(list) || list.length === 0) {
+                list = JSON.parse(JSON.stringify(DEFAULT_ANALYZED_FOODS));
+                localStorage.setItem(STORAGE_KEYS.ANALYZED_FOODS, JSON.stringify(list));
+            }
 
             // Auto-deduplicate entries that only differ by diacritics / casing
             const deduped = [];
@@ -500,7 +502,18 @@ export const Storage = {
             return deduped;
         } catch (e) {
             console.error("Failed to read analyzed foods from storage", e);
-            return [];
+            return JSON.parse(JSON.stringify(DEFAULT_ANALYZED_FOODS));
+        }
+    },
+
+    resetAnalyzedFoodsDB() {
+        try {
+            const list = JSON.parse(JSON.stringify(DEFAULT_ANALYZED_FOODS));
+            localStorage.setItem(STORAGE_KEYS.ANALYZED_FOODS, JSON.stringify(list));
+            return list;
+        } catch (e) {
+            console.error("Failed to reset analyzed foods DB", e);
+            return DEFAULT_ANALYZED_FOODS;
         }
     },
 

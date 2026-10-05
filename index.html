@@ -1282,8 +1282,8 @@
                     </button>
                 </div>
 
-                <!-- Action Buttons: Export / Import / Populate -->
-                <div class="flex items-center gap-2 shrink-0">
+                <!-- Action Buttons: Export / Import / Populate / Reset -->
+                <div class="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
                     <!-- Hidden Import Input -->
                     <input type="file" id="import-analyzed-foods-input" accept=".json" class="hidden" onchange="handleImportAnalyzedFoods(this)">
                     
@@ -1295,6 +1295,11 @@
                     <button onclick="exportAnalyzedFoods()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm" title="Descarcă backup JSON cu baza de alimente">
                         <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
                         <span>Exportă JSON</span>
+                    </button>
+
+                    <button onclick="resetAnalyzedFoodsToDefault()" class="px-3 py-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 active:scale-95 text-amber-300 text-xs font-semibold border border-amber-800/80 flex items-center gap-1.5 transition-all shadow-sm" title="Reîncarcă baza oficială de 155 alimente cu spectru complet de nutrienți">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span class="hidden sm:inline">Baza Oficială (155)</span>
                     </button>
 
                     <button onclick="extractFoodsFromMealHistory()" id="btn-sync-history-foods" class="px-3 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900 active:scale-95 text-indigo-300 text-xs font-semibold border border-indigo-800/80 flex items-center gap-1.5 transition-all shadow-sm" title="Importă și normalizează alimentele existente din jurnalul de mese">

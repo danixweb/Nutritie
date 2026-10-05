@@ -5045,6 +5045,15 @@ window.handleImportAnalyzedFoods = (input) => {
     reader.readAsText(file);
 };
 
+window.resetAnalyzedFoodsToDefault = () => {
+    if (!confirm("Sigur dorești să reîncarci baza oficială de 155 alimente cu lista completă de nutrienți? Orice modificări manuale aduse alimentelor vor fi resetate la valorile de referință.")) {
+        return;
+    }
+    const list = Storage.resetAnalyzedFoodsDB();
+    alert(`Baza de alimente a fost resetată cu succes la cele ${list.length} alimente oficiale.`);
+    window.renderAnalyzedFoodsList();
+};
+
 window.extractFoodsFromMealHistory = () => {
     const meals = Storage.getMeals();
     if (!meals || meals.length === 0) {
