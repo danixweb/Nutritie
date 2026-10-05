@@ -4388,7 +4388,21 @@ window.closeDeficienciesReportModal = () => {
     if (modal) modal.classList.add('hidden');
 };
 
-// --- PDF Report Controllers ---
+// --- PDF Report Controllers & Interactive Visual Calendar Picker ---
+const pdfCalendarState = {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+    startDay: 1,
+    endDay: new Date().getDate(),
+    isSelectingEnd: false
+};
+
+const PDF_MONTH_NAMES_RO = [
+    "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie",
+    "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"
+];
+const PDF_DAY_NAMES_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
+
 window.setAllPDFCheckboxes = (checked) => {
     const ids = ['pdf-opt-calendar', 'pdf-opt-metabolic', 'pdf-opt-nutrients', 'pdf-opt-medical', 'pdf-opt-foods-summary'];
     ids.forEach(id => {
@@ -4397,44 +4411,163 @@ window.setAllPDFCheckboxes = (checked) => {
     });
 };
 
-window.togglePDFRangeInputs = () => {
-    const customRadio = document.getElementById('pdf-mode-custom');
-    const container = document.getElementById('pdf-custom-range-container');
-    if (container) {
-        if (customRadio && customRadio.checked) {
-            container.classList.remove('hidden');
-        } else {
-            container.classList.add('hidden');
+window.renderPDFVisualCalendar = () => {
+    const gridEl = document.getElementById('pdf-visual-calendar-grid');
+    const badgeEl = document.getElementById('pdf-interval-status-badge');
+    if (!gridEl) return;
+
+    const { year, month, startDay, endDay } = pdfCalendarState;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfWeek = (new Date(year, month, 1).getDay() + 6) % 7; // 0 = Mon, 6 = Sun
+
+    // Find days containing logged meals in this month
+    const allMeals = Storage.getMeals();
+    const mealsCountByDay = {};
+    allMeals.forEach(m => {
+        if (!m.date) return;
+        const d = new Date(m.date);
+        if (d.getFullYear() === year && d.getMonth() === month) {
+            const dayNum = d.getDate();
+            mealsCountByDay[dayNum] = (mealsCountByDay[dayNum] || 0) + 1;
         }
+    });
+
+    let mealsInSelectedInterval = 0;
+    for (let d = startDay; d <= endDay; d++) {
+        mealsInSelectedInterval += (mealsCountByDay[d] || 0);
+    }
+    const daysInInterval = Math.max(1, endDay - startDay + 1);
+
+    let html = `
+        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 mb-1">
+            ${PDF_DAY_NAMES_SHORT.map(name => `<div>${name}</div>`).join('')}
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+    `;
+
+    // Padding empty cells
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        html += `<div class="h-8 rounded-lg"></div>`;
+    }
+
+    // Days cells
+    for (let d = 1; d <= daysInMonth; d++) {
+        const mealCount = mealsCountByDay[d] || 0;
+        const hasMeals = mealCount > 0;
+        const isStart = (d === startDay);
+        const isEnd = (d === endDay);
+        const inRange = (d >= startDay && d <= endDay);
+
+        let cellClasses = 'relative h-8 flex flex-col items-center justify-center rounded-lg text-xs font-semibold cursor-pointer transition-all select-none ';
+
+        if (isStart || isEnd) {
+            cellClasses += 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/40 scale-105 z-10 ';
+        } else if (inRange) {
+            cellClasses += 'bg-indigo-950/70 text-indigo-200 border border-indigo-800/40 ';
+        } else if (hasMeals) {
+            cellClasses += 'bg-slate-800/90 text-slate-200 hover:bg-slate-700 border border-emerald-500/30 ';
+        } else {
+            cellClasses += 'bg-slate-900/60 text-slate-400 hover:bg-slate-800 ';
+        }
+
+        html += `
+            <div onclick="onPDFCalendarDayClick(${d})" class="${cellClasses}" title="Ziua ${d} (${hasMeals ? `${mealCount} mese` : 'fără mese'})">
+                <span class="leading-none">${d}</span>
+                ${hasMeals ? `<span class="w-1.5 h-1.5 rounded-full ${isStart || isEnd ? 'bg-emerald-300' : 'bg-emerald-400'} mt-0.5 shadow-xs"></span>` : ''}
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    gridEl.innerHTML = html;
+
+    if (badgeEl) {
+        badgeEl.innerHTML = `
+            <i data-lucide="calendar-range" class="w-3.5 h-3.5 text-indigo-400 shrink-0"></i>
+            <span>Interval: <b>${String(startDay).padStart(2, '0')} - ${String(endDay).padStart(2, '0')} ${PDF_MONTH_NAMES_RO[month]}</b> (${daysInInterval} zile • <strong class="text-emerald-300">${mealsInSelectedInterval} mese</strong>)</span>
+        `;
+        refreshIcons();
     }
 };
 
-window.updatePDFDaysOptions = () => {
+window.onPDFCalendarDayClick = (d) => {
+    if (!pdfCalendarState.isSelectingEnd) {
+        pdfCalendarState.startDay = d;
+        pdfCalendarState.endDay = d;
+        pdfCalendarState.isSelectingEnd = true;
+    } else {
+        if (d < pdfCalendarState.startDay) {
+            pdfCalendarState.endDay = pdfCalendarState.startDay;
+            pdfCalendarState.startDay = d;
+        } else {
+            pdfCalendarState.endDay = d;
+        }
+        pdfCalendarState.isSelectingEnd = false;
+    }
+    window.renderPDFVisualCalendar();
+};
+
+window.setPDFCalendarToWholeMonth = () => {
+    const daysInMonth = new Date(pdfCalendarState.year, pdfCalendarState.month + 1, 0).getDate();
+    pdfCalendarState.startDay = 1;
+    pdfCalendarState.endDay = daysInMonth;
+    pdfCalendarState.isSelectingEnd = false;
+    window.renderPDFVisualCalendar();
+};
+
+window.setPDFCalendarToLoggedMeals = () => {
+    const allMeals = Storage.getMeals();
+    const { year, month } = pdfCalendarState;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysWithMeals = [];
+    allMeals.forEach(m => {
+        if (!m.date) return;
+        const d = new Date(m.date);
+        if (d.getFullYear() === year && d.getMonth() === month) {
+            daysWithMeals.push(d.getDate());
+        }
+    });
+
+    if (daysWithMeals.length > 0) {
+        daysWithMeals.sort((a, b) => a - b);
+        pdfCalendarState.startDay = daysWithMeals[0];
+        pdfCalendarState.endDay = daysWithMeals[daysWithMeals.length - 1];
+    } else {
+        pdfCalendarState.startDay = 1;
+        pdfCalendarState.endDay = daysInMonth;
+    }
+    pdfCalendarState.isSelectingEnd = false;
+    window.renderPDFVisualCalendar();
+};
+
+window.onPDFMonthYearChange = () => {
     const monthSelect = document.getElementById('pdf-month-select');
     const yearSelect = document.getElementById('pdf-year-select');
-    const startSelect = document.getElementById('pdf-start-day');
-    const endSelect = document.getElementById('pdf-end-day');
-    if (!monthSelect || !yearSelect || !startSelect || !endSelect) return;
+    if (monthSelect) pdfCalendarState.month = parseInt(monthSelect.value);
+    if (yearSelect) pdfCalendarState.year = parseInt(yearSelect.value);
 
-    const month = parseInt(monthSelect.value);
-    const year = parseInt(yearSelect.value);
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    window.setPDFCalendarToLoggedMeals();
+};
 
-    const prevStart = parseInt(startSelect.value) || 1;
-    const prevEnd = parseInt(endSelect.value) || daysInMonth;
-
-    let startOpts = '';
-    let endOpts = '';
-    for (let d = 1; d <= daysInMonth; d++) {
-        startOpts += `<option value="${d}" ${d === Math.min(prevStart, daysInMonth) ? 'selected' : ''}>Ziua ${d}</option>`;
-        endOpts += `<option value="${d}" ${d === Math.min(prevEnd, daysInMonth) ? 'selected' : ''}>Ziua ${d}</option>`;
+window.changePDFMonth = (delta) => {
+    let m = pdfCalendarState.month + delta;
+    let y = pdfCalendarState.year;
+    if (m < 0) {
+        m = 11;
+        y--;
+    } else if (m > 11) {
+        m = 0;
+        y++;
     }
-    startSelect.innerHTML = startOpts;
-    endSelect.innerHTML = endOpts;
+    pdfCalendarState.month = m;
+    pdfCalendarState.year = y;
 
-    if (!prevEnd || prevEnd > daysInMonth || prevEnd === 1) {
-        endSelect.value = daysInMonth;
-    }
+    const monthSelect = document.getElementById('pdf-month-select');
+    const yearSelect = document.getElementById('pdf-year-select');
+    if (monthSelect) monthSelect.value = m;
+    if (yearSelect) yearSelect.value = y;
+
+    window.setPDFCalendarToLoggedMeals();
 };
 
 function getPDFReportOptions() {
@@ -4444,30 +4577,8 @@ function getPDFReportOptions() {
     const showMedical = document.getElementById('pdf-opt-medical')?.checked ?? true;
     const showFoodsSummary = document.getElementById('pdf-opt-foods-summary')?.checked ?? true;
 
-    const isCustomRange = document.getElementById('pdf-mode-custom')?.checked ?? false;
-    let startDay = 1;
-    let endDay = 31;
-
-    const monthSelect = document.getElementById('pdf-month-select');
-    const yearSelect = document.getElementById('pdf-year-select');
-    const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
-    const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    if (isCustomRange) {
-        let s = parseInt(document.getElementById('pdf-start-day')?.value) || 1;
-        let e = parseInt(document.getElementById('pdf-end-day')?.value) || daysInMonth;
-        if (s > e) {
-            const temp = s;
-            s = e;
-            e = temp;
-        }
-        startDay = Math.max(1, Math.min(daysInMonth, s));
-        endDay = Math.max(startDay, Math.min(daysInMonth, e));
-    } else {
-        startDay = 1;
-        endDay = daysInMonth;
-    }
+    const daysInMonth = new Date(pdfCalendarState.year, pdfCalendarState.month + 1, 0).getDate();
+    const isCustomRange = (pdfCalendarState.startDay !== 1 || pdfCalendarState.endDay !== daysInMonth);
 
     return {
         showCalendar,
@@ -4476,8 +4587,8 @@ function getPDFReportOptions() {
         showMedical,
         showFoodsSummary,
         isCustomRange,
-        startDay,
-        endDay
+        startDay: pdfCalendarState.startDay,
+        endDay: pdfCalendarState.endDay
     };
 }
 
@@ -4485,15 +4596,18 @@ window.openPDFModal = () => {
     const modal = document.getElementById('pdf-modal');
     if (!modal) return;
     const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    pdfCalendarState.year = currentYear;
+    pdfCalendarState.month = currentMonth;
+
     const monthSelect = document.getElementById('pdf-month-select');
     const yearSelect = document.getElementById('pdf-year-select');
-    if (monthSelect) monthSelect.value = now.getMonth();
-    if (yearSelect) yearSelect.value = now.getFullYear();
+    if (monthSelect) monthSelect.value = currentMonth;
+    if (yearSelect) yearSelect.value = currentYear;
 
-    const allRadio = document.getElementById('pdf-mode-all');
-    if (allRadio) allRadio.checked = true;
-    window.togglePDFRangeInputs();
-    window.updatePDFDaysOptions();
+    window.setPDFCalendarToLoggedMeals();
 
     modal.classList.remove('hidden');
     refreshIcons();
