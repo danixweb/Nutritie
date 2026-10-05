@@ -65,21 +65,21 @@
                         <button onclick="closeTopMenu(); openPDFModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-indigo-950/60 hover:text-indigo-200 transition-colors text-left">
                             <i data-lucide="file-text" class="w-4 h-4 text-indigo-400 shrink-0"></i>
                             <div>
-                                <div class="font-semibold">Raport lunar</div>
+                                <div class="font-semibold">Raport interval</div>
                                 <div class="text-[10px] text-slate-400">Export PDF A4</div>
                             </div>
                         </button>
                         <button onclick="closeTopMenu(); openCaloriesReportModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-emerald-950/60 hover:text-emerald-200 transition-colors text-left">
                             <i data-lucide="flame" class="w-4 h-4 text-emerald-400 shrink-0"></i>
                             <div>
-                                <div class="font-semibold">Raport Calorii</div>
+                                <div class="font-semibold">Situație calorii</div>
                                 <div class="text-[10px] text-slate-400">Consumat vs. Necesar zilnic (TDEE)</div>
                             </div>
                         </button>
                         <button onclick="closeTopMenu(); openDeficienciesReportModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-amber-950/60 hover:text-amber-200 transition-colors text-left">
                             <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400 shrink-0"></i>
                             <div>
-                                <div class="font-semibold">Raport deficiențe</div>
+                                <div class="font-semibold">Situație deficiențe</div>
                                 <div class="text-[10px] text-slate-400">Analiză aport nutrienți vs DZR</div>
                             </div>
                         </button>
@@ -114,22 +114,8 @@
                         <button onclick="closeTopMenu(); openSettingsTab('ai')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
                             <i data-lucide="bot" class="w-4 h-4 text-indigo-400 shrink-0"></i>
                             <div>
-                                <div class="font-semibold">Utilizare AI</div>
-                                <div class="text-[10px] text-slate-400">Activare, cheie API și conexiune</div>
-                            </div>
-                        </button>
-                        <button onclick="closeTopMenu(); openSettingsTab('profile')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
-                            <i data-lucide="user" class="w-4 h-4 text-emerald-400 shrink-0"></i>
-                            <div>
-                                <div class="font-semibold">Date personale</div>
-                                <div class="text-[10px] text-slate-400">IMC, Greutate ideală, BMR, TDEE</div>
-                            </div>
-                        </button>
-                        <button onclick="closeTopMenu(); openSettingsTab('nutrients')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors text-left">
-                            <i data-lucide="sparkles" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <div>
-                                <div class="font-semibold">Calcul nutrienți</div>
-                                <div class="text-[10px] text-slate-400">Opțiune calcul AI vs Local</div>
+                                <div class="font-semibold">Setări AI & Profil</div>
+                                <div class="text-[10px] text-slate-400">Configurare AI, Date personale & Nutrienți</div>
                             </div>
                         </button>
                         <button onclick="closeTopMenu(); openAnalyzedFoodsModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-200 transition-colors text-left">
@@ -931,7 +917,7 @@
             <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
                 <div>
                     <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                        <i data-lucide="flame" class="w-5 h-5 text-emerald-400"></i> Raport Calorii: Consumat vs. Necesar
+                        <i data-lucide="flame" class="w-5 h-5 text-emerald-400"></i> Situație Calorii: Consumat vs. Necesar
                     </h3>
                     <p class="text-xs text-slate-400 mt-0.5">Analiză comparativă a aportului caloric față de metabolismul tău zilnic (TDEE).</p>
                 </div>
@@ -984,7 +970,7 @@
             <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
                 <div>
                     <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                        <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i> Raport Deficiențe Nutriționale
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i> Situație Deficiențe Nutriționale
                     </h3>
                     <p class="text-xs text-slate-400 mt-0.5">Evaluarea aportului mediu de micro și macronutrienți față de Doza Zilnică Recomandată (DZR).</p>
                 </div>
@@ -1017,7 +1003,7 @@
             <div class="flex justify-between items-start mb-3 border-b border-slate-800 pb-3">
                 <div>
                     <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i> Raport Lunar PDF
+                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i> Raport Interval PDF
                     </h3>
                 </div>
                 <button onclick="closePDFModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
