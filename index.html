@@ -66,7 +66,7 @@
                             <i data-lucide="file-text" class="w-4 h-4 text-indigo-400 shrink-0"></i>
                             <div>
                                 <div class="font-semibold">Raport lunar</div>
-                                <div class="text-[10px] text-slate-400">Export PDF Landscape A4</div>
+                                <div class="text-[10px] text-slate-400">Export PDF A4</div>
                             </div>
                         </button>
                         <button onclick="closeTopMenu(); openCaloriesReportModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-emerald-950/60 hover:text-emerald-200 transition-colors text-left">
@@ -1017,15 +1017,15 @@
             <div class="flex justify-between items-start mb-3 border-b border-slate-800 pb-3">
                 <div>
                     <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i> Raport Lunar PDF Landscape
+                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i> Raport Lunar PDF
                     </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Tabel 7 coloane pe zile, mese suprapuse, sumare nutriționale și raport necesar vs consumat.</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Selectează secțiunile dorite pentru generarea raportului nutrițional complet sau personalizat.</p>
                 </div>
                 <button onclick="closePDFModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
 
             <!-- Month & Year Selectors -->
-            <div class="grid grid-cols-2 gap-3 my-4">
+            <div class="grid grid-cols-2 gap-3 my-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Luna</label>
                     <select id="pdf-month-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
@@ -1053,40 +1053,61 @@
                 </div>
             </div>
 
-            <!-- Options (Doar Totaluri vs Doar Mese) -->
-            <div class="mb-4 p-3 bg-slate-800/80 rounded-xl border border-slate-700/80 hover:border-indigo-500/50 transition-colors">
-                <label class="flex items-start gap-3 cursor-pointer select-none">
-                    <input type="checkbox" id="pdf-totals-only" class="mt-1 w-4 h-4 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer">
-                    <div class="text-xs space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                            <span>📊 Generează doar tabelele de sinteză și totaluri</span>
-                        </div>
-                        <p class="text-slate-300 leading-relaxed text-[11px]">
-                            <span class="text-indigo-300 font-semibold">• Bifat:</span> Generează <strong>exclusiv tabelele de sinteză</strong> (Balanța Metabolică Zilnică și Necesar Nutrițional DZR), fără calendarul cu mese.<br>
-                            <span class="text-emerald-300 font-semibold">• Nebifat:</span> Generează <strong>exclusiv calendarul cu mesele detaliate</strong> și activitățile fizice ale lunii, fără tabelele de sinteză.
-                        </p>
+            <!-- 5 Modular Report Checkboxes -->
+            <div class="mb-4 space-y-2">
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Secțiuni incluse în Raport:</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="setAllPDFCheckboxes(true)" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold underline">Selectează tot</button>
+                        <span class="text-slate-600 text-xs">•</span>
+                        <button type="button" onclick="setAllPDFCheckboxes(false)" class="text-[11px] text-slate-400 hover:text-slate-300 font-semibold underline">Deselectează tot</button>
+                    </div>
+                </div>
+
+                <!-- 1) Lista meselor (calendar) -->
+                <label class="flex items-start gap-3 p-2.5 bg-slate-800/70 hover:bg-slate-800 rounded-xl border border-slate-700/70 hover:border-indigo-500/50 cursor-pointer select-none transition-colors">
+                    <input type="checkbox" id="pdf-opt-calendar" checked class="mt-0.5 w-4 h-4 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer">
+                    <div class="text-xs">
+                        <span class="font-bold text-white flex items-center gap-1.5">📅 1) Lista meselor (Calendar lunar)</span>
+                        <p class="text-slate-400 text-[11px] mt-0.5">Tabel 7 coloane pe zile cu orele meselor, ingredientele și macronutrienții.</p>
                     </div>
                 </label>
-            </div>
 
-            <!-- Features Summary List -->
-            <div class="bg-indigo-950/30 rounded-xl p-3.5 border border-indigo-900/50 mb-5 text-xs text-indigo-200/90 space-y-1.5">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
-                    <span>Orientare <strong>Landscape A4</strong> optimizată pentru print și PDF.</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
-                    <span><strong>Tabel Comparativ</strong>: Consumat vs Necesar (BMR + Activitate Fizică + TEF).</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
-                    <span>Sumar nutrienți per masă + <strong>Total zilnic de nutrienți</strong>.</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
-                    <span><strong>Raport final Necesar vs Consumat</strong> (procente DZR / RDA).</span>
-                </div>
+                <!-- 2) Tabel balanță metabolică -->
+                <label class="flex items-start gap-3 p-2.5 bg-slate-800/70 hover:bg-slate-800 rounded-xl border border-slate-700/70 hover:border-indigo-500/50 cursor-pointer select-none transition-colors">
+                    <input type="checkbox" id="pdf-opt-metabolic" checked class="mt-0.5 w-4 h-4 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer">
+                    <div class="text-xs">
+                        <span class="font-bold text-white flex items-center gap-1.5">⚡ 2) Tabel balanță metabolică</span>
+                        <p class="text-slate-400 text-[11px] mt-0.5">Aport caloric vs Necesar (BMR ajustat, Sport, TEF digestie) și bilanț deficit/surplus.</p>
+                    </div>
+                </label>
+
+                <!-- 3) Raport necesar nutrițional -->
+                <label class="flex items-start gap-3 p-2.5 bg-slate-800/70 hover:bg-slate-800 rounded-xl border border-slate-700/70 hover:border-indigo-500/50 cursor-pointer select-none transition-colors">
+                    <input type="checkbox" id="pdf-opt-nutrients" checked class="mt-0.5 w-4 h-4 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer">
+                    <div class="text-xs">
+                        <span class="font-bold text-white flex items-center gap-1.5">🔬 3) Raport necesar nutrițional</span>
+                        <p class="text-slate-400 text-[11px] mt-0.5">Comparație consumat vs DZR / RDA (vitamine, minerale și macronutrienți).</p>
+                    </div>
+                </label>
+
+                <!-- 4) Atenție Medicală -->
+                <label class="flex items-start gap-3 p-2.5 bg-slate-800/70 hover:bg-slate-800 rounded-xl border border-slate-700/70 hover:border-indigo-500/50 cursor-pointer select-none transition-colors">
+                    <input type="checkbox" id="pdf-opt-medical" checked class="mt-0.5 w-4 h-4 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer">
+                    <div class="text-xs">
+                        <span class="font-bold text-white flex items-center gap-1.5">🩺 4) Atenție Medicală</span>
+                        <p class="text-slate-400 text-[11px] mt-0.5">Avertizări pentru carențe nutriționale critice și profilul afecțiunilor medicale.</p>
+                    </div>
+                </label>
+
+                <!-- 5) Lista alimente consumate -->
+                <label class="flex items-start gap-3 p-2.5 bg-slate-800/70 hover:bg-slate-800 rounded-xl border border-slate-700/70 hover:border-indigo-500/50 cursor-pointer select-none transition-colors">
+                    <input type="checkbox" id="pdf-opt-foods-summary" checked class="mt-0.5 w-4 h-4 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer">
+                    <div class="text-xs">
+                        <span class="font-bold text-white flex items-center gap-1.5">🥗 5) Lista alimente consumate</span>
+                        <p class="text-slate-400 text-[11px] mt-0.5">Totalurile pe fiecare aliment consumat în interval (cantitate, frecvență, calorii, macro).</p>
+                    </div>
+                </label>
             </div>
 
             <div class="flex justify-between items-center pt-2 border-t border-slate-800">

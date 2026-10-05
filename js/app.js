@@ -4389,6 +4389,30 @@ window.closeDeficienciesReportModal = () => {
 };
 
 // --- PDF Report Controllers ---
+window.setAllPDFCheckboxes = (checked) => {
+    const ids = ['pdf-opt-calendar', 'pdf-opt-metabolic', 'pdf-opt-nutrients', 'pdf-opt-medical', 'pdf-opt-foods-summary'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = checked;
+    });
+};
+
+function getPDFReportOptions() {
+    const showCalendar = document.getElementById('pdf-opt-calendar')?.checked ?? true;
+    const showMetabolic = document.getElementById('pdf-opt-metabolic')?.checked ?? true;
+    const showNutrients = document.getElementById('pdf-opt-nutrients')?.checked ?? true;
+    const showMedical = document.getElementById('pdf-opt-medical')?.checked ?? true;
+    const showFoodsSummary = document.getElementById('pdf-opt-foods-summary')?.checked ?? true;
+
+    return {
+        showCalendar,
+        showMetabolic,
+        showNutrients,
+        showMedical,
+        showFoodsSummary
+    };
+}
+
 window.openPDFModal = () => {
     const modal = document.getElementById('pdf-modal');
     if (!modal) return;
@@ -4409,10 +4433,16 @@ window.closePDFModal = () => {
 window.downloadMonthlyPDF = async () => {
     const monthSelect = document.getElementById('pdf-month-select');
     const yearSelect = document.getElementById('pdf-year-select');
-    const totalsOnlyCheck = document.getElementById('pdf-totals-only');
     const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
     const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
-    const totalsOnly = totalsOnlyCheck ? totalsOnlyCheck.checked : false;
+    const options = getPDFReportOptions();
+
+    const anySelected = Object.values(options).some(Boolean);
+    if (!anySelected) {
+        alert("Te rugăm să bifezi cel puțin o secțiune pentru a genera raportul PDF.");
+        return;
+    }
+
     const btn = document.getElementById('download-pdf-btn');
     const origHTML = btn ? btn.innerHTML : '';
 
@@ -4423,7 +4453,7 @@ window.downloadMonthlyPDF = async () => {
     }
 
     try {
-        await PDFReport.exportToPDF(year, month, { totalsOnly });
+        await PDFReport.exportToPDF(year, month, options);
         window.closePDFModal();
     } catch (e) {
         alert("Eroare la exportul PDF: " + e.message);
@@ -4439,11 +4469,17 @@ window.downloadMonthlyPDF = async () => {
 window.previewMonthlyPDF = () => {
     const monthSelect = document.getElementById('pdf-month-select');
     const yearSelect = document.getElementById('pdf-year-select');
-    const totalsOnlyCheck = document.getElementById('pdf-totals-only');
     const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
     const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
-    const totalsOnly = totalsOnlyCheck ? totalsOnlyCheck.checked : false;
-    PDFReport.previewReport(year, month, { totalsOnly });
+    const options = getPDFReportOptions();
+
+    const anySelected = Object.values(options).some(Boolean);
+    if (!anySelected) {
+        alert("Te rugăm să bifezi cel puțin o secțiune pentru a previzualiza raportul.");
+        return;
+    }
+
+    PDFReport.previewReport(year, month, options);
 };
 
 // =========================================================================
