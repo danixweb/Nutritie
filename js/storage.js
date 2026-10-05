@@ -14,10 +14,116 @@ const STORAGE_KEYS = {
     AI_ENABLED: 'gemini_ai_enabled',
     AI_CONNECTED: 'gemini_ai_connected',
     AI_NUTRIENT_CALC: 'gemini_ai_nutrient_calc',
-    JOURNAL_FILTER: 'nutritie_journal_filter'
+    JOURNAL_FILTER: 'nutritie_journal_filter',
+    ANALYZED_FOODS: 'nutritie_analyzed_foods_db_v1'
 };
 
-// Local food database for offline calorie / macro estimation
+// =========================================================================
+// Canonical Nutrients Standard Reference Dictionary (Romanian Medical / DZR)
+// =========================================================================
+export const CANONICAL_NUTRIENTS = {
+    // --- Macronutrienți & Fibre ---
+    'Proteine': { name: 'Proteine', type: 'Macro', unit: 'g', rda: 60, role: 'Construcție & refacere musculară și celulară', synonyms: ['proteine', 'protein', 'proteina', 'proteină', 'prot'] },
+    'Carbohidrați': { name: 'Carbohidrați', type: 'Macro', unit: 'g', rda: 250, role: 'Sursă primară de energie pentru creier & mușchi', synonyms: ['carbohidrati', 'carbohidrați', 'glucide', 'carbs', 'carbohydrates', 'carbohidrat', 'glucid'] },
+    'Grăsimi': { name: 'Grăsimi', type: 'Macro', unit: 'g', rda: 70, role: 'Echilibru celular, hormonal și asimilare vitamine', synonyms: ['grasimi', 'grăsimi', 'lipide', 'fat', 'fats', 'lipids', 'lipida', 'lipidă', 'grasime', 'grăsime'] },
+    'Fibre': { name: 'Fibre', type: 'Macro', unit: 'g', rda: 30, role: 'Tranzit intestinal, digestie și microbiom sănătos', synonyms: ['fibre', 'fibra', 'fibră', 'fibre dietetice', 'fiber', 'dietary fiber'] },
+
+    // --- Vitamine ---
+    'Vitamina B9 (Acid folic)': { name: 'Vitamina B9 (Acid folic)', type: 'Micro', unit: 'µg', rda: 400, role: 'Sinteză ADN, formare celule roșii & diviziune celulară', synonyms: ['vitamina b9', 'vitamina b-9', 'b9', 'b-9', 'acid folic', 'acidul folic', 'folic acid', 'folat', 'folati', 'folați', 'folate', 'vitamin b9', 'vitamin b-9'] },
+    'Vitamina B12 (Cobalamină)': { name: 'Vitamina B12 (Cobalamină)', type: 'Micro', unit: 'µg', rda: 2.5, role: 'Sistem nervos, mielinizare & formare eritrocite', synonyms: ['vitamina b12', 'vitamina b-12', 'b12', 'b-12', 'cobalamina', 'cobalamină', 'cianocobalamina', 'vitamin b12'] },
+    'Vitamina C (Acid ascorbic)': { name: 'Vitamina C (Acid ascorbic)', type: 'Micro', unit: 'mg', rda: 80, role: 'Imunitate, sinteză colagen, absorbție fier & antioxidant', synonyms: ['vitamina c', 'acid ascorbic', 'ascorbic acid', 'vitamin c', 'acidul ascorbic'] },
+    'Vitamina B1 (Tiamină)': { name: 'Vitamina B1 (Tiamină)', type: 'Micro', unit: 'mg', rda: 1.1, role: 'Metabolism glucidic & funcționare sistem nervos', synonyms: ['vitamina b1', 'vitamina b-1', 'b1', 'tiamina', 'tiamină', 'thiamine', 'thiamin', 'vitamin b1'] },
+    'Vitamina B2 (Riboflavină)': { name: 'Vitamina B2 (Riboflavină)', type: 'Micro', unit: 'mg', rda: 1.4, role: 'Metabolism energetic celular & sănătate oculară', synonyms: ['vitamina b2', 'vitamina b-2', 'b2', 'riboflavina', 'riboflavină', 'riboflavin', 'vitamin b2'] },
+    'Vitamina B3 (Niacină)': { name: 'Vitamina B3 (Niacină)', type: 'Micro', unit: 'mg', rda: 16, role: 'Producție ATP, sănătate piele & sistem digestiv', synonyms: ['vitamina b3', 'vitamina b-3', 'b3', 'niacina', 'niacină', 'niacin', 'vitamina pp', 'vitamin b3'] },
+    'Vitamina B5 (Acid pantotenic)': { name: 'Vitamina B5 (Acid pantotenic)', type: 'Micro', unit: 'mg', rda: 6, role: 'Sinteză coenzima A, hormoni & acizi grași', synonyms: ['vitamina b5', 'vitamina b-5', 'b5', 'acid pantotenic', 'pantothenic acid', 'pantotenat', 'vitamin b5'] },
+    'Vitamina B6 (Piridoxină)': { name: 'Vitamina B6 (Piridoxină)', type: 'Micro', unit: 'mg', rda: 1.4, role: 'Metabolism aminoacizi & sinteză neurotransmițători', synonyms: ['vitamina b6', 'vitamina b-6', 'b6', 'piridoxina', 'piridoxină', 'pyridoxine', 'vitamin b6'] },
+    'Vitamina B7 (Biotină)': { name: 'Vitamina B7 (Biotină)', type: 'Micro', unit: 'µg', rda: 50, role: 'Sănătate păr, unghii, piele & metabolism lipide', synonyms: ['vitamina b7', 'vitamina b-7', 'b7', 'biotina', 'biotină', 'biotin', 'vitamina h', 'vitamin b7'] },
+    'Vitamina A': { name: 'Vitamina A', type: 'Micro', unit: 'µg', rda: 800, role: 'Acuitate vizuală, sănătate piele & imunitate', synonyms: ['vitamina a', 'retinol', 'beta-caroten', 'beta caroten', 'caroten', 'vitamin a'] },
+    'Vitamina D': { name: 'Vitamina D', type: 'Micro', unit: 'µg', rda: 15, role: 'Fixare calciu, densitate osoasă & imunitate', synonyms: ['vitamina d', 'vitamina d3', 'vitamina d2', 'colecalciferol', 'calciferol', 'vitamin d', 'vitamin d3'] },
+    'Vitamina E': { name: 'Vitamina E', type: 'Micro', unit: 'mg', rda: 12, role: 'Antioxidant puternic & protecție membrane celulare', synonyms: ['vitamina e', 'tocoferol', 'alfa-tocoferol', 'vitamin e'] },
+    'Vitamina K': { name: 'Vitamina K', type: 'Micro', unit: 'µg', rda: 75, role: 'Coagulare sanguină normală & mineralizare osoasă', synonyms: ['vitamina k', 'vitamina k1', 'vitamina k2', 'filochinona', 'menaquinona', 'vitamin k'] },
+
+    // --- Minerale & Electroliți ---
+    'Calciu': { name: 'Calciu', type: 'Micro', unit: 'mg', rda: 1000, role: 'Structură osoasă, dinți & contracție musculară', synonyms: ['calciu', 'calcium', 'ca'] },
+    'Magneziu': { name: 'Magneziu', type: 'Micro', unit: 'mg', rda: 375, role: 'Relaxare musculară, somn, sinteză ATP & enzime', synonyms: ['magneziu', 'magnesium', 'mg'] },
+    'Fier': { name: 'Fier', type: 'Micro', unit: 'mg', rda: 14, role: 'Transport de oxigen (hemoglobină) & energie celulară', synonyms: ['fier', 'iron', 'fe'] },
+    'Potasiu': { name: 'Potasiu', type: 'Micro', unit: 'mg', rda: 3500, role: 'Reglare tensiune arterială & echilibru hidric', synonyms: ['potasiu', 'potassium', 'k'] },
+    'Zinc': { name: 'Zinc', type: 'Micro', unit: 'mg', rda: 10, role: 'Imunitate, vindecare țesuturi & sinteză proteină', synonyms: ['zinc', 'zn'] },
+    'Sodiu': { name: 'Sodiu', type: 'Micro', unit: 'mg', rda: 2000, role: 'Echilibru osmotic & transmitere impuls nervos', synonyms: ['sodiu', 'sodium', 'na', 'sare'] },
+    'Fosfor': { name: 'Fosfor', type: 'Micro', unit: 'mg', rda: 700, role: 'Structură osoasă, fosfolipide & stocare ATP', synonyms: ['fosfor', 'phosphorus', 'p'] },
+    'Seleniu': { name: 'Seleniu', type: 'Micro', unit: 'µg', rda: 55, role: 'Funcție tiroidiană normală & apărare antioxidantă', synonyms: ['seleniu', 'selenium', 'se'] },
+    'Iod': { name: 'Iod', type: 'Micro', unit: 'µg', rda: 150, role: 'Sinteză hormoni tiroidieni (T3, T4) & metabolism', synonyms: ['iod', 'iodine', 'i'] },
+    'Cupru': { name: 'Cupru', type: 'Micro', unit: 'mg', rda: 1, role: 'Metabolism fier, formare colagen & vase de sânge', synonyms: ['cupru', 'copper', 'cu'] },
+    'Mangan': { name: 'Mangan', type: 'Micro', unit: 'mg', rda: 2, role: 'Enzime antioxidante & sănătate țesut conjunctiv', synonyms: ['mangan', 'manganese', 'mn'] },
+    'Crom': { name: 'Crom', type: 'Micro', unit: 'µg', rda: 40, role: 'Metabolismul glucozei & sensibilitate la insulină', synonyms: ['crom', 'chromium', 'cr'] }
+};
+
+// Normalize raw nutrient string to its single canonical standard name
+export function normalizeNutrientName(rawName) {
+    if (!rawName || typeof rawName !== 'string') return 'Altele';
+    const clean = rawName.toLowerCase().trim()
+        .replace(/[\(\)\[\],:\-_]/g, ' ')
+        .replace(/\s+/g, ' ');
+
+    // 1. Direct match on canonical names
+    for (const [canonName, def] of Object.entries(CANONICAL_NUTRIENTS)) {
+        if (canonName.toLowerCase() === rawName.toLowerCase().trim()) return canonName;
+    }
+
+    // 2. Match through synonyms
+    for (const [canonName, def] of Object.entries(CANONICAL_NUTRIENTS)) {
+        for (const syn of def.synonyms) {
+            const synClean = syn.toLowerCase().replace(/[\(\)\[\],:\-_]/g, ' ').replace(/\s+/g, ' ');
+            if (clean === synClean || clean.includes(synClean) || synClean.includes(clean)) {
+                return canonName;
+            }
+        }
+    }
+
+    // Return cleaned original capitalized if no match found
+    return rawName.trim().charAt(0).toUpperCase() + rawName.trim().slice(1);
+}
+
+// Normalize and deduplicate nutrients array
+export function normalizeNutrientsArray(nutrients) {
+    if (!Array.isArray(nutrients)) return [];
+    const map = new Map();
+
+    nutrients.forEach(n => {
+        if (!n || typeof n !== 'object') return;
+        const canonName = normalizeNutrientName(n.name);
+        const def = CANONICAL_NUTRIENTS[canonName];
+
+        const rawQty = parseFloat(n.qty) || 0;
+        const unit = def ? def.unit : (n.unit || 'g');
+        const type = def ? def.type : (n.type || 'Micro');
+        const role = def ? def.role : (n.role || 'Nutrient');
+        const rda = def ? def.rda : 100;
+
+        if (map.has(canonName)) {
+            const existing = map.get(canonName);
+            existing.qty = parseFloat((existing.qty + rawQty).toFixed(2));
+            existing.rda_percent = Math.round((existing.qty / rda) * 100);
+        } else {
+            const rdaPercent = (n.rda_percent !== undefined && !isNaN(parseFloat(n.rda_percent)))
+                ? Math.round(parseFloat(n.rda_percent))
+                : Math.round((rawQty / rda) * 100);
+
+            map.set(canonName, {
+                name: canonName,
+                type: type,
+                qty: parseFloat(rawQty.toFixed(2)),
+                unit: unit,
+                rda_percent: rdaPercent,
+                role: role
+            });
+        }
+    });
+
+    return Array.from(map.values());
+}
+
+// Local food database for offline calorie / macro estimation (baseline)
 export const localFoodDB = {
     "mar": { cal: 52, pro: 0.3, carb: 14, fat: 0.2, vitC: 4.6, pot: 107 },
     "măr": { cal: 52, pro: 0.3, carb: 14, fat: 0.2, vitC: 4.6, pot: 107 },
@@ -45,12 +151,19 @@ export const localFoodDB = {
     "default": { cal: 100, pro: 5, carb: 10, fat: 5 }
 };
 
-// Local food macro and nutrient estimator (0ms latency, offline)
+// Local food macro and nutrient estimator (Priority 1: Analyzed Food Cache, Priority 2: Baseline DB)
 export function estimateFoodLocally(name, quantity, unit) {
     const qty = parseFloat(quantity) || 1;
     const u = (unit || 'g').toLowerCase().trim();
+
+    // 1. Check Analyzed Foods Database (Smart Offline Cache from previous AI analyses)
+    const cached = Storage.findAnalyzedFood(name);
+    if (cached) {
+        return Storage.calculateFoodFromBase(cached, qty, unit);
+    }
+
+    // 2. Fallback to basic dictionary
     const nLower = (name || '').toLowerCase().trim();
-    
     let match = localFoodDB.default;
     for (const k in localFoodDB) {
         if (k !== 'default' && nLower.includes(k)) {
@@ -78,22 +191,22 @@ export function estimateFoodLocally(name, quantity, unit) {
         factor = (qty * 1000) / 100;
     }
 
-    const nuts = [];
-    if (match.pro) nuts.push({ name: "Proteine", type: "Macro", qty: parseFloat((match.pro * factor).toFixed(1)), unit: "g", rda_percent: ((match.pro * factor / 50) * 100).toFixed(0), role: "Construcție musculară" });
-    if (match.carb) nuts.push({ name: "Carbohidrați", type: "Macro", qty: parseFloat((match.carb * factor).toFixed(1)), unit: "g", rda_percent: ((match.carb * factor / 275) * 100).toFixed(0), role: "Sursă primară de energie" });
-    if (match.fat) nuts.push({ name: "Grăsimi", type: "Macro", qty: parseFloat((match.fat * factor).toFixed(1)), unit: "g", rda_percent: ((match.fat * factor / 70) * 100).toFixed(0), role: "Sănătate celulară și hormonală" });
-    if (match.vitC) nuts.push({ name: "Vitamina C", type: "Micro", qty: parseFloat((match.vitC * factor).toFixed(1)), unit: "mg", rda_percent: ((match.vitC * factor / 80) * 100).toFixed(0), role: "Imunitate și colagen" });
-    if (match.pot) nuts.push({ name: "Potasiu", type: "Micro", qty: parseFloat((match.pot * factor).toFixed(1)), unit: "mg", rda_percent: ((match.pot * factor / 3500) * 100).toFixed(0), role: "Echilibru electrolitic" });
-    if (match.mag) nuts.push({ name: "Magneziu", type: "Micro", qty: parseFloat((match.mag * factor).toFixed(1)), unit: "mg", rda_percent: ((match.mag * factor / 375) * 100).toFixed(0), role: "Energie și sistem nervos" });
-    if (match.iron) nuts.push({ name: "Fier", type: "Micro", qty: parseFloat((match.iron * factor).toFixed(1)), unit: "mg", rda_percent: ((match.iron * factor / 14) * 100).toFixed(0), role: "Oxigenare celulară" });
-    if (match.calciu) nuts.push({ name: "Calciu", type: "Micro", qty: parseFloat((match.calciu * factor).toFixed(1)), unit: "mg", rda_percent: ((match.calciu * factor / 1000) * 100).toFixed(0), role: "Sănătate osoasă" });
+    const rawNuts = [];
+    if (match.pro) rawNuts.push({ name: "Proteine", type: "Macro", qty: parseFloat((match.pro * factor).toFixed(1)), unit: "g" });
+    if (match.carb) rawNuts.push({ name: "Carbohidrați", type: "Macro", qty: parseFloat((match.carb * factor).toFixed(1)), unit: "g" });
+    if (match.fat) rawNuts.push({ name: "Grăsimi", type: "Macro", qty: parseFloat((match.fat * factor).toFixed(1)), unit: "g" });
+    if (match.vitC) rawNuts.push({ name: "Vitamina C (Acid ascorbic)", type: "Micro", qty: parseFloat((match.vitC * factor).toFixed(1)), unit: "mg" });
+    if (match.pot) rawNuts.push({ name: "Potasiu", type: "Micro", qty: parseFloat((match.pot * factor).toFixed(1)), unit: "mg" });
+    if (match.mag) rawNuts.push({ name: "Magneziu", type: "Micro", qty: parseFloat((match.mag * factor).toFixed(1)), unit: "mg" });
+    if (match.iron) rawNuts.push({ name: "Fier", type: "Micro", qty: parseFloat((match.iron * factor).toFixed(1)), unit: "mg" });
+    if (match.calciu) rawNuts.push({ name: "Calciu", type: "Micro", qty: parseFloat((match.calciu * factor).toFixed(1)), unit: "mg" });
 
     return {
         name: name.trim(),
         quantity: qty,
         unit: u,
         calories: Math.round((match.cal || 100) * factor),
-        nutrients: nuts
+        nutrients: normalizeNutrientsArray(rawNuts)
     };
 }
 
@@ -319,6 +432,218 @@ export const Storage = {
         } catch (e) {
             console.error("Failed to delete meal", e);
             return false;
+        }
+    },
+
+    // --- Analyzed Foods Database (Smart Cache & Reanalysis) ---
+    getAnalyzedFoods() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEYS.ANALYZED_FOODS);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error("Failed to read analyzed foods from storage", e);
+            return [];
+        }
+    },
+
+    getAnalyzedFood(idOrName) {
+        if (!idOrName) return null;
+        const list = this.getAnalyzedFoods();
+        const idMatch = list.find(f => f.id === idOrName);
+        if (idMatch) return idMatch;
+        const cleanQuery = idOrName.toLowerCase().trim();
+        return list.find(f => f.name.toLowerCase().trim() === cleanQuery) || null;
+    },
+
+    saveAnalyzedFood(foodItem) {
+        if (!foodItem || !foodItem.name) return null;
+        try {
+            const list = this.getAnalyzedFoods();
+            const cleanName = foodItem.name.trim();
+            const existingIdx = list.findIndex(f => f.id === foodItem.id || f.name.toLowerCase().trim() === cleanName.toLowerCase());
+
+            const nowStr = new Date().toLocaleString('ro-RO', { 
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            const normalizedNutrients = normalizeNutrientsArray(foodItem.nutrients || []);
+            
+            // Extract macros if not provided
+            let prot = 0, carbs = 0, fat = 0, fiber = 0;
+            normalizedNutrients.forEach(n => {
+                const nName = n.name.toLowerCase();
+                if (nName.includes('prot')) prot += n.qty || 0;
+                if (nName.includes('carb')) carbs += n.qty || 0;
+                if (nName.includes('grăs') || nName.includes('gras')) fat += n.qty || 0;
+                if (nName.includes('fibr')) fiber += n.qty || 0;
+            });
+
+            const foodToSave = {
+                id: (existingIdx >= 0 ? list[existingIdx].id : null) || foodItem.id || ('food_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
+                name: cleanName,
+                baseQty: foodItem.baseQty || 100,
+                baseUnit: foodItem.baseUnit || 'g',
+                calories: Math.round(foodItem.calories || 0),
+                macros: foodItem.macros || {
+                    protein: parseFloat(prot.toFixed(1)),
+                    carbs: parseFloat(carbs.toFixed(1)),
+                    fat: parseFloat(fat.toFixed(1)),
+                    fiber: parseFloat(fiber.toFixed(1))
+                },
+                nutrients: normalizedNutrients,
+                lastAnalyzed: foodItem.lastAnalyzed || nowStr,
+                source: foodItem.source || 'AI (Gemini)'
+            };
+
+            if (existingIdx >= 0) {
+                list[existingIdx] = foodToSave;
+            } else {
+                list.unshift(foodToSave);
+            }
+
+            localStorage.setItem(STORAGE_KEYS.ANALYZED_FOODS, JSON.stringify(list));
+            return foodToSave;
+        } catch (e) {
+            console.error("Failed to save analyzed food", e);
+            return null;
+        }
+    },
+
+    deleteAnalyzedFood(id) {
+        try {
+            const list = this.getAnalyzedFoods().filter(f => f.id !== id);
+            localStorage.setItem(STORAGE_KEYS.ANALYZED_FOODS, JSON.stringify(list));
+            return true;
+        } catch (e) {
+            console.error("Failed to delete analyzed food", e);
+            return false;
+        }
+    },
+
+    findAnalyzedFood(nameQuery) {
+        if (!nameQuery || typeof nameQuery !== 'string') return null;
+        const list = this.getAnalyzedFoods();
+        if (list.length === 0) return null;
+
+        const normalizeStr = s => s.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[\(\)\[\],:\-_]/g, ' ')
+            .replace(/\s+/g, ' ').trim();
+
+        const qClean = normalizeStr(nameQuery);
+        if (!qClean) return null;
+
+        // 1. Exact match
+        for (const item of list) {
+            if (normalizeStr(item.name) === qClean) return item;
+        }
+
+        // 2. Query contains full item name or item name contains query
+        for (const item of list) {
+            const iClean = normalizeStr(item.name);
+            if (qClean.includes(iClean) || iClean.includes(qClean)) {
+                return item;
+            }
+        }
+
+        // 3. Word-level containment (e.g. "piept pui" matches "piept de pui")
+        const qWords = qClean.split(' ').filter(w => w.length > 2);
+        if (qWords.length > 0) {
+            for (const item of list) {
+                const iClean = normalizeStr(item.name);
+                const matchAll = qWords.every(w => iClean.includes(w));
+                if (matchAll) return item;
+            }
+        }
+
+        return null;
+    },
+
+    calculateFoodFromBase(baseFood, targetQty, targetUnit) {
+        const qty = parseFloat(targetQty) || 1;
+        const u = (targetUnit || 'g').toLowerCase().trim();
+        const baseQ = baseFood.baseQty || 100;
+        const baseU = (baseFood.baseUnit || 'g').toLowerCase().trim();
+
+        // Calculate grams equivalent
+        let targetGrams = qty;
+        if (u === 'g' || u === 'grame' || u === 'gram') targetGrams = qty;
+        else if (u === 'ml' || u === 'mililitri' || u === 'mililitru') targetGrams = qty;
+        else if (u === 'kg' || u === 'kilograme' || u === 'kilo') targetGrams = qty * 1000;
+        else if (u === 'l' || u === 'litri' || u === 'litru') targetGrams = qty * 1000;
+        else if (u.includes('buc') || u.includes('feli')) targetGrams = qty * 60;
+        else if (u.includes('lingurita') || u.includes('linguriță')) targetGrams = qty * 5;
+        else if (u.includes('lingur')) targetGrams = qty * 15;
+        else if (u.includes('can') || u.includes('căn')) targetGrams = qty * 250;
+        else if (u.includes('por') || u.includes('bol') || u.includes('farfuri')) targetGrams = qty * 350;
+
+        let baseGrams = baseQ;
+        if (baseU === 'kg' || baseU === 'l') baseGrams = baseQ * 1000;
+        else if (baseU.includes('buc') || baseU.includes('feli')) baseGrams = baseQ * 60;
+
+        const factor = baseGrams > 0 ? (targetGrams / baseGrams) : (qty / baseQ);
+
+        const scaledNutrients = (baseFood.nutrients || []).map(n => {
+            const rawQty = parseFloat((n.qty * factor).toFixed(2));
+            const def = CANONICAL_NUTRIENTS[n.name];
+            const rda = def ? def.rda : 100;
+            return {
+                name: n.name,
+                type: n.type || 'Micro',
+                qty: rawQty,
+                unit: n.unit || 'g',
+                rda_percent: Math.round((rawQty / rda) * 100),
+                role: n.role || (def ? def.role : '')
+            };
+        });
+
+        return {
+            name: baseFood.name,
+            quantity: qty,
+            unit: targetUnit || baseFood.baseUnit || 'g',
+            calories: Math.round((baseFood.calories || 0) * factor),
+            nutrients: scaledNutrients,
+            isFromLocalCache: true
+        };
+    },
+
+    exportAnalyzedFoodsJson() {
+        const list = this.getAnalyzedFoods();
+        const payload = {
+            version: '1.0',
+            type: 'analyzed_foods_database',
+            exportDate: new Date().toISOString(),
+            count: list.length,
+            foods: list
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const dateStr = new Date().toISOString().slice(0, 10);
+        a.download = `asistent_nutritie_baza_alimente_${dateStr}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    },
+
+    importAnalyzedFoodsFromJson(jsonString) {
+        try {
+            const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+            const incoming = Array.isArray(data) ? data : (data.foods && Array.isArray(data.foods) ? data.foods : []);
+            if (!Array.isArray(incoming)) throw new Error("Format JSON invalid.");
+
+            let importedCount = 0;
+            incoming.forEach(item => {
+                if (item && item.name) {
+                    this.saveAnalyzedFood(item);
+                    importedCount++;
+                }
+            });
+            return importedCount;
+        } catch (e) {
+            console.error("Import error", e);
+            throw e;
         }
     },
 

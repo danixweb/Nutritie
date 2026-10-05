@@ -21,7 +21,7 @@
 <body class="h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-200 select-none">
 
     <!-- Header -->
-    <header class="bg-slate-900 border-b border-slate-800 px-3 md:px-6 py-3 flex justify-between items-center shadow-md z-30 relative">
+    <header id="app-header" class="shrink-0 bg-slate-900 border-b border-slate-800 px-3 md:px-6 py-3 flex justify-between items-center shadow-md z-30 relative">
         <div class="flex items-center gap-2 md:gap-3">
             <button onclick="toggleSidebar()" class="p-2 text-indigo-300 bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-800/80 active:scale-95 rounded-xl transition-all shadow-sm flex items-center justify-center" title="Analiză Nutrienți & DZR">
                 <i data-lucide="list" class="w-5 h-5 text-indigo-400"></i>
@@ -130,6 +130,13 @@
                             <div>
                                 <div class="font-semibold">Calcul nutrienți</div>
                                 <div class="text-[10px] text-slate-400">Opțiune calcul AI vs Local</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); openAnalyzedFoodsModal()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-200 transition-colors text-left">
+                            <i data-lucide="database" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold text-white">Bază Alimente AI</div>
+                                <div class="text-[10px] text-slate-400">Dicționar local, reanalizare & backup</div>
                             </div>
                         </button>
                     </div>
@@ -1208,6 +1215,84 @@
                         <i data-lucide="check" class="w-4 h-4"></i> Aplică Selecția
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL: Bază Alimente Analizate AI & Reanalizare Offline -->
+    <!-- ========================================================= -->
+    <div id="analyzed-foods-modal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60 shrink-0">
+                <div class="flex items-center gap-2.5 sm:gap-3">
+                    <div class="p-2 sm:p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-800 text-indigo-400">
+                        <i data-lucide="database" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 class="text-base sm:text-lg font-bold text-white tracking-tight">Bază Alimente Analizate AI</h3>
+                            <span id="analyzed-foods-count-badge" class="text-xs bg-indigo-950/90 text-indigo-300 border border-indigo-800/80 px-2.5 py-0.5 rounded-full font-mono font-bold">0 alimente</span>
+                        </div>
+                        <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">Valori standardizate unitar (la 100g/100ml/buc) • Căutare prioritară locală (0ms) & Reanalizare AI</p>
+                    </div>
+                </div>
+                <button onclick="closeAnalyzedFoodsModal()" class="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors" title="Închide">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Toolbar: Search & Import/Export -->
+            <div class="p-3 sm:p-4 bg-slate-950/40 border-b border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+                <!-- Search Box -->
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="analyzed-foods-search" oninput="filterAnalyzedFoods(this.value)" placeholder="Caută aliment după denumire..." class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-500">
+                    <button onclick="clearAnalyzedFoodsSearch()" id="clear-analyzed-search-btn" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
+                <!-- Action Buttons: Export / Import / Populate -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <!-- Hidden Import Input -->
+                    <input type="file" id="import-analyzed-foods-input" accept=".json" class="hidden" onchange="handleImportAnalyzedFoods(this)">
+                    
+                    <button onclick="document.getElementById('import-analyzed-foods-input').click()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm" title="Încarcă o bază de alimente din fișier JSON">
+                        <i data-lucide="upload" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>Importă JSON</span>
+                    </button>
+
+                    <button onclick="exportAnalyzedFoods()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm" title="Descarcă backup JSON cu baza de alimente">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>Exportă JSON</span>
+                    </button>
+
+                    <button onclick="extractFoodsFromMealHistory()" id="btn-sync-history-foods" class="px-3 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900 active:scale-95 text-indigo-300 text-xs font-semibold border border-indigo-800/80 flex items-center gap-1.5 transition-all shadow-sm" title="Importă și normalizează alimentele existente din jurnalul de mese">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span class="hidden sm:inline">Extrage din Jurnal</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global Action Status Alert (for Reanalysis in progress or results) -->
+            <div id="analyzed-foods-global-status" class="hidden px-4 py-2 bg-indigo-950/70 border-b border-indigo-900/60 text-xs flex items-center justify-between"></div>
+
+            <!-- Foods List Container with Autoretractable Nutrients Accordion -->
+            <div id="analyzed-foods-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-5 space-y-3">
+                <!-- Rendered dynamically via app.js -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3 sm:p-4 bg-slate-950/80 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400 shrink-0">
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                    <span>La adăugarea oricărui aliment într-o masă, aplicația va folosi prioritar aceste date standardizate.</span>
+                </div>
+                <button onclick="closeAnalyzedFoodsModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-semibold rounded-xl border border-slate-700 transition-colors">
+                    Închide
+                </button>
             </div>
         </div>
     </div>

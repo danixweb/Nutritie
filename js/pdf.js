@@ -1,24 +1,12 @@
 // =========================================================
 // PDF Module - Monthly Landscape Report & Nutrient Analysis
 // =========================================================
-import { Storage } from './storage.js';
+import { Storage, CANONICAL_NUTRIENTS, normalizeNutrientName } from './storage.js';
 
 // Standard Daily Recommended Allowances (DZR / RDA) for adult average
 const DAILY_RDA = {
-    "Calorii": { qty: 2000, unit: "kcal" },
-    "Proteine": { qty: 75, unit: "g" },
-    "Carbohidrați": { qty: 260, unit: "g" },
-    "Grăsimi": { qty: 70, unit: "g" },
-    "Fibre": { qty: 30, unit: "g" },
-    "Vitamina C": { qty: 80, unit: "mg" },
-    "Vitamina A": { qty: 800, unit: "mcg" },
-    "Vitamina D": { qty: 15, unit: "mcg" },
-    "Vitamina B12": { qty: 2.5, unit: "mcg" },
-    "Calciu": { qty: 1000, unit: "mg" },
-    "Magneziu": { qty: 375, unit: "mg" },
-    "Fier": { qty: 14, unit: "mg" },
-    "Potasiu": { qty: 3500, unit: "mg" },
-    "Zinc": { qty: 10, unit: "mg" }
+    "Calorii": { name: "Calorii", rda: 2000, unit: "kcal" },
+    ...CANONICAL_NUTRIENTS
 };
 
 const MONTH_NAMES_RO = [
@@ -117,19 +105,24 @@ export const PDFReport = {
                     totalMonthlyCalories += cals;
 
                     (f.nutrients || []).forEach(n => {
-                        const nName = n.name || 'Altele';
+                        const rawName = n.name || 'Altele';
+                        const nName = normalizeNutrientName(rawName);
                         const nLower = nName.toLowerCase();
                         const q = parseFloat(n.qty) || 0;
                         if (nLower.includes('prot')) dayProtein += q;
                         if (nLower.includes('carb') || nLower.includes('gluc')) dayCarbs += q;
                         if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('fat') || nLower.includes('lipid')) dayFat += q;
 
+                        const def = CANONICAL_NUTRIENTS[nName];
+                        const unit = def ? def.unit : (n.unit || 'g');
+                        const type = def ? def.type : (n.type || 'Micro');
+
                         if (!monthlyNutrients[nName]) {
                             monthlyNutrients[nName] = {
                                 name: nName,
                                 totalQty: 0,
-                                unit: n.unit || 'g',
-                                type: n.type || 'Micro'
+                                unit: unit,
+                                type: type
                             };
                         }
                         monthlyNutrients[nName].totalQty += q;
@@ -416,7 +409,7 @@ export const PDFReport = {
             else if (loggedInfo) totalConsumed = loggedInfo.totalQty;
 
             const dailyAvg = totalConsumed / activeDays;
-            const rdaDaily = rdaInfo ? rdaInfo.qty : null;
+            const rdaDaily = rdaInfo ? (rdaInfo.rda || rdaInfo.qty) : null;
             const rdaMonthly = rdaDaily ? (rdaDaily * daysInMonth) : null;
             const percentDaily = rdaDaily ? ((dailyAvg / rdaDaily) * 100) : null;
 

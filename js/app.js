@@ -1,7 +1,7 @@
 // ==========================================
 // Application Core Logic
 // ==========================================
-import { Storage, localFoodDB, localActivityDB, estimateFoodLocally, parseRomanianFoodVoiceInput } from './storage.js';
+import { Storage, localFoodDB, localActivityDB, estimateFoodLocally, parseRomanianFoodVoiceInput, CANONICAL_NUTRIENTS, normalizeNutrientName, normalizeNutrientsArray } from './storage.js';
 import { AI } from './ai.js';
 import { PDFReport } from './pdf.js';
 
@@ -89,6 +89,29 @@ function refreshIcons() {
         window.lucide.createIcons();
     }
 }
+
+// --- Header & Scroll Stability ---
+window.ensureHeaderVisible = () => {
+    window.scrollTo(0, 0);
+    if (document.documentElement && document.documentElement.scrollTop !== 0) {
+        document.documentElement.scrollTop = 0;
+    }
+    if (document.body && document.body.scrollTop !== 0) {
+        document.body.scrollTop = 0;
+    }
+    const header = document.getElementById('app-header');
+    if (header && header.classList.contains('hidden')) {
+        header.classList.remove('hidden');
+    }
+};
+
+window.addEventListener('scroll', () => {
+    if (window.scrollY !== 0 || (document.documentElement && document.documentElement.scrollTop !== 0) || (document.body && document.body.scrollTop !== 0)) {
+        window.scrollTo(0, 0);
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+    }
+}, { passive: true });
 
 // --- UI Toggle Handlers ---
 window.toggleTopMenu = () => {
@@ -936,21 +959,43 @@ Returnează strict un JSON array cu obiectele actualizate în aceeași ordine:
         if (s !== -1 && e !== -1) {
             const parsed = JSON.parse(txt.substring(s, e + 1));
             if (Array.isArray(parsed) && parsed.length === currentMeal.foods.length) {
-                currentMeal.foods = parsed.map((item, idx) => ({
-                    name: item.name || currentMeal.foods[idx].name,
-                    quantity: item.quantity || currentMeal.foods[idx].quantity,
-                    unit: item.unit || currentMeal.foods[idx].unit,
-                    calories: parseInt(item.calories) || currentMeal.foods[idx].calories || 0,
-                    nutrients: Array.isArray(item.nutrients) ? item.nutrients : []
-                }));
+                currentMeal.foods = parsed.map((item, idx) => {
+                    const normNuts = normalizeNutrientsArray(item.nutrients || []);
+                    const q = parseFloat(item.quantity || currentMeal.foods[idx].quantity) || 1;
+                    const u = item.unit || currentMeal.foods[idx].unit || 'g';
+                    const cals = parseInt(item.calories) || currentMeal.foods[idx].calories || 0;
+                    const fName = (item.name || currentMeal.foods[idx].name).trim();
+
+                    // Auto-save to analyzed foods cache at 100g/unitate
+                    const factor = (u === 'buc' || u === 'felie') ? (1 / q) : (100 / q);
+                    Storage.saveAnalyzedFood({
+                        name: fName,
+                        baseQty: (u === 'buc' || u === 'felie') ? 1 : 100,
+                        baseUnit: (u === 'buc' || u === 'felie') ? 'buc' : (u === 'ml' ? 'ml' : 'g'),
+                        calories: Math.round(cals * factor),
+                        nutrients: normNuts.map(n => ({
+                            ...n,
+                            qty: parseFloat((n.qty * factor).toFixed(2))
+                        })),
+                        source: 'AI (Gemini)'
+                    });
+
+                    return {
+                        name: fName,
+                        quantity: q,
+                        unit: u,
+                        calories: cals,
+                        nutrients: normNuts
+                    };
+                });
 
                 const statusEl = document.getElementById('data-source-msg');
-                if (statusEl) statusEl.innerHTML = `<span class="text-emerald-400 font-bold">✨ Nutrienți recalculați cu AI pentru toată masa!</span>`;
+                if (statusEl) statusEl.innerHTML = `<span class="text-emerald-400 font-bold">✨ Nutrienți recalculați cu AI & Salvați în Baza Locală!</span>`;
             } else if (Array.isArray(parsed) && parsed.length > 0) {
                 parsed.forEach((item, idx) => {
                     if (currentMeal.foods[idx]) {
                         currentMeal.foods[idx].calories = parseInt(item.calories) || currentMeal.foods[idx].calories;
-                        currentMeal.foods[idx].nutrients = Array.isArray(item.nutrients) ? item.nutrients : currentMeal.foods[idx].nutrients;
+                        currentMeal.foods[idx].nutrients = normalizeNutrientsArray(item.nutrients || currentMeal.foods[idx].nutrients);
                     }
                 });
             }
@@ -1271,17 +1316,31 @@ function updateAnalysis() {
     targetFoods.forEach(f => {
         if (!f.nutrients) f.nutrients = [];
         f.nutrients.forEach(n => {
-            if (!agg[n.name]) {
-                agg[n.name] = { ...n, qty: 0, rda_percent: 0, sources: [] };
+            const rawName = n.name || 'Altele';
+            const canonName = normalizeNutrientName(rawName);
+            const def = CANONICAL_NUTRIENTS[canonName];
+
+            if (!agg[canonName]) {
+                agg[canonName] = {
+                    name: canonName,
+                    type: def ? def.type : (n.type || 'Micro'),
+                    unit: def ? def.unit : (n.unit || 'g'),
+                    role: def ? def.role : (n.role || ''),
+                    qty: 0,
+                    rda_percent: 0,
+                    sources: []
+                };
             }
-            agg[n.name].qty += parseFloat(n.qty) || 0;
-            agg[n.name].rda_percent += parseFloat(n.rda_percent) || 0;
-            agg[n.name].sources.push({ foodName: f.name, foodQty: n.qty });
+            const q = parseFloat(n.qty) || 0;
+            agg[canonName].qty += q;
+            const rda = def ? def.rda : 100;
+            agg[canonName].rda_percent = Math.round((agg[canonName].qty / rda) * 100);
+            agg[canonName].sources.push({ foodName: f.name, foodQty: q });
             
-            const nLower = n.name.toLowerCase();
-            if (nLower.includes('prot')) tp += parseFloat(n.qty) || 0;
-            if (nLower.includes('carb') || nLower.includes('gluc')) tc += parseFloat(n.qty) || 0;
-            if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('lipid') || nLower.includes('fat')) tf += parseFloat(n.qty) || 0;
+            const nLower = canonName.toLowerCase();
+            if (nLower.includes('prot')) tp += q;
+            if (nLower.includes('carb') || nLower.includes('gluc')) tc += q;
+            if (nLower.includes('grăs') || nLower.includes('gras') || nLower.includes('lipid') || nLower.includes('fat')) tf += q;
         });
     });
     
@@ -1346,11 +1405,10 @@ window.processFoodItem = async () => {
         const oldFood = currentMeal.foods[editingFoodIndex];
         if (oldFood.name.toLowerCase() === name.toLowerCase() && oldFood.unit === unit) {
             const factor = qty / (oldFood.quantity || 1);
-            const newNutrients = (oldFood.nutrients || []).map(n => ({
+            const newNutrients = normalizeNutrientsArray((oldFood.nutrients || []).map(n => ({
                 ...n,
-                qty: n.qty * factor,
-                rda_percent: (parseFloat(n.rda_percent) * factor).toFixed(1)
-            }));
+                qty: parseFloat((n.qty * factor).toFixed(2))
+            })));
             currentMeal.foods[editingFoodIndex] = {
                 ...oldFood,
                 quantity: qty,
@@ -1364,28 +1422,86 @@ window.processFoodItem = async () => {
 
     let resultData = null;
     let source = 'Local';
+    let cachedFood = null;
 
-    // Try AI analysis only if AI is available, connected AND user enabled nutrient calculation via AI
-    if (Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
+    // 1. PRIORITY 1: Check Analyzed Foods Local Database (Zero latency & Offline)
+    cachedFood = Storage.findAnalyzedFood(name);
+    if (cachedFood) {
+        resultData = Storage.calculateFoodFromBase(cachedFood, qty, unit);
+        source = 'LocalCache';
+    }
+
+    // 2. PRIORITY 2: Try AI analysis if not in local cache, AI is available & enabled
+    if (!resultData && Storage.isAiAvailable() && Storage.isAiNutrientCalcEnabled()) {
+        const sourceMsg = document.getElementById('data-source-msg');
+        if (sourceMsg) {
+            sourceMsg.innerHTML = `
+                <span class="text-indigo-400 font-semibold animate-pulse">⏳ Analiză AI pentru ${name}...</span>
+                <button type="button" onclick="cancelCurrentAIAction()" class="ml-2 px-2 py-0.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-bold shadow-sm active:scale-95">
+                    Oprește
+                </button>
+            `;
+        }
+
         try {
-            const prompt = `Analizează nutrițional alimentul: "${qty} ${unit} de ${name}". Returnează JSON strict: { "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] }`;
-            const txt = await AI.callText(prompt);
+            const prompt = `Ești expert nutriționist. Analizează alimentul: "${qty} ${unit} de ${name}".
+Folosește strict denumiri canonice standardizate pentru nutrienți (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", etc.).
+
+Returnează STRICT JSON valid:
+{
+  "calories": number,
+  "nutrients": [
+    {
+      "name": "string",
+      "type": "Macro" | "Micro",
+      "qty": number,
+      "unit": "g" | "mg" | "µg",
+      "rda_percent": number,
+      "role": "string"
+    }
+  ]
+}`;
+            const txt = await AI.callText(prompt, { timeoutMs: 18000 });
             const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
             if (s !== -1 && e !== -1) {
-                resultData = JSON.parse(txt.substring(s, e + 1));
+                const aiParsed = JSON.parse(txt.substring(s, e + 1));
+                const normNuts = normalizeNutrientsArray(aiParsed.nutrients || []);
+                const cals = parseInt(aiParsed.calories) || 0;
+
+                resultData = {
+                    calories: cals,
+                    nutrients: normNuts
+                };
                 source = 'AI';
+
+                // Auto-save normalized food to Analyzed Food Database (standardized at 100g/unitate)
+                const factor = (unit === 'buc' || unit === 'felie') ? (1 / qty) : (100 / qty);
+                Storage.saveAnalyzedFood({
+                    name: name,
+                    baseQty: (unit === 'buc' || unit === 'felie') ? 1 : 100,
+                    baseUnit: (unit === 'buc' || unit === 'felie') ? 'buc' : (unit === 'ml' ? 'ml' : 'g'),
+                    calories: Math.round(cals * factor),
+                    nutrients: normNuts.map(n => ({
+                        ...n,
+                        qty: parseFloat((n.qty * factor).toFixed(2))
+                    })),
+                    source: 'AI (Gemini)'
+                });
             }
         } catch (e) {
-            console.log("AI analysis skipped, falling back to local database:", e);
+            console.warn("AI analysis interrupted or failed, falling back to local estimator:", e);
         }
     }
 
-    // Fallback to local food database
+    // 3. FALLBACK: Estimate locally from baseline DB
     if (!resultData) {
         resultData = estimateFoodLocally(name, qty, unit);
+        if (source !== 'LocalCache') source = 'Local';
     }
 
     if (!resultData.nutrients) resultData.nutrients = [];
+    resultData.nutrients = normalizeNutrientsArray(resultData.nutrients);
+
     const newFood = {
         name,
         quantity: qty,
@@ -1400,11 +1516,14 @@ window.processFoodItem = async () => {
         currentMeal.foods.push(newFood);
     }
 
-    finishProcessing(
-        originalText,
-        btn,
-        source === 'AI' ? `<span class="text-emerald-400">✨ Analizat cu Gemini</span>` : `<span class="text-yellow-500">⚡ Estimare Locală</span>`
-    );
+    let statusHtml = `<span class="text-yellow-500">⚡ Estimare Locală</span>`;
+    if (source === 'LocalCache') {
+        statusHtml = `<span class="text-indigo-400 font-bold" title="Calculat din dicționarul AI salvat pe dispozitiv">⚡ Din Baza Locală AI (${cachedFood?.lastAnalyzed || 'Salvată'})</span>`;
+    } else if (source === 'AI') {
+        statusHtml = `<span class="text-emerald-400 font-bold">✨ Analizat cu Gemini & Salvat în Baza Locală</span>`;
+    }
+
+    finishProcessing(originalText, btn, statusHtml);
 };
 
 function finishProcessing(originalText, btn, msg) {
@@ -1699,22 +1818,42 @@ async function enrichFoodWithAiInBackground(index) {
     if (!targetFood) return;
 
     try {
-        const prompt = `Analizează nutrițional alimentul: "${targetFood.quantity} ${targetFood.unit} de ${targetFood.name}". Returnează JSON strict: { "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] }`;
-        const txt = await AI.callText(prompt);
+        const prompt = `Analizează nutrițional alimentul: "${targetFood.quantity} ${targetFood.unit} de ${targetFood.name}".
+Folosește strict denumiri canonice standardizate pentru nutrienți (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", etc.).
+
+Returnează JSON strict: { "calories": number, "nutrients": [ { "name": "string", "type": "string", "qty": number, "unit": "string", "rda_percent": number, "role": "string" } ] }`;
+        const txt = await AI.callText(prompt, { timeoutMs: 18000 });
         const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
         if (s !== -1 && e !== -1) {
             const aiData = JSON.parse(txt.substring(s, e + 1));
             // Check if food at index still matches
             if (currentMeal.foods[index] && currentMeal.foods[index].name === targetFood.name) {
-                if (aiData.calories !== undefined) currentMeal.foods[index].calories = aiData.calories;
+                if (aiData.calories !== undefined) currentMeal.foods[index].calories = parseInt(aiData.calories) || currentMeal.foods[index].calories;
                 if (Array.isArray(aiData.nutrients) && aiData.nutrients.length > 0) {
-                    currentMeal.foods[index].nutrients = aiData.nutrients;
+                    const normNuts = normalizeNutrientsArray(aiData.nutrients);
+                    currentMeal.foods[index].nutrients = normNuts;
+
+                    // Auto-save to analyzed foods cache
+                    const q = targetFood.quantity || 1;
+                    const u = targetFood.unit || 'g';
+                    const factor = (u === 'buc' || u === 'felie') ? (1 / q) : (100 / q);
+                    Storage.saveAnalyzedFood({
+                        name: targetFood.name,
+                        baseQty: (u === 'buc' || u === 'felie') ? 1 : 100,
+                        baseUnit: (u === 'buc' || u === 'felie') ? 'buc' : (u === 'ml' ? 'ml' : 'g'),
+                        calories: Math.round((currentMeal.foods[index].calories || 0) * factor),
+                        nutrients: normNuts.map(n => ({
+                            ...n,
+                            qty: parseFloat((n.qty * factor).toFixed(2))
+                        })),
+                        source: 'AI (Gemini)'
+                    });
                 }
                 renderCurrentMeal();
                 updateAnalysis();
                 updateDynamicCaloricGauge();
                 const sourceMsg = document.getElementById('data-source-msg');
-                if (sourceMsg) sourceMsg.innerHTML = `<span class="text-indigo-400">✨ ${targetFood.name} rafinat prin AI</span>`;
+                if (sourceMsg) sourceMsg.innerHTML = `<span class="text-indigo-400 font-bold">✨ ${targetFood.name} rafinat prin AI</span>`;
             }
         }
     } catch (err) {
@@ -1754,6 +1893,7 @@ window.resetForm = () => {
     updateDynamicCaloricGauge();
     updateAIVisibility();
     document.getElementById('data-source-msg').innerHTML = '';
+    window.ensureHeaderVisible();
     refreshIcons();
 };
 
@@ -1783,7 +1923,12 @@ window.saveMealToLocal = async () => {
 
         const statusEl = document.getElementById('data-source-msg');
         if (statusEl) {
-            statusEl.innerHTML = `<span class="text-indigo-400 font-semibold animate-pulse">⏳ Calculare nutrienți lipsă pentru ${missingIndices.length} aliment(e)...</span>`;
+            statusEl.innerHTML = `
+                <span class="text-indigo-400 font-semibold animate-pulse">⏳ Calculare nutrienți lipsă pentru ${missingIndices.length} aliment(e)...</span>
+                <button type="button" onclick="cancelCurrentAIAction()" class="ml-2 px-2 py-0.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-bold shadow-sm active:scale-95">
+                    Oprește
+                </button>
+            `;
         }
 
         // Dacă AI este disponibil și activat, calculăm nutrienții lipsă prin AI
@@ -1797,6 +1942,7 @@ window.saveMealToLocal = async () => {
 
                 const prompt = `Analizează complet și riguros fiecare aliment din lista următoare pentru a calcula caloriile și spectrul detaliat de nutrienți:
 ${JSON.stringify(missingFoods, null, 2)}
+Folosește strict denumiri canonice standardizate pentru nutrienți (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", etc.).
 
 Returnează strict un JSON array cu obiectele în aceeași ordine:
 [
@@ -1817,7 +1963,7 @@ Returnează strict un JSON array cu obiectele în aceeași ordine:
     ]
   }
 ]`;
-                const txt = await AI.callText(prompt);
+                const txt = await AI.callText(prompt, { timeoutMs: 20000 });
                 const s = txt.indexOf('[');
                 const e = txt.lastIndexOf(']');
                 if (s !== -1 && e !== -1) {
@@ -1829,7 +1975,24 @@ Returnează strict un JSON array cu obiectele în aceeași ordine:
                                 if (item.calories !== undefined && !isNaN(parseInt(item.calories))) {
                                     currentMeal.foods[originalIdx].calories = parseInt(item.calories);
                                 }
-                                currentMeal.foods[originalIdx].nutrients = Array.isArray(item.nutrients) ? item.nutrients : [];
+                                const normNuts = normalizeNutrientsArray(item.nutrients || []);
+                                currentMeal.foods[originalIdx].nutrients = normNuts;
+
+                                // Auto-save to analyzed foods cache at 100g
+                                const q = currentMeal.foods[originalIdx].quantity || 1;
+                                const u = currentMeal.foods[originalIdx].unit || 'g';
+                                const factor = (u === 'buc' || u === 'felie') ? (1 / q) : (100 / q);
+                                Storage.saveAnalyzedFood({
+                                    name: currentMeal.foods[originalIdx].name,
+                                    baseQty: (u === 'buc' || u === 'felie') ? 1 : 100,
+                                    baseUnit: (u === 'buc' || u === 'felie') ? 'buc' : (u === 'ml' ? 'ml' : 'g'),
+                                    calories: Math.round((currentMeal.foods[originalIdx].calories || 0) * factor),
+                                    nutrients: normNuts.map(n => ({
+                                        ...n,
+                                        qty: parseFloat((n.qty * factor).toFixed(2))
+                                    })),
+                                    source: 'AI (Gemini)'
+                                });
                             }
                         });
                     }
@@ -1844,7 +2007,7 @@ Returnează strict un JSON array cu obiectele în aceeași ordine:
             if (!f.nutrients || !Array.isArray(f.nutrients) || f.nutrients.length === 0) {
                 const localEst = estimateFoodLocally(f.name, f.quantity, f.unit);
                 if (localEst && localEst.nutrients) {
-                    f.nutrients = localEst.nutrients;
+                    f.nutrients = normalizeNutrientsArray(localEst.nutrients);
                     if (!f.calories) f.calories = localEst.calories;
                 } else {
                     f.nutrients = [];
@@ -1878,6 +2041,11 @@ Returnează strict un JSON array cu obiectele în aceeași ordine:
         }
         window.resetForm();
         renderHistory();
+        window.ensureHeaderVisible();
+        const mainContainer = document.querySelector('main');
+        if (mainContainer) {
+            mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        }
         // Visual notification toast/feedback
         const statusEl = document.getElementById('data-source-msg');
         if (statusEl) statusEl.innerHTML = `<span class="text-emerald-400 font-bold">✓ Salvat local cu succes!</span>`;
@@ -1940,14 +2108,17 @@ window.editHistoryMeal = (id) => {
         document.getElementById('ai-actions-panel')?.classList.add('hidden');
     }
     
-    // Scroll directly to the meal editor and focus the top meal name input
-    if (editorEl) {
-        editorEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll the main content container to top while keeping the header visible
+    const mainContainer = document.querySelector('main');
+    if (mainContainer) {
+        mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    window.ensureHeaderVisible();
     if (nameInput) {
         setTimeout(() => {
-            nameInput.focus();
+            nameInput.focus({ preventScroll: true });
             nameInput.select();
+            window.ensureHeaderVisible();
         }, 150);
     }
     
@@ -2397,7 +2568,11 @@ window.addMealForDate = (dateKey) => {
         window.handleMealDateChange(fullDate);
     }
     expandedJournalDays.add(dateKey);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const mainContainer = document.querySelector('main');
+    if (mainContainer) {
+        mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.ensureHeaderVisible();
 };
 
 window.deleteMeal = (id) => {
@@ -3919,6 +4094,429 @@ window.previewMonthlyPDF = () => {
     const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
     const totalsOnly = totalsOnlyCheck ? totalsOnlyCheck.checked : false;
     PDFReport.previewReport(year, month, { totalsOnly });
+};
+
+// =========================================================================
+// AI Analyzed Foods Database Controllers & Reanalysis UI
+// =========================================================================
+
+let analyzedFoodsSearchQuery = '';
+
+window.cancelCurrentAIAction = () => {
+    AI.abortCurrentRequest();
+    const sourceMsg = document.getElementById('data-source-msg');
+    if (sourceMsg) {
+        sourceMsg.innerHTML = `<span class="text-rose-400 font-medium flex items-center gap-1.5"><i data-lucide="stop-circle" class="w-4 h-4"></i> Analiza AI a fost oprită de utilizator.</span>`;
+    }
+    const globalStatus = document.getElementById('analyzed-foods-global-status');
+    if (globalStatus) {
+        globalStatus.classList.remove('hidden');
+        globalStatus.innerHTML = `<span class="text-rose-300 font-medium flex items-center gap-1.5"><i data-lucide="stop-circle" class="w-4 h-4 text-rose-400"></i> Reanalizarea AI a fost oprită.</span>`;
+        setTimeout(() => { globalStatus.classList.add('hidden'); }, 3500);
+    }
+    refreshIcons();
+};
+
+window.openAnalyzedFoodsModal = () => {
+    const modal = document.getElementById('analyzed-foods-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    analyzedFoodsSearchQuery = '';
+    const searchInput = document.getElementById('analyzed-foods-search');
+    if (searchInput) searchInput.value = '';
+    const clearBtn = document.getElementById('clear-analyzed-search-btn');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    window.renderAnalyzedFoodsList();
+    refreshIcons();
+};
+
+window.closeAnalyzedFoodsModal = () => {
+    const modal = document.getElementById('analyzed-foods-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.filterAnalyzedFoods = (query) => {
+    analyzedFoodsSearchQuery = (query || '').trim().toLowerCase();
+    const clearBtn = document.getElementById('clear-analyzed-search-btn');
+    if (clearBtn) {
+        if (analyzedFoodsSearchQuery) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+    }
+    window.renderAnalyzedFoodsList();
+};
+
+window.clearAnalyzedFoodsSearch = () => {
+    analyzedFoodsSearchQuery = '';
+    const searchInput = document.getElementById('analyzed-foods-search');
+    if (searchInput) searchInput.value = '';
+    const clearBtn = document.getElementById('clear-analyzed-search-btn');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    window.renderAnalyzedFoodsList();
+};
+
+window.renderAnalyzedFoodsList = () => {
+    const container = document.getElementById('analyzed-foods-list');
+    const badge = document.getElementById('analyzed-foods-count-badge');
+    if (!container) return;
+
+    const foods = Storage.getAnalyzedFoods();
+    if (badge) {
+        badge.innerText = `${foods.length} aliment${foods.length === 1 ? '' : 'e'}`;
+    }
+
+    // Filter if search query is active
+    let displayList = foods;
+    if (analyzedFoodsSearchQuery) {
+        displayList = foods.filter(f => {
+            const nameMatch = (f.name || '').toLowerCase().includes(analyzedFoodsSearchQuery);
+            const nutMatch = (f.nutrients || []).some(n => (n.name || '').toLowerCase().includes(analyzedFoodsSearchQuery));
+            return nameMatch || nutMatch;
+        });
+    }
+
+    if (displayList.length === 0) {
+        if (foods.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-12 px-4 rounded-2xl bg-slate-950/40 border-2 border-dashed border-slate-800 flex flex-col items-center justify-center">
+                    <div class="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-2xl text-indigo-400 mb-3">
+                        <i data-lucide="database" class="w-8 h-8"></i>
+                    </div>
+                    <h4 class="text-base font-bold text-white mb-1">Baza de alimente analizate este goală</h4>
+                    <p class="text-xs text-slate-400 max-w-md mx-auto mb-4">
+                        Când adaugi alimente analizate cu Gemini într-o masă, ele vor fi salvate automat aici la unități standard (100g/100ml/buc) pentru calcule instantanee offline.
+                    </p>
+                    <button onclick="extractFoodsFromMealHistory()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> Extrage alimente din jurnalul existent
+                    </button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-10 text-slate-500 text-xs">
+                    <i data-lucide="search-x" class="w-8 h-8 mx-auto mb-2 text-slate-600"></i>
+                    <p>Niciun aliment găsit pentru „<strong>${analyzedFoodsSearchQuery}</strong>”.</p>
+                    <button onclick="clearAnalyzedFoodsSearch()" class="mt-2 text-indigo-400 hover:underline">Șterge căutarea</button>
+                </div>
+            `;
+        }
+        refreshIcons();
+        return;
+    }
+
+    container.innerHTML = displayList.map(food => {
+        const nutCount = (food.nutrients || []).length;
+        const baseLabel = `${food.baseQty || 100}${food.baseUnit || 'g'}`;
+        const lastAnalyzedStr = food.lastAnalyzed ? formatRomanianDateTime(food.lastAnalyzed) : 'Nespecificat';
+        
+        // Render nutrients list for accordion
+        const nutrientsHtml = (food.nutrients && food.nutrients.length > 0)
+            ? food.nutrients.map(n => {
+                const canonName = normalizeNutrientName(n.name || '');
+                const def = CANONICAL_NUTRIENTS[canonName];
+                const rda = def ? def.rda : 100;
+                const rdaPercent = Math.round(((parseFloat(n.qty) || 0) / rda) * 100);
+                const progressWidth = Math.min(rdaPercent, 100);
+                const typeLabel = def ? def.type : (n.type || 'Nutrient');
+
+                return `
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between hover:border-slate-700 transition-colors">
+                        <div class="flex justify-between items-start gap-1 mb-1.5">
+                            <div class="min-w-0">
+                                <span class="font-bold text-xs text-slate-200 truncate block">${canonName}</span>
+                                <span class="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">${typeLabel}</span>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="font-mono text-xs font-bold text-white">${parseFloat(n.qty || 0).toFixed(1)} ${n.unit || def?.unit || 'g'}</span>
+                                <span class="block text-[9px] ${rdaPercent > 100 ? 'text-amber-400 font-bold' : 'text-slate-400'}">${rdaPercent}% DZR</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300" style="width: ${progressWidth}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('')
+            : `<div class="col-span-full text-center py-4 text-xs text-slate-500 italic">Nu există nutrienți detaliați salvați. Apasă „Reanalizează AI” pentru a genera lista completă.</div>`;
+
+        return `
+            <div class="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 hover:border-slate-700 transition-all shadow-sm">
+                <!-- Food Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <!-- Food Title & Quick Info -->
+                    <div class="flex items-start sm:items-center gap-3 min-w-0">
+                        <div class="p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-800/80 text-indigo-400 font-bold font-mono text-xs shrink-0 text-center min-w-[3.8rem]">
+                            ${food.calories || 0}<br><span class="text-[9px] font-normal text-slate-400">kcal/${baseLabel}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="font-bold text-sm sm:text-base text-white truncate">${food.name}</h4>
+                                <span class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-md font-semibold">Standard: ${baseLabel}</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-[11px] text-slate-400 mt-1 flex-wrap">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
+                                    <span>Analizat: <strong class="text-slate-300">${lastAnalyzedStr}</strong></span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="dna" class="w-3.5 h-3.5 text-slate-500"></i>
+                                    <span><strong class="text-indigo-300">${nutCount}</strong> nutrienți</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <button onclick="toggleFoodNutrientsAccordion('${food.id}')" id="accordion-btn-${food.id}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all" title="Vizualizează spectrul complet de nutrienți">
+                            <i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            <span>Nutrienți</span>
+                            <i data-lucide="chevron-down" id="accordion-chevron-${food.id}" class="w-3.5 h-3.5 transition-transform duration-200"></i>
+                        </button>
+
+                        <button onclick="reanalyzeFoodWithAI('${food.id}')" id="reanalyze-btn-${food.id}" class="px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 active:scale-95 text-indigo-300 text-xs font-semibold border border-indigo-800 flex items-center gap-1.5 transition-all shadow-sm" title="Reanalizează cu Gemini AI și actualizează spectrul de nutrienți">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            <span class="hidden sm:inline">Reanalizează AI</span>
+                        </button>
+
+                        <button onclick="deleteAnalyzedFoodItem('${food.id}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors" title="Șterge aliment din baza locală">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Autoretractable Nutrients Accordion Container -->
+                <div id="food-accordion-${food.id}" class="hidden border-t border-slate-800/80 mt-3 pt-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="activity" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            Spectru Nutrițional Detaliat per ${baseLabel}
+                        </span>
+                        <span class="text-[10px] text-slate-500">Sursă: ${food.source || 'AI (Gemini)'}</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                        ${nutrientsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    refreshIcons();
+};
+
+window.toggleFoodNutrientsAccordion = (foodId) => {
+    const accordion = document.getElementById(`food-accordion-${foodId}`);
+    const chevron = document.getElementById(`accordion-chevron-${foodId}`);
+    if (!accordion) return;
+
+    const isHidden = accordion.classList.contains('hidden');
+    if (isHidden) {
+        accordion.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+    } else {
+        accordion.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+    }
+    refreshIcons();
+};
+
+window.reanalyzeFoodWithAI = async (foodId) => {
+    const food = Storage.getAnalyzedFood(foodId);
+    if (!food) return alert("Alimentul nu a fost găsit în baza de date.");
+
+    if (!Storage.isAiAvailable()) {
+        return alert("Conexiunea AI nu este configurată sau activată. Verifică setările Gemini din Meniu > Setări.");
+    }
+
+    const btn = document.getElementById(`reanalyze-btn-${foodId}`);
+    const globalStatus = document.getElementById('analyzed-foods-global-status');
+    const origBtnHtml = btn ? btn.innerHTML : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Reanalizare...`;
+    }
+
+    if (globalStatus) {
+        globalStatus.classList.remove('hidden');
+        globalStatus.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i data-lucide="loader" class="w-4 h-4 text-indigo-400 animate-spin"></i>
+                <span class="text-indigo-200">Se reanalizează cu Gemini: <strong>${food.name}</strong> (${food.baseQty || 100}${food.baseUnit || 'g'})...</span>
+            </div>
+            <button onclick="cancelCurrentAIAction()" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all">
+                Oprește Analiza
+            </button>
+        `;
+        refreshIcons();
+    }
+
+    try {
+        const baseQ = food.baseQty || 100;
+        const baseU = food.baseUnit || 'g';
+        const prompt = `Ești expert nutriționist de top. Analizează extrem de detaliat alimentul: "${baseQ} ${baseU} de ${food.name}".
+Folosește obligatoriu denumiri canonice standardizate în limba română pentru fiecare nutrient din spectru (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Vitamina D", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", "Proteine", "Carbohidrați", "Grăsimi", "Fibre", "Sodiu", etc.).
+Calculează cantitatea exactă și procentul DZR (% din doza zilnică recomandată) pentru ${baseQ} ${baseU}.
+
+Returnează STRICT un JSON valid în următorul format:
+{
+  "calories": number,
+  "nutrients": [
+    {
+      "name": "string",
+      "type": "Macro" | "Micro",
+      "qty": number,
+      "unit": "g" | "mg" | "µg",
+      "rda_percent": number,
+      "role": "string"
+    }
+  ]
+}`;
+
+        const txt = await AI.callText(prompt, { timeoutMs: 25000 });
+        const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+        if (s !== -1 && e !== -1) {
+            const aiData = JSON.parse(txt.substring(s, e + 1));
+            const normNuts = normalizeNutrientsArray(aiData.nutrients || []);
+            const cals = parseInt(aiData.calories) || food.calories || 0;
+
+            const updatedFood = {
+                ...food,
+                calories: cals,
+                nutrients: normNuts,
+                lastAnalyzed: new Date().toISOString(),
+                source: 'AI (Gemini Reanalizat)'
+            };
+
+            Storage.saveAnalyzedFood(updatedFood);
+            window.renderAnalyzedFoodsList();
+
+            // Automatically open accordion to show updated nutrients
+            const acc = document.getElementById(`food-accordion-${foodId}`);
+            if (acc) acc.classList.remove('hidden');
+
+            if (globalStatus) {
+                globalStatus.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                        <span class="text-emerald-200">Reanalizat cu succes: <strong>${food.name}</strong> (${normNuts.length} nutrienți actualizați)!</span>
+                    </div>
+                `;
+                setTimeout(() => { globalStatus.classList.add('hidden'); }, 4000);
+            }
+        } else {
+            throw new Error("Răspunsul primit de la AI nu conține JSON valid.");
+        }
+    } catch (err) {
+        console.error("Reanalysis failed:", err);
+        if (globalStatus) {
+            globalStatus.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400"></i>
+                    <span class="text-rose-200">Eroare la reanalizare: ${err.message || 'Intervenție eșuată'}</span>
+                </div>
+            `;
+            setTimeout(() => { globalStatus.classList.add('hidden'); }, 5000);
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origBtnHtml;
+        }
+        refreshIcons();
+    }
+};
+
+window.deleteAnalyzedFoodItem = (foodId) => {
+    const food = Storage.getAnalyzedFood(foodId);
+    const name = food ? food.name : 'acest aliment';
+    if (!confirm(`Sigur dorești să ștergi „${name}” din baza locală de alimente analizate?`)) {
+        return;
+    }
+    Storage.deleteAnalyzedFood(foodId);
+    window.renderAnalyzedFoodsList();
+};
+
+window.exportAnalyzedFoods = () => {
+    try {
+        Storage.exportAnalyzedFoodsJson();
+    } catch (e) {
+        alert("Eroare la exportul bazei de alimente: " + e.message);
+    }
+};
+
+window.handleImportAnalyzedFoods = (input) => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const content = e.target.result;
+            const res = Storage.importAnalyzedFoodsFromJson(content, { overwrite: false });
+            if (res.success) {
+                alert(`Import reușit! Au fost importate ${res.imported} alimente în baza locală.`);
+                window.renderAnalyzedFoodsList();
+            } else {
+                alert(`Eroare la import: ${res.error}`);
+            }
+        } catch (err) {
+            alert(`Eroare la procesarea fișierului: ${err.message}`);
+        } finally {
+            input.value = '';
+        }
+    };
+    reader.readAsText(file);
+};
+
+window.extractFoodsFromMealHistory = () => {
+    const meals = Storage.getMeals();
+    if (!meals || meals.length === 0) {
+        return alert("Nu există mese în jurnal din care să se extragă alimente.");
+    }
+
+    let addedCount = 0;
+    const existing = Storage.getAnalyzedFoods();
+    const existingMap = new Map(existing.map(f => [f.name.toLowerCase().trim(), f]));
+
+    meals.forEach(m => {
+        (m.foods || []).forEach(f => {
+            const name = (f.name || '').trim();
+            if (!name) return;
+            const key = name.toLowerCase();
+
+            if (!existingMap.has(key)) {
+                const qty = parseFloat(f.quantity) || 100;
+                const unit = f.unit || 'g';
+                const isPiece = (unit === 'buc' || unit === 'felie' || unit === 'ou' || unit === 'portie');
+                const baseQty = isPiece ? 1 : 100;
+                const baseUnit = isPiece ? 'buc' : (unit === 'ml' ? 'ml' : 'g');
+                const factor = isPiece ? (1 / qty) : (100 / qty);
+
+                const normNuts = normalizeNutrientsArray((f.nutrients || []).map(n => ({
+                    ...n,
+                    qty: parseFloat(((parseFloat(n.qty) || 0) * factor).toFixed(2))
+                })));
+
+                const newAnalyzedFood = {
+                    name: name,
+                    baseQty: baseQty,
+                    baseUnit: baseUnit,
+                    calories: Math.round((f.calories || 0) * factor),
+                    nutrients: normNuts,
+                    lastAnalyzed: m.date || new Date().toISOString(),
+                    source: 'Jurnal Mese'
+                };
+
+                Storage.saveAnalyzedFood(newAnalyzedFood);
+                existingMap.set(key, newAnalyzedFood);
+                addedCount++;
+            }
+        });
+    });
+
+    window.renderAnalyzedFoodsList();
+    alert(`Extragere finalizată: au fost adăugate ${addedCount} alimente noi în Baza Locală AI!`);
 };
 
 // --- Initial Startup ---
