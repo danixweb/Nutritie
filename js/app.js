@@ -1020,11 +1020,16 @@ window.toggleChat = () => {
     if (!win) return;
     if (win.classList.contains('hidden')) {
         win.classList.remove('hidden');
-        setTimeout(() => win.classList.add('chat-visible'), 10);
+        setTimeout(() => {
+            win.classList.add('chat-visible');
+            const input = document.getElementById('chat-input');
+            if (input) input.focus();
+        }, 10);
     } else {
         win.classList.remove('chat-visible');
-        setTimeout(() => win.classList.add('hidden'), 300);
+        setTimeout(() => win.classList.add('hidden'), 250);
     }
+    refreshIcons();
 };
 
 window.handleAiToggleChange = (checked) => {
@@ -3671,18 +3676,6 @@ window.speakTextWithAutoListen = (text, btnId, restartListening = true) => {
 };
 
 // --- Chat Widget ---
-window.toggleChat = () => {
-    const chat = document.getElementById('chat-window');
-    if (chat) {
-        const isHidden = chat.classList.toggle('hidden');
-        if (!isHidden) {
-            const input = document.getElementById('chat-input');
-            if (input) input.focus();
-        }
-        refreshIcons();
-    }
-};
-
 window.clearChatHistory = () => {
     const container = document.getElementById('chat-messages');
     if (!container) return;
