@@ -1386,6 +1386,273 @@ function updateAnalysis() {
     refreshIcons();
 }
 
+// --- Interactive Food Autocomplete & Suggestions System ---
+let currentFoodSuggestions = [];
+let activeSuggestionIdx = -1;
+
+export function getFoodSuggestions(query) {
+    if (!query || typeof query !== 'string') return [];
+    const qClean = removeDiacritics(query);
+    if (!qClean || qClean.length < 1) return [];
+
+    const suggestionsMap = new Map();
+
+    // 1. Check Analyzed Foods DB (Smart Local AI Database - highest priority)
+    const analyzed = Storage.getAnalyzedFoods();
+    analyzed.forEach(f => {
+        if (!f || !f.name) return;
+        const norm = removeDiacritics(f.name);
+        if (norm.includes(qClean) || qClean.includes(norm)) {
+            const isExact = (norm === qClean);
+            const isPrefix = norm.startsWith(qClean);
+            suggestionsMap.set(norm, {
+                name: f.name,
+                baseQty: f.baseQty || 100,
+                baseUnit: f.baseUnit || 'g',
+                calories: f.calories || 0,
+                nutrientsCount: (f.nutrients || []).length,
+                source: 'AI',
+                priority: isExact ? 1 : (isPrefix ? 2 : 3)
+            });
+        }
+    });
+
+    // 2. Check Previous Meals History
+    const meals = Storage.getMeals();
+    meals.forEach(m => {
+        (m.foods || []).forEach(f => {
+            if (!f || !f.name) return;
+            const norm = removeDiacritics(f.name);
+            if ((norm.includes(qClean) || qClean.includes(norm)) && !suggestionsMap.has(norm)) {
+                const isExact = (norm === qClean);
+                const isPrefix = norm.startsWith(qClean);
+                const qty = parseFloat(f.quantity) || 100;
+                const unit = f.unit || 'g';
+                const uNorm = removeDiacritics(unit);
+                const isPiece = (uNorm.includes('buc') || uNorm.includes('feli') || uNorm.includes('ou') || uNorm.includes('porti'));
+                const baseQty = isPiece ? 1 : 100;
+                const baseUnit = isPiece ? 'buc' : (uNorm === 'ml' ? 'ml' : 'g');
+                const factor = isPiece ? (1 / qty) : (100 / qty);
+
+                suggestionsMap.set(norm, {
+                    name: f.name,
+                    baseQty: baseQty,
+                    baseUnit: baseUnit,
+                    calories: Math.round((f.calories || 0) * factor),
+                    nutrientsCount: (f.nutrients || []).length,
+                    source: 'Istoric',
+                    priority: isExact ? 4 : (isPrefix ? 5 : 6)
+                });
+            }
+        });
+    });
+
+    // 3. Check Baseline localFoodDB
+    for (const [key, val] of Object.entries(localFoodDB)) {
+        if (key === 'default') continue;
+        const norm = removeDiacritics(key);
+        if ((norm.includes(qClean) || qClean.includes(norm)) && !suggestionsMap.has(norm)) {
+            const isExact = (norm === qClean);
+            const isPrefix = norm.startsWith(qClean);
+            const displayName = key.charAt(0).toUpperCase() + key.slice(1);
+            suggestionsMap.set(norm, {
+                name: displayName,
+                baseQty: 100,
+                baseUnit: 'g',
+                calories: val.cal || 0,
+                nutrientsCount: 0,
+                source: 'Local',
+                priority: isExact ? 7 : (isPrefix ? 8 : 9)
+            });
+        }
+    }
+
+    const results = Array.from(suggestionsMap.values());
+    results.sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.name.length - b.name.length;
+    });
+
+    return results.slice(0, 8);
+}
+
+window.renderFoodSuggestions = (query) => {
+    const dropdown = document.getElementById('food-suggestions-dropdown');
+    if (!dropdown) return;
+
+    const list = getFoodSuggestions(query);
+    currentFoodSuggestions = list;
+    activeSuggestionIdx = -1;
+
+    if (list.length === 0) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        return;
+    }
+
+    dropdown.innerHTML = list.map((item, idx) => {
+        const baseLabel = `${item.baseQty}${item.baseUnit}`;
+        const sourceBadge = item.source === 'AI'
+            ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-semibold flex items-center gap-1 shrink-0"><i data-lucide="sparkles" class="w-2.5 h-2.5 text-indigo-400"></i> Bază AI (${item.nutrientsCount})</span>`
+            : (item.source === 'Istoric'
+                ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-semibold shrink-0">Istoric</span>`
+                : `<span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 font-semibold shrink-0">⚡ Local</span>`);
+
+        return `
+            <div id="food-suggestion-item-${idx}" 
+                 onmousedown="event.preventDefault(); window.selectFoodSuggestion(${idx})"
+                 class="px-3 py-2 cursor-pointer hover:bg-indigo-950/60 active:bg-indigo-900/80 transition-colors flex items-center justify-between gap-2 group border-l-2 border-transparent">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i data-lucide="utensils" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 shrink-0 transition-colors"></i>
+                    <span class="text-xs font-semibold text-white group-hover:text-indigo-200 truncate">${item.name}</span>
+                    ${sourceBadge}
+                </div>
+                <div class="text-right shrink-0">
+                    <span class="font-mono text-[11px] font-bold text-slate-300 group-hover:text-white">${item.calories} kcal/${baseLabel}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    dropdown.classList.remove('hidden');
+    refreshIcons();
+};
+
+window.selectFoodSuggestion = (index) => {
+    const item = currentFoodSuggestions[index];
+    if (!item) return;
+
+    const nameInput = document.getElementById('food-name');
+    const qtyInput = document.getElementById('food-qty');
+    const unitSelect = document.getElementById('food-unit');
+    const dropdown = document.getElementById('food-suggestions-dropdown');
+
+    if (nameInput) {
+        nameInput.value = item.name;
+    }
+    if (unitSelect && item.baseUnit) {
+        const opts = Array.from(unitSelect.options).map(o => o.value);
+        if (opts.includes(item.baseUnit)) {
+            unitSelect.value = item.baseUnit;
+        } else if (item.baseUnit.includes('buc') || item.baseUnit.includes('feli')) {
+            unitSelect.value = 'buc';
+        }
+    }
+    if (qtyInput) {
+        if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) {
+            qtyInput.value = item.baseQty || (item.baseUnit === 'buc' ? 1 : 100);
+        }
+    }
+
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+    }
+    currentFoodSuggestions = [];
+    activeSuggestionIdx = -1;
+
+    // Focus and select quantity for fast one-press confirmation
+    if (qtyInput) {
+        qtyInput.focus();
+        qtyInput.select();
+    }
+};
+
+window.closeFoodSuggestions = () => {
+    const dropdown = document.getElementById('food-suggestions-dropdown');
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+    }
+    currentFoodSuggestions = [];
+    activeSuggestionIdx = -1;
+};
+
+function updateActiveSuggestionHighlight() {
+    currentFoodSuggestions.forEach((_, idx) => {
+        const el = document.getElementById(`food-suggestion-item-${idx}`);
+        if (!el) return;
+        if (idx === activeSuggestionIdx) {
+            el.className = "px-3 py-2 cursor-pointer bg-indigo-950/90 text-indigo-200 transition-colors flex items-center justify-between gap-2 border-l-2 border-indigo-500 shadow-sm";
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            el.className = "px-3 py-2 cursor-pointer hover:bg-indigo-950/60 active:bg-indigo-900/80 transition-colors flex items-center justify-between gap-2 group border-l-2 border-transparent";
+        }
+    });
+}
+
+function initFoodSuggestionsEvents() {
+    const nameInput = document.getElementById('food-name');
+    const qtyInput = document.getElementById('food-qty');
+
+    if (nameInput) {
+        nameInput.addEventListener('input', (e) => {
+            window.renderFoodSuggestions(e.target.value);
+        });
+
+        nameInput.addEventListener('focus', (e) => {
+            if (e.target.value.trim().length > 0) {
+                window.renderFoodSuggestions(e.target.value);
+            }
+        });
+
+        nameInput.addEventListener('keydown', (e) => {
+            const dropdown = document.getElementById('food-suggestions-dropdown');
+            const isOpen = dropdown && !dropdown.classList.contains('hidden') && currentFoodSuggestions.length > 0;
+
+            if (e.key === 'ArrowDown') {
+                if (isOpen) {
+                    e.preventDefault();
+                    activeSuggestionIdx = (activeSuggestionIdx + 1) % currentFoodSuggestions.length;
+                    updateActiveSuggestionHighlight();
+                } else if (nameInput.value.trim().length > 0) {
+                    window.renderFoodSuggestions(nameInput.value);
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (isOpen) {
+                    e.preventDefault();
+                    activeSuggestionIdx = (activeSuggestionIdx - 1 + currentFoodSuggestions.length) % currentFoodSuggestions.length;
+                    updateActiveSuggestionHighlight();
+                }
+            } else if (e.key === 'Enter') {
+                if (isOpen && activeSuggestionIdx >= 0) {
+                    e.preventDefault();
+                    window.selectFoodSuggestion(activeSuggestionIdx);
+                } else {
+                    e.preventDefault();
+                    window.closeFoodSuggestions();
+                    window.processFoodItem();
+                }
+            } else if (e.key === 'Escape') {
+                window.closeFoodSuggestions();
+            }
+        });
+
+        nameInput.addEventListener('blur', () => {
+            // Delay so click on suggestion registers first
+            setTimeout(() => {
+                window.closeFoodSuggestions();
+            }, 200);
+        });
+    }
+
+    if (qtyInput) {
+        qtyInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                window.processFoodItem();
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const nameInputEl = document.getElementById('food-name');
+        const dropdownEl = document.getElementById('food-suggestions-dropdown');
+        if (dropdownEl && !dropdownEl.contains(e.target) && nameInputEl !== e.target) {
+            window.closeFoodSuggestions();
+        }
+    });
+}
+
 // --- Form & Food Item Editing ---
 window.processFoodItem = async () => {
     const name = document.getElementById('food-name').value.trim();
@@ -1532,6 +1799,7 @@ function finishProcessing(originalText, btn, msg) {
     document.getElementById('data-source-msg').innerHTML = msg || "";
     document.getElementById('food-name').value = '';
     document.getElementById('food-qty').value = '';
+    window.closeFoodSuggestions();
     exitFoodEditMode();
     renderCurrentMeal();
     updateAnalysis();
@@ -4594,6 +4862,7 @@ function initApp() {
     initCaloricCardState();
     initActivityStatsState();
     updateDynamicCaloricGauge();
+    initFoodSuggestionsEvents();
     refreshIcons();
     console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile, Health Metrics & Daily Activities.");
 }

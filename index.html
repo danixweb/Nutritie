@@ -365,8 +365,10 @@
                         </div>
 
                         <div class="grid grid-cols-12 gap-2 sm:gap-3 items-end">
-                            <div class="col-span-12 sm:col-span-5">
-                                <input type="text" id="food-name" placeholder="Aliment (ex: Piept de pui)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                            <div class="col-span-12 sm:col-span-5 relative">
+                                <input type="text" id="food-name" autocomplete="off" placeholder="Aliment (ex: Piept de pui)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
+                                <!-- Food Suggestions Dropdown -->
+                                <div id="food-suggestions-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-800/80 backdrop-blur-md"></div>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <input type="number" id="food-qty" placeholder="Cantitate" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors">
