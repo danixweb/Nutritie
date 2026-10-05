@@ -58,22 +58,36 @@ export const CANONICAL_NUTRIENTS = {
     'Crom': { name: 'Crom', type: 'Micro', unit: 'µg', rda: 40, role: 'Metabolismul glucozei & sensibilitate la insulină', synonyms: ['crom', 'chromium', 'cr'] }
 };
 
+// Universal Diacritics & Accents Normalizer (Romanian & International)
+export function removeDiacritics(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+        .replace(/ă|Ă|â|Â/g, 'a')
+        .replace(/î|Î/g, 'i')
+        .replace(/ș|Ș|ş|Ş/g, 's')
+        .replace(/ț|Ț|ţ|Ţ/g, 't')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[\(\)\[\],:\-_/\\#+]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 // Normalize raw nutrient string to its single canonical standard name
 export function normalizeNutrientName(rawName) {
     if (!rawName || typeof rawName !== 'string') return 'Altele';
-    const clean = rawName.toLowerCase().trim()
-        .replace(/[\(\)\[\],:\-_]/g, ' ')
-        .replace(/\s+/g, ' ');
+    const clean = removeDiacritics(rawName);
 
     // 1. Direct match on canonical names
     for (const [canonName, def] of Object.entries(CANONICAL_NUTRIENTS)) {
-        if (canonName.toLowerCase() === rawName.toLowerCase().trim()) return canonName;
+        if (removeDiacritics(canonName) === clean) return canonName;
     }
 
     // 2. Match through synonyms
     for (const [canonName, def] of Object.entries(CANONICAL_NUTRIENTS)) {
         for (const syn of def.synonyms) {
-            const synClean = syn.toLowerCase().replace(/[\(\)\[\],:\-_]/g, ' ').replace(/\s+/g, ' ');
+            const synClean = removeDiacritics(syn);
             if (clean === synClean || clean.includes(synClean) || synClean.includes(clean)) {
                 return canonName;
             }
@@ -154,7 +168,7 @@ export const localFoodDB = {
 // Local food macro and nutrient estimator (Priority 1: Analyzed Food Cache, Priority 2: Baseline DB)
 export function estimateFoodLocally(name, quantity, unit) {
     const qty = parseFloat(quantity) || 1;
-    const u = (unit || 'g').toLowerCase().trim();
+    const uClean = removeDiacritics(unit || 'g');
 
     // 1. Check Analyzed Foods Database (Smart Offline Cache from previous AI analyses)
     const cached = Storage.findAnalyzedFood(name);
@@ -162,32 +176,35 @@ export function estimateFoodLocally(name, quantity, unit) {
         return Storage.calculateFoodFromBase(cached, qty, unit);
     }
 
-    // 2. Fallback to basic dictionary
-    const nLower = (name || '').toLowerCase().trim();
+    // 2. Fallback to basic dictionary with diacritics-insensitive matching
+    const nClean = removeDiacritics(name || '');
     let match = localFoodDB.default;
     for (const k in localFoodDB) {
-        if (k !== 'default' && nLower.includes(k)) {
-            match = localFoodDB[k];
-            break;
+        if (k !== 'default') {
+            const kClean = removeDiacritics(k);
+            if (nClean === kClean || nClean.includes(kClean) || kClean.includes(nClean)) {
+                match = localFoodDB[k];
+                break;
+            }
         }
     }
 
     let factor = qty / 100;
-    if (u === 'bucati' || u === 'buc' || u === 'felii' || u === 'felie' || u === 'bucată' || u === 'bucata') {
+    if (uClean.includes('buc') || uClean.includes('feli')) {
         factor = qty * 0.6; // ~60g
-    } else if (u === 'lingură' || u === 'lingura' || u === 'linguri') {
-        factor = (qty * 15) / 100; // ~15g
-    } else if (u === 'linguriță' || u === 'lingurita' || u === 'lingurițe' || u === 'lingurite') {
+    } else if (uClean.includes('lingurit')) {
         factor = (qty * 5) / 100; // ~5g
-    } else if (u === 'cană' || u === 'cana' || u === 'căni' || u === 'cani') {
+    } else if (uClean.includes('lingur')) {
+        factor = (qty * 15) / 100; // ~15g
+    } else if (uClean.includes('can')) {
         factor = (qty * 250) / 100; // ~250g / 250ml
-    } else if (u === 'farfurie' || u === 'farfurii' || u === 'bol' || u === 'boluri' || u === 'porție' || u === 'portie' || u === 'porții' || u === 'portii') {
+    } else if (uClean.includes('farfuri') || uClean.includes('bol') || uClean.includes('porti')) {
         factor = (qty * 350) / 100; // ~350g
-    } else if (u === 'ml' || u === 'mililitri' || u === 'mililitru') {
+    } else if (uClean === 'ml' || uClean.includes('mililitr')) {
         factor = qty / 100;
-    } else if (u === 'kg' || u === 'kilograme' || u === 'kilogram' || u === 'kilo') {
+    } else if (uClean === 'kg' || uClean.includes('kilogram') || uClean === 'kilo') {
         factor = (qty * 1000) / 100;
-    } else if (u === 'l' || u === 'litri' || u === 'litru') {
+    } else if (uClean === 'l' || uClean.includes('litr')) {
         factor = (qty * 1000) / 100;
     }
 
@@ -204,7 +221,7 @@ export function estimateFoodLocally(name, quantity, unit) {
     return {
         name: name.trim(),
         quantity: qty,
-        unit: u,
+        unit: unit || 'g',
         calories: Math.round((match.cal || 100) * factor),
         nutrients: normalizeNutrientsArray(rawNuts)
     };
@@ -439,7 +456,48 @@ export const Storage = {
     getAnalyzedFoods() {
         try {
             const data = localStorage.getItem(STORAGE_KEYS.ANALYZED_FOODS);
-            return data ? JSON.parse(data) : [];
+            const list = data ? JSON.parse(data) : [];
+            if (!Array.isArray(list)) return [];
+
+            // Auto-deduplicate entries that only differ by diacritics / casing
+            const deduped = [];
+            const keyMap = new Map();
+            let hasDuplicates = false;
+
+            for (const item of list) {
+                if (!item || !item.name) continue;
+                const normKey = removeDiacritics(item.name);
+                if (keyMap.has(normKey)) {
+                    hasDuplicates = true;
+                    const existingIdx = keyMap.get(normKey);
+                    const existing = deduped[existingIdx];
+                    
+                    // Keep diacritic-rich name for display if available
+                    const existingHasDiacritics = /[ăâîșțĂÂÎȘȚşţŞŢ]/.test(existing.name);
+                    const itemHasDiacritics = /[ăâîșțĂÂÎȘȚşţŞŢ]/.test(item.name);
+                    if (!existingHasDiacritics && itemHasDiacritics) {
+                        existing.name = item.name;
+                    }
+
+                    // Keep richest nutrients array
+                    if ((item.nutrients && item.nutrients.length > 0) && (!existing.nutrients || existing.nutrients.length === 0)) {
+                        existing.nutrients = normalizeNutrientsArray(item.nutrients);
+                        existing.calories = item.calories || existing.calories;
+                        existing.macros = item.macros || existing.macros;
+                    }
+                } else {
+                    keyMap.set(normKey, deduped.length);
+                    deduped.push({
+                        ...item,
+                        nutrients: normalizeNutrientsArray(item.nutrients || [])
+                    });
+                }
+            }
+
+            if (hasDuplicates) {
+                localStorage.setItem(STORAGE_KEYS.ANALYZED_FOODS, JSON.stringify(deduped));
+            }
+            return deduped;
         } catch (e) {
             console.error("Failed to read analyzed foods from storage", e);
             return [];
@@ -451,8 +509,8 @@ export const Storage = {
         const list = this.getAnalyzedFoods();
         const idMatch = list.find(f => f.id === idOrName);
         if (idMatch) return idMatch;
-        const cleanQuery = idOrName.toLowerCase().trim();
-        return list.find(f => f.name.toLowerCase().trim() === cleanQuery) || null;
+        const cleanQuery = removeDiacritics(idOrName);
+        return list.find(f => removeDiacritics(f.name) === cleanQuery) || null;
     },
 
     saveAnalyzedFood(foodItem) {
@@ -460,7 +518,8 @@ export const Storage = {
         try {
             const list = this.getAnalyzedFoods();
             const cleanName = foodItem.name.trim();
-            const existingIdx = list.findIndex(f => f.id === foodItem.id || f.name.toLowerCase().trim() === cleanName.toLowerCase());
+            const normKey = removeDiacritics(cleanName);
+            const existingIdx = list.findIndex(f => (foodItem.id && f.id === foodItem.id) || removeDiacritics(f.name) === normKey);
 
             const nowStr = new Date().toLocaleString('ro-RO', { 
                 day: '2-digit', month: '2-digit', year: 'numeric',
@@ -472,16 +531,27 @@ export const Storage = {
             // Extract macros if not provided
             let prot = 0, carbs = 0, fat = 0, fiber = 0;
             normalizedNutrients.forEach(n => {
-                const nName = n.name.toLowerCase();
-                if (nName.includes('prot')) prot += n.qty || 0;
-                if (nName.includes('carb')) carbs += n.qty || 0;
-                if (nName.includes('grăs') || nName.includes('gras')) fat += n.qty || 0;
-                if (nName.includes('fibr')) fiber += n.qty || 0;
+                const nNorm = removeDiacritics(n.name);
+                if (nNorm.includes('prot')) prot += n.qty || 0;
+                if (nNorm.includes('carb')) carbs += n.qty || 0;
+                if (nNorm.includes('gras')) fat += n.qty || 0;
+                if (nNorm.includes('fibr')) fiber += n.qty || 0;
             });
+
+            // If existing item has proper diacritics in name and incoming doesn't, preserve accented display name
+            let finalName = cleanName;
+            if (existingIdx >= 0) {
+                const existingName = list[existingIdx].name;
+                const existingHasDiacritics = /[ăâîșțĂÂÎȘȚşţŞŢ]/.test(existingName);
+                const incomingHasDiacritics = /[ăâîșțĂÂÎȘȚşţŞŢ]/.test(cleanName);
+                if (existingHasDiacritics && !incomingHasDiacritics) {
+                    finalName = existingName;
+                }
+            }
 
             const foodToSave = {
                 id: (existingIdx >= 0 ? list[existingIdx].id : null) || foodItem.id || ('food_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
-                name: cleanName,
+                name: finalName,
                 baseQty: foodItem.baseQty || 100,
                 baseUnit: foodItem.baseUnit || 'g',
                 calories: Math.round(foodItem.calories || 0),
@@ -526,32 +596,27 @@ export const Storage = {
         const list = this.getAnalyzedFoods();
         if (list.length === 0) return null;
 
-        const normalizeStr = s => s.toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .replace(/[\(\)\[\],:\-_]/g, ' ')
-            .replace(/\s+/g, ' ').trim();
-
-        const qClean = normalizeStr(nameQuery);
+        const qClean = removeDiacritics(nameQuery);
         if (!qClean) return null;
 
-        // 1. Exact match
+        // 1. Exact match (diacritics-insensitive)
         for (const item of list) {
-            if (normalizeStr(item.name) === qClean) return item;
+            if (removeDiacritics(item.name) === qClean) return item;
         }
 
         // 2. Query contains full item name or item name contains query
         for (const item of list) {
-            const iClean = normalizeStr(item.name);
+            const iClean = removeDiacritics(item.name);
             if (qClean.includes(iClean) || iClean.includes(qClean)) {
                 return item;
             }
         }
 
-        // 3. Word-level containment (e.g. "piept pui" matches "piept de pui")
+        // 3. Word-level containment (e.g. "piept pui" matches "piept de pui", "mamaliga" matches "mămăligă")
         const qWords = qClean.split(' ').filter(w => w.length > 2);
         if (qWords.length > 0) {
             for (const item of list) {
-                const iClean = normalizeStr(item.name);
+                const iClean = removeDiacritics(item.name);
                 const matchAll = qWords.every(w => iClean.includes(w));
                 if (matchAll) return item;
             }
@@ -562,9 +627,9 @@ export const Storage = {
 
     calculateFoodFromBase(baseFood, targetQty, targetUnit) {
         const qty = parseFloat(targetQty) || 1;
-        const u = (targetUnit || 'g').toLowerCase().trim();
+        const u = removeDiacritics(targetUnit || 'g');
         const baseQ = baseFood.baseQty || 100;
-        const baseU = (baseFood.baseUnit || 'g').toLowerCase().trim();
+        const baseU = removeDiacritics(baseFood.baseUnit || 'g');
 
         // Calculate grams equivalent
         let targetGrams = qty;
@@ -573,9 +638,9 @@ export const Storage = {
         else if (u === 'kg' || u === 'kilograme' || u === 'kilo') targetGrams = qty * 1000;
         else if (u === 'l' || u === 'litri' || u === 'litru') targetGrams = qty * 1000;
         else if (u.includes('buc') || u.includes('feli')) targetGrams = qty * 60;
-        else if (u.includes('lingurita') || u.includes('linguriță')) targetGrams = qty * 5;
+        else if (u.includes('lingurit')) targetGrams = qty * 5;
         else if (u.includes('lingur')) targetGrams = qty * 15;
-        else if (u.includes('can') || u.includes('căn')) targetGrams = qty * 250;
+        else if (u.includes('can')) targetGrams = qty * 250;
         else if (u.includes('por') || u.includes('bol') || u.includes('farfuri')) targetGrams = qty * 350;
 
         let baseGrams = baseQ;
@@ -640,10 +705,10 @@ export const Storage = {
                     importedCount++;
                 }
             });
-            return importedCount;
+            return { success: true, imported: importedCount };
         } catch (e) {
             console.error("Import error", e);
-            throw e;
+            return { success: false, error: e.message };
         }
     },
 
@@ -697,6 +762,16 @@ export const Storage = {
 
     setAiConnected(connected) {
         localStorage.setItem(STORAGE_KEYS.AI_CONNECTED, connected ? 'true' : 'false');
+    },
+
+    // AI Nutrient Calc Flag (Automatic nutrient analysis upon food item add)
+    isAiNutrientCalcEnabled() {
+        const val = localStorage.getItem(STORAGE_KEYS.AI_NUTRIENT_CALC);
+        return val === null ? true : val === 'true';
+    },
+
+    setAiNutrientCalcEnabled(enabled) {
+        localStorage.setItem(STORAGE_KEYS.AI_NUTRIENT_CALC, enabled ? 'true' : 'false');
     },
 
     // Effective overall AI availability check

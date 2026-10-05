@@ -1,7 +1,7 @@
 // ==========================================
 // Application Core Logic
 // ==========================================
-import { Storage, localFoodDB, localActivityDB, estimateFoodLocally, parseRomanianFoodVoiceInput, CANONICAL_NUTRIENTS, normalizeNutrientName, normalizeNutrientsArray } from './storage.js';
+import { Storage, localFoodDB, localActivityDB, estimateFoodLocally, parseRomanianFoodVoiceInput, CANONICAL_NUTRIENTS, normalizeNutrientName, normalizeNutrientsArray, removeDiacritics } from './storage.js';
 import { AI } from './ai.js';
 import { PDFReport } from './pdf.js';
 
@@ -1403,7 +1403,7 @@ window.processFoodItem = async () => {
     // Fast-path for editing existing item with same proportions
     if (editingFoodIndex > -1) {
         const oldFood = currentMeal.foods[editingFoodIndex];
-        if (oldFood.name.toLowerCase() === name.toLowerCase() && oldFood.unit === unit) {
+        if (removeDiacritics(oldFood.name) === removeDiacritics(name) && removeDiacritics(oldFood.unit) === removeDiacritics(unit)) {
             const factor = qty / (oldFood.quantity || 1);
             const newNutrients = normalizeNutrientsArray((oldFood.nutrients || []).map(n => ({
                 ...n,
@@ -4191,7 +4191,7 @@ window.closeAnalyzedFoodsModal = () => {
 };
 
 window.filterAnalyzedFoods = (query) => {
-    analyzedFoodsSearchQuery = (query || '').trim().toLowerCase();
+    analyzedFoodsSearchQuery = (query || '').trim();
     const clearBtn = document.getElementById('clear-analyzed-search-btn');
     if (clearBtn) {
         if (analyzedFoodsSearchQuery) clearBtn.classList.remove('hidden');
@@ -4219,12 +4219,14 @@ window.renderAnalyzedFoodsList = () => {
         badge.innerText = `${foods.length} aliment${foods.length === 1 ? '' : 'e'}`;
     }
 
-    // Filter if search query is active
+    // Filter if search query is active (diacritics-insensitive bidirectional search)
     let displayList = foods;
     if (analyzedFoodsSearchQuery) {
+        const qClean = removeDiacritics(analyzedFoodsSearchQuery);
         displayList = foods.filter(f => {
-            const nameMatch = (f.name || '').toLowerCase().includes(analyzedFoodsSearchQuery);
-            const nutMatch = (f.nutrients || []).some(n => (n.name || '').toLowerCase().includes(analyzedFoodsSearchQuery));
+            const nameClean = removeDiacritics(f.name || '');
+            const nameMatch = nameClean.includes(qClean) || qClean.includes(nameClean);
+            const nutMatch = (f.nutrients || []).some(n => removeDiacritics(n.name || '').includes(qClean));
             return nameMatch || nutMatch;
         });
     }
@@ -4532,20 +4534,21 @@ window.extractFoodsFromMealHistory = () => {
 
     let addedCount = 0;
     const existing = Storage.getAnalyzedFoods();
-    const existingMap = new Map(existing.map(f => [f.name.toLowerCase().trim(), f]));
+    const existingMap = new Map(existing.map(f => [removeDiacritics(f.name), f]));
 
     meals.forEach(m => {
         (m.foods || []).forEach(f => {
             const name = (f.name || '').trim();
             if (!name) return;
-            const key = name.toLowerCase();
+            const key = removeDiacritics(name);
 
             if (!existingMap.has(key)) {
                 const qty = parseFloat(f.quantity) || 100;
                 const unit = f.unit || 'g';
-                const isPiece = (unit === 'buc' || unit === 'felie' || unit === 'ou' || unit === 'portie');
+                const uNorm = removeDiacritics(unit);
+                const isPiece = (uNorm.includes('buc') || uNorm.includes('feli') || uNorm.includes('ou') || uNorm.includes('porti'));
                 const baseQty = isPiece ? 1 : 100;
-                const baseUnit = isPiece ? 'buc' : (unit === 'ml' ? 'ml' : 'g');
+                const baseUnit = isPiece ? 'buc' : (uNorm === 'ml' ? 'ml' : 'g');
                 const factor = isPiece ? (1 / qty) : (100 / qty);
 
                 const normNuts = normalizeNutrientsArray((f.nutrients || []).map(n => ({
