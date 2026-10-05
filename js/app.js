@@ -3671,6 +3671,40 @@ window.speakTextWithAutoListen = (text, btnId, restartListening = true) => {
 };
 
 // --- Chat Widget ---
+window.toggleChat = () => {
+    const chat = document.getElementById('chat-window');
+    if (chat) {
+        const isHidden = chat.classList.toggle('hidden');
+        if (!isHidden) {
+            const input = document.getElementById('chat-input');
+            if (input) input.focus();
+        }
+        refreshIcons();
+    }
+};
+
+window.clearChatHistory = () => {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    
+    // Cancel any active speech synthesis
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+    isLoopActive = false;
+
+    container.innerHTML = `
+        <div class="flex justify-start">
+            <div class="bg-slate-800 text-slate-300 p-3 rounded-2xl rounded-tl-none max-w-[85%] text-sm border border-slate-700">
+                Salut! Sunt asistentul tău nutrițional. Poți vorbi cu mine sau poți încărca fișierul cu analize medicale (CSV) folosind butonul cu agrafă.
+            </div>
+        </div>
+    `;
+    const input = document.getElementById('chat-input');
+    if (input) input.value = '';
+    refreshIcons();
+};
+
 function addMessageToChat(text, sender, isLoading = false) {
     const container = document.getElementById('chat-messages');
     if (!container) return;

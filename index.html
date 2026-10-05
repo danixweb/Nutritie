@@ -611,7 +611,14 @@
             <h3 class="font-bold text-white flex items-center gap-2 text-sm sm:text-base">
                 <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i> Asistent Vocal & Analize
             </h3>
-            <button onclick="toggleChat()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            <div class="flex items-center gap-1">
+                <button onclick="clearChatHistory()" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors" title="Curăță conversația">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="toggleChat()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors" title="Închide">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
         </div>
         <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-3 bg-slate-950 custom-scrollbar">
             <div class="flex justify-start">
