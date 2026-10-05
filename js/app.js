@@ -3451,14 +3451,17 @@ Context medical: ${healthContext}
 Mesajul utilizatorului: "${msg}".
 
 REGULI OBLIGATORII:
-1. Dacă utilizatorul cere o masă, o rețetă, ingrediente sau modificarea mesei, pune alimentele în array-ul "ingredients".
-2. Folosește STRICT denumiri canonice standardizate în limba română pentru fiecare nutrient (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Vitamina D", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", "Proteine", "Carbohidrați", "Grăsimi", etc.).
-3. În proprietatea "reply", scrie EXCLUSIV un mesaj prietenos, scurt și natural în limba română (ex: "Ți-am adăugat în listă un mic dejun sănătos cu ovăz, lapte de migdale și afine.").
-4. NU afișa NICIODATĂ cod JSON, paranteze { } sau detalii tehnice în textul din "reply".
+1. Dacă utilizatorul cere o masă, o rețetă, ingrediente, lista sau analiza de nutrienți a unui aliment (ex: "arată-mi nutrienții pentru...", "ce vitamine conține...", "modifică nutrienții pentru..."):
+   - Pune alimentele în array-ul "ingredients" cu cantitatea, unitatea, caloriile și spectrul complet de nutrienți calculați.
+   - Dacă alimentul există deja în masa curentă, specifică același nume sau numele preparatului; datele sale (cantitate, calorii și spectrul de nutrienți) vor fi actualizate direct în masă și în baza locală.
+   - Dacă alimentul nu există încă în masă, va fi inclus automat în lista mesei curente.
+2. Folosește STRICT denumiri canonice standardizate în limba română pentru fiecare nutrient (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Vitamina D", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", "Proteine", "Carbohidrați", "Grăsimi", "Fibre", "Sodiu", etc.).
+3. În proprietatea "reply", scrie EXCLUSIV un mesaj prietenos, scurt și natural în limba română (ex: "Ți-am actualizat lista de nutrienți pentru somon direct în masă și în baza locală!"). Poți rezuma pe scurt principalii nutrienți.
+4. NU afișa NICIODATĂ cod JSON, paranteze { } sau detalii tehnice brute în textul din "reply".
 
 Returnează STRICT JSON valid:
 {
-  "action": "generate" | "delete" | "modify" | "scale" | "chat",
+  "action": "generate" | "modify" | "modify_nutrients" | "delete" | "scale" | "chat",
   "reply": "Răspuns prietenos în limba română fără cod sau JSON",
   "ingredients": [
     {
@@ -3495,24 +3498,50 @@ Returnează STRICT JSON valid:
                 const jsonResponse = JSON.parse(responseText.substring(jsonStart, jsonEnd + 1));
                 let replyText = jsonResponse.reply || "";
 
-                if ((jsonResponse.action === 'generate' || !jsonResponse.action) && Array.isArray(jsonResponse.ingredients) && jsonResponse.ingredients.length > 0) {
+                // Process ingredients if returned by AI (generate, modify, modify_nutrients, chat with nutrients)
+                if (Array.isArray(jsonResponse.ingredients) && jsonResponse.ingredients.length > 0) {
+                    const updatedNames = [];
                     jsonResponse.ingredients.forEach(ing => {
                         const normNuts = normalizeNutrientsArray(ing.nutrients || []);
                         const unit = ing.unit || 'g';
                         const qty = parseFloat(ing.quantity) || 100;
                         const cals = parseInt(ing.calories) || 0;
-                        const processedIng = {
-                            ...ing,
-                            unit,
-                            quantity: qty,
-                            calories: cals,
-                            nutrients: normNuts
-                        };
-                        currentMeal.foods.push(processedIng);
+                        
+                        // Check if food is already in current meal (fuzzy match)
+                        const ingKey = (ing.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                        const existingIndex = currentMeal.foods.findIndex(f => {
+                            const fKey = (f.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                            return fKey === ingKey || fKey.includes(ingKey) || ingKey.includes(fKey);
+                        });
 
-                        // Auto-save to analyzed foods cache
-                        const isPiece = (unit === 'buc' || unit === 'felie');
-                        const factor = isPiece ? (1 / qty) : (100 / qty);
+                        if (existingIndex > -1) {
+                            // Modify existing food in meal in-place
+                            const prevFood = currentMeal.foods[existingIndex];
+                            currentMeal.foods[existingIndex] = {
+                                ...prevFood,
+                                name: ing.name || prevFood.name,
+                                quantity: qty > 0 ? qty : prevFood.quantity,
+                                unit: unit || prevFood.unit,
+                                calories: cals > 0 ? cals : prevFood.calories,
+                                nutrients: normNuts.length > 0 ? normNuts : (prevFood.nutrients || [])
+                            };
+                            updatedNames.push(`${ing.name} (actualizat)`);
+                        } else {
+                            // Add new food to current meal
+                            const processedIng = {
+                                name: ing.name,
+                                unit,
+                                quantity: qty,
+                                calories: cals,
+                                nutrients: normNuts
+                            };
+                            currentMeal.foods.push(processedIng);
+                            updatedNames.push(`${ing.name} (${qty}${unit})`);
+                        }
+
+                        // Auto-save to local analyzed foods cache (normalized to 100g/100ml/1 buc)
+                        const isPiece = (unit === 'buc' || unit === 'felie' || unit === 'ou' || unit === 'portie');
+                        const factor = isPiece ? (1 / (qty || 1)) : (100 / (qty || 100));
                         Storage.saveAnalyzedFood({
                             name: ing.name,
                             baseQty: isPiece ? 1 : 100,
@@ -3525,8 +3554,9 @@ Returnează STRICT JSON valid:
                             source: 'Asistent Chat AI'
                         });
                     });
+
                     if (!replyText || replyText.includes('{') || replyText.includes('"action"')) {
-                        replyText = `Am adăugat în lista mesei tale: ${jsonResponse.ingredients.map(i => `${i.name} (${i.quantity}${i.unit})`).join(', ')}.`;
+                        replyText = `Am actualizat în masa curentă: ${updatedNames.join(', ')}.`;
                     }
                 } else if (jsonResponse.action === 'delete') {
                     if (jsonResponse.target === 'all') {
@@ -3564,7 +3594,7 @@ Returnează STRICT JSON valid:
                                       .trim();
 
                 if (!cleanReply) {
-                    cleanReply = "Am procesat cererea și am actualizat lista mesei!";
+                    cleanReply = "Am procesat cererea și am actualizat lista mesei și a nutrienților!";
                 }
 
                 renderCurrentMeal();
