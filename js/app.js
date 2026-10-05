@@ -3452,8 +3452,9 @@ Mesajul utilizatorului: "${msg}".
 
 REGULI OBLIGATORII:
 1. Dacă utilizatorul cere o masă, o rețetă, ingrediente sau modificarea mesei, pune alimentele în array-ul "ingredients".
-2. În proprietatea "reply", scrie EXCLUSIV un mesaj prietenos, scurt și natural în limba română (ex: "Ți-am adăugat în listă un mic dejun sănătos cu ovăz, lapte de migdale și afine.").
-3. NU afișa NICIODATĂ cod JSON, paranteze { } sau detalii tehnice în textul din "reply".
+2. Folosește STRICT denumiri canonice standardizate în limba română pentru fiecare nutrient (ex: "Vitamina B9 (Acid folic)", "Vitamina B12 (Cobalamină)", "Vitamina C (Acid ascorbic)", "Vitamina D", "Fier", "Calciu", "Magneziu", "Potasiu", "Zinc", "Proteine", "Carbohidrați", "Grăsimi", etc.).
+3. În proprietatea "reply", scrie EXCLUSIV un mesaj prietenos, scurt și natural în limba română (ex: "Ți-am adăugat în listă un mic dejun sănătos cu ovăz, lapte de migdale și afine.").
+4. NU afișa NICIODATĂ cod JSON, paranteze { } sau detalii tehnice în textul din "reply".
 
 Returnează STRICT JSON valid:
 {
@@ -3496,9 +3497,33 @@ Returnează STRICT JSON valid:
 
                 if ((jsonResponse.action === 'generate' || !jsonResponse.action) && Array.isArray(jsonResponse.ingredients) && jsonResponse.ingredients.length > 0) {
                     jsonResponse.ingredients.forEach(ing => {
-                        if (!ing.nutrients) ing.nutrients = [];
-                        if (!ing.unit) ing.unit = 'g';
-                        currentMeal.foods.push(ing);
+                        const normNuts = normalizeNutrientsArray(ing.nutrients || []);
+                        const unit = ing.unit || 'g';
+                        const qty = parseFloat(ing.quantity) || 100;
+                        const cals = parseInt(ing.calories) || 0;
+                        const processedIng = {
+                            ...ing,
+                            unit,
+                            quantity: qty,
+                            calories: cals,
+                            nutrients: normNuts
+                        };
+                        currentMeal.foods.push(processedIng);
+
+                        // Auto-save to analyzed foods cache
+                        const isPiece = (unit === 'buc' || unit === 'felie');
+                        const factor = isPiece ? (1 / qty) : (100 / qty);
+                        Storage.saveAnalyzedFood({
+                            name: ing.name,
+                            baseQty: isPiece ? 1 : 100,
+                            baseUnit: isPiece ? 'buc' : (unit === 'ml' ? 'ml' : 'g'),
+                            calories: Math.round(cals * factor),
+                            nutrients: normNuts.map(n => ({
+                                ...n,
+                                qty: parseFloat(((parseFloat(n.qty) || 0) * factor).toFixed(2))
+                            })),
+                            source: 'Asistent Chat AI'
+                        });
                     });
                     if (!replyText || replyText.includes('{') || replyText.includes('"action"')) {
                         replyText = `Am adăugat în lista mesei tale: ${jsonResponse.ingredients.map(i => `${i.name} (${i.quantity}${i.unit})`).join(', ')}.`;
