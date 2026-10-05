@@ -1096,23 +1096,65 @@
                         </div>
                     </div>
 
-                    <!-- Raport PDF Lunar & Alertă Deficite -->
-                    <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-                        <div class="font-bold text-purple-400 flex items-center gap-2 text-xs">
-                            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
-                            Rapoarte PDF Lunare & Evidențierea Deficitelor Medicale
+                    <!-- Ghid Detaliat: Rapoarte PDF Lunare & Secțiuni Modulare -->
+                    <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3.5">
+                        <div class="font-bold text-indigo-400 flex items-center gap-2 text-sm border-b border-slate-800 pb-2">
+                            <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i>
+                            Ghid Detaliat: Rapoarte PDF Lunare & Structura Modulară
                         </div>
-                        <p class="text-slate-400 text-[11px] leading-relaxed">
-                            Documentul PDF lunar generat calculează media pe zile a tuturor vitaminelor și mineralelor esențiale. Aplicația aplică automat reguli medicale de evidențiere:
+                        <p class="text-slate-300 text-xs leading-relaxed">
+                            Modulul de <strong>Export PDF</strong> îți permite să generezi rapoarte de analiză nutrițională și metabolică de calitate medicală. Poți include sau exclude oricare dintre cele <strong>5 secțiuni modulare</strong>:
                         </p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                            <div class="p-2 bg-rose-950/40 rounded border border-rose-800/60 text-rose-200">
-                                <strong class="text-rose-400 block">🚨 Lipsă Totală (0% DZR):</strong>
-                                Evidențiată cu fundal roșu și text roșu îngroșat pentru a semnala nutrienții complet absenți din alimentația pe durata lunii.
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <!-- Secțiunea 1 -->
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5">
+                                <div class="font-bold text-white flex items-center gap-1.5 text-xs">
+                                    <span class="text-indigo-400">📅 1.</span> Lista Meselor (Calendar Lunar)
+                                </div>
+                                <p class="text-slate-400 text-[11px] leading-relaxed">
+                                    Grilă pe 7 coloane (Luni–Duminică) cu toate zilele lunii. Afișează orele fiecărei mese, lista detaliată a alimentelor consumate, caloriile și totalul de macronutrienți (P/C/G) per masă și per zi, plus activitățile sportive desfășurate.
+                                </p>
                             </div>
-                            <div class="p-2 bg-amber-950/40 rounded border border-amber-800/60 text-amber-200">
-                                <strong class="text-amber-400 block">⚠️ Deficit Sever (&lt; 50% DZR):</strong>
-                                Evidențiat cu fundal galben-auriu și chenar portocaliu pentru valori sub jumătatea dozei zilnice recomandate.
+
+                            <!-- Secțiunea 2 -->
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5">
+                                <div class="font-bold text-white flex items-center gap-1.5 text-xs">
+                                    <span class="text-indigo-400">⚡ 2.</span> Tabel Balanță Metabolică
+                                </div>
+                                <p class="text-slate-400 text-[11px] leading-relaxed">
+                                    Afișează <strong>strict zilele dintre prima și ultima zi cu mese</strong> din intervalul de raportare. Compară aportul ingerat cu consumul total (BMR bazal ajustat climatic, efectul termic al alimentelor TEF ~10% și sport), evidențiind clar surplusul sau deficitul caloric zilnic.
+                                </p>
+                            </div>
+
+                            <!-- Secțiunea 3 -->
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5">
+                                <div class="font-bold text-white flex items-center gap-1.5 text-xs">
+                                    <span class="text-indigo-400">🔬 3.</span> Raport Necesar Nutrițional (DZR / RDA)
+                                </div>
+                                <p class="text-slate-400 text-[11px] leading-relaxed">
+                                    Calculează <strong>Necesarul Total pe Interval</strong> (raportat exact la numărul de zile dintre prima și ultima masă) pentru toți macronutrienții, vitaminele și mineralele urmărite, afișând procentul de acoperire DZR și statusul fiecărui nutrient.
+                                </p>
+                            </div>
+
+                            <!-- Secțiunea 4 -->
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5">
+                                <div class="font-bold text-white flex items-center gap-1.5 text-xs">
+                                    <span class="text-indigo-400">🩺 4.</span> Atenție Medicală & Profil Clinic
+                                </div>
+                                <p class="text-slate-400 text-[11px] leading-relaxed">
+                                    Evaluează automat aportul mediu pe intervalul activ și semnalează nutrienții cu <strong>Lipsă Totală (0% DZR)</strong> sau <strong>Deficit Sever (&lt;50% DZR)</strong>, integrând de asemenea profilul afecțiunilor medicale declarate.
+                                </p>
+                            </div>
+
+                            <!-- Secțiunea 5 -->
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5 md:col-span-2">
+                                <div class="font-bold text-white flex items-center gap-1.5 text-xs">
+                                    <span class="text-emerald-400">🥗 5.</span> Lista Alimente Consumate (Totaluri Agregate)
+                                </div>
+                                <p class="text-slate-400 text-[11px] leading-relaxed">
+                                    Centralizează toate alimentele unice consumate în interval. Calculează cantitatea totală agregată, frecvența (numărul de mese/porții), totalul de calorii aduse, proteine, carbohidrați, grăsimi, fibre și procentul caloric deținut de fiecare aliment în alimentația ta.
+                                </p>
                             </div>
                         </div>
                     </div>

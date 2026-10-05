@@ -71,15 +71,25 @@ export const PDFReport = {
             }
         });
 
+        // Identify interval between first and last day with logged meals
+        const daysWithMealsList = [];
+        for (let i = 1; i <= daysInMonth; i++) {
+            if (mealsByDay[i] && mealsByDay[i].length > 0) {
+                daysWithMealsList.push(i);
+            }
+        }
+
+        const hasMealsInMonth = daysWithMealsList.length > 0;
+        const firstMealDay = hasMealsInMonth ? daysWithMealsList[0] : 1;
+        const lastMealDay = hasMealsInMonth ? daysWithMealsList[daysWithMealsList.length - 1] : daysInMonth;
+        const daysInReportInterval = hasMealsInMonth ? (lastMealDay - firstMealDay + 1) : 0;
+        const intervalTitleText = hasMealsInMonth 
+            ? `${String(firstMealDay).padStart(2, '0')} - ${String(lastMealDay).padStart(2, '0')} ${monthName} ${year}` 
+            : `${monthName} ${year}`;
+
         // Aggregated monthly nutrients and metabolic data
         const monthlyNutrients = {};
         let totalMonthlyCalories = 0;
-        let totalMonthlyBurnedSport = 0;
-        let totalMonthlyBmr = 0;
-        let totalMonthlyTef = 0;
-        let totalMonthlyExpended = 0;
-        let daysWithLoggedMeals = 0;
-
         const baseBmr = userMetrics.bmr || 1600;
 
         // Daily Metabolic Data calculation for all days of the month
@@ -97,10 +107,6 @@ export const PDFReport = {
             let dayCarbs = 0;
             let dayFat = 0;
             const dayFoods = [];
-
-            if (dayMeals.length > 0 || dayActs.length > 0) {
-                daysWithLoggedMeals++;
-            }
 
             dayMeals.forEach(meal => {
                 (meal.foods || []).forEach(f => {
@@ -143,7 +149,6 @@ export const PDFReport = {
                 daySportBurned += cals;
                 daySportDuration += (parseInt(act.durationMinutes) || 0);
             });
-            totalMonthlyBurnedSport += daySportBurned;
 
             // Thermal & TEF (TEF intra in calcul STRICT doar daca a avut loc o masa)
             const seasonInfo = Storage.calculateClimateFactor('auto', dateStr);
@@ -151,12 +156,7 @@ export const PDFReport = {
             const adjustedBmr = Math.round(baseBmr * climateFactor);
             const dayTEF = (dayCals > 0 && dayFoods.length > 0) ? Storage.calculateTEF(dayFoods) : (dayCals > 0 ? Storage.calculateTEF(dayCals) : 0);
 
-            totalMonthlyBmr += adjustedBmr;
-            totalMonthlyTef += dayTEF;
-
             const dayTotalExpenditure = adjustedBmr + dayTEF + daySportBurned;
-            totalMonthlyExpended += dayTotalExpenditure;
-
             const dayNetBalance = dayCals - dayTotalExpenditure;
             const hasData = (dayMeals.length > 0 || dayActs.length > 0);
 
@@ -182,8 +182,25 @@ export const PDFReport = {
             });
         }
 
-        const activeDays = daysWithLoggedMeals > 0 ? daysWithLoggedMeals : 1;
-        const totalMonthlyNetBalance = totalMonthlyCalories - totalMonthlyExpended;
+        // Interval specific metabolic aggregations (between firstMealDay and lastMealDay)
+        let intervalCalories = 0;
+        let intervalBmr = 0;
+        let intervalTef = 0;
+        let intervalBurnedSport = 0;
+        let intervalExpended = 0;
+        let intervalNetBalance = 0;
+
+        if (hasMealsInMonth) {
+            for (let d = firstMealDay; d <= lastMealDay; d++) {
+                const s = dailyMetabolicStats[d - 1];
+                intervalCalories += s.dayCals;
+                intervalBmr += s.adjustedBmr;
+                intervalTef += s.dayTEF;
+                intervalBurnedSport += s.daySportBurned;
+                intervalExpended += s.dayTotalExpenditure;
+                intervalNetBalance += s.dayNetBalance;
+            }
+        }
 
         // =========================================================================
         // 1) Build Calendar Grid (Weeks & 7 Columns: Mon - Sun)
@@ -304,103 +321,110 @@ export const PDFReport = {
         }
 
         // =========================================================================
-        // 2) Build Daily Metabolic Balance Table
+        // 2) Build Daily Metabolic Balance Table (ONLY days between firstMealDay & lastMealDay)
         // =========================================================================
         let metabolicRowsHTML = '';
         let metabolicFooterHTML = '';
 
         if (showMetabolic) {
-            dailyMetabolicStats.forEach(stat => {
-                let statusBadge = '<span class="badge-neutral">-</span>';
-                let netFormatted = '-';
+            if (!hasMealsInMonth) {
+                metabolicRowsHTML = `<tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8; font-style:italic;">Nu există mese înregistrate în această lună pentru a calcula balanța metabolică.</td></tr>`;
+            } else {
+                // Render strictly rows between firstMealDay and lastMealDay
+                for (let d = firstMealDay; d <= lastMealDay; d++) {
+                    const stat = dailyMetabolicStats[d - 1];
+                    let statusBadge = '<span class="badge-neutral">-</span>';
+                    let netFormatted = '-';
 
-                if (stat.hasData) {
-                    const sign = stat.dayNetBalance > 0 ? '+' : '';
-                    netFormatted = `<b>${sign}${stat.dayNetBalance} kcal</b>`;
+                    if (stat.hasData) {
+                        const sign = stat.dayNetBalance > 0 ? '+' : '';
+                        netFormatted = `<b>${sign}${stat.dayNetBalance} kcal</b>`;
 
-                    if (stat.dayNetBalance < -500) {
-                        statusBadge = `<span class="badge-opt">▼ Deficit Accentuat (${stat.dayNetBalance} kcal)</span>`;
-                    } else if (stat.dayNetBalance <= -150) {
-                        statusBadge = `<span class="badge-opt">▼ Deficit Optim (${stat.dayNetBalance} kcal)</span>`;
-                    } else if (stat.dayNetBalance <= 150) {
-                        statusBadge = `<span class="badge-neutral" style="background:#e0f2fe; color:#0369a1; border: 1px solid #bae6fd;">✓ Echilibru / Menținere</span>`;
-                    } else if (stat.dayNetBalance <= 500) {
-                        statusBadge = `<span class="badge-high">▲ Surplus Ușor (+${stat.dayNetBalance} kcal)</span>`;
-                    } else {
-                        statusBadge = `<span class="badge-def">▲ Surplus Mare (+${stat.dayNetBalance} kcal)</span>`;
+                        if (stat.dayNetBalance < -500) {
+                            statusBadge = `<span class="badge-opt">▼ Deficit Accentuat (${stat.dayNetBalance} kcal)</span>`;
+                        } else if (stat.dayNetBalance <= -150) {
+                            statusBadge = `<span class="badge-opt">▼ Deficit Optim (${stat.dayNetBalance} kcal)</span>`;
+                        } else if (stat.dayNetBalance <= 150) {
+                            statusBadge = `<span class="badge-neutral" style="background:#e0f2fe; color:#0369a1; border: 1px solid #bae6fd;">✓ Echilibru / Menținere</span>`;
+                        } else if (stat.dayNetBalance <= 500) {
+                            statusBadge = `<span class="badge-high">▲ Surplus Ușor (+${stat.dayNetBalance} kcal)</span>`;
+                        } else {
+                            statusBadge = `<span class="badge-def">▲ Surplus Mare (+${stat.dayNetBalance} kcal)</span>`;
+                        }
                     }
+
+                    const seasonTag = stat.climateFactor > 1.0 ? `<small style="color:#64748b; font-size:6.5px;"> (${stat.seasonName} +${Math.round((stat.climateFactor - 1) * 100)}%)</small>` : '';
+                    const sportTag = stat.daySportBurned > 0 ? `<div style="font-size:6.5px; color:#059669;">${stat.dayActs.map(a => `${a.time ? `${a.time} ` : ''}${a.name}`).join(', ')} (${stat.daySportDuration}m)</div>` : '';
+
+                    metabolicRowsHTML += `
+                        <tr>
+                            <td class="nut-name"><strong>${String(stat.dayNum).padStart(2, '0')} ${monthName}</strong> <span class="text-muted">(${stat.dayOfWeekName})</span></td>
+                            <td class="num ${stat.dayCals > 0 ? 'font-bold' : 'text-muted'}">${stat.dayCals > 0 ? `${stat.dayCals} kcal` : '0 kcal'}</td>
+                            <td class="num text-muted">${stat.adjustedBmr} kcal${seasonTag}</td>
+                            <td class="num text-muted">${stat.dayTEF} kcal</td>
+                            <td class="num ${stat.daySportBurned > 0 ? 'font-bold' : 'text-muted'}" style="${stat.daySportBurned > 0 ? 'color:#059669;' : ''}">
+                                ${stat.daySportBurned > 0 ? `-${stat.daySportBurned} kcal` : '0 kcal'}
+                                ${sportTag}
+                            </td>
+                            <td class="num font-bold" style="color:#1e1b4b;">${stat.dayTotalExpenditure} kcal</td>
+                            <td class="num" style="${stat.dayNetBalance > 0 ? 'color:#b91c1c;' : (stat.dayNetBalance < 0 ? 'color:#15803d;' : '')}">
+                                ${netFormatted}
+                            </td>
+                            <td class="status-cell">${statusBadge}</td>
+                        </tr>
+                    `;
                 }
 
-                const seasonTag = stat.climateFactor > 1.0 ? `<small style="color:#64748b; font-size:6.5px;"> (${stat.seasonName} +${Math.round((stat.climateFactor - 1) * 100)}%)</small>` : '';
-                const sportTag = stat.daySportBurned > 0 ? `<div style="font-size:6.5px; color:#059669;">${stat.dayActs.map(a => `${a.time ? `${a.time} ` : ''}${a.name}`).join(', ')} (${stat.daySportDuration}m)</div>` : '';
+                // Total & Average Rows for the specific interval
+                const avgDailyConsumed = Math.round(intervalCalories / daysInReportInterval);
+                const avgDailyBmr = Math.round(intervalBmr / daysInReportInterval);
+                const avgDailyTef = Math.round(intervalTef / daysInReportInterval);
+                const avgDailySport = Math.round(intervalBurnedSport / daysInReportInterval);
+                const avgDailyExpenditure = Math.round(intervalExpended / daysInReportInterval);
+                const avgDailyNet = Math.round(intervalNetBalance / daysInReportInterval);
 
-                metabolicRowsHTML += `
-                    <tr>
-                        <td class="nut-name"><strong>${String(stat.dayNum).padStart(2, '0')} ${monthName}</strong> <span class="text-muted">(${stat.dayOfWeekName})</span></td>
-                        <td class="num ${stat.dayCals > 0 ? 'font-bold' : 'text-muted'}">${stat.dayCals > 0 ? `${stat.dayCals} kcal` : '0 kcal'}</td>
-                        <td class="num text-muted">${stat.adjustedBmr} kcal${seasonTag}</td>
-                        <td class="num text-muted">${stat.dayTEF} kcal</td>
-                        <td class="num ${stat.daySportBurned > 0 ? 'font-bold' : 'text-muted'}" style="${stat.daySportBurned > 0 ? 'color:#059669;' : ''}">
-                            ${stat.daySportBurned > 0 ? `-${stat.daySportBurned} kcal` : '0 kcal'}
-                            ${sportTag}
+                metabolicFooterHTML = `
+                    <tr style="background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                        <td class="nut-name" style="font-size: 8.5px; color: #0f172a;"><strong>TOTAL INTERVAL (${daysInReportInterval} zile: ${firstMealDay}-${lastMealDay} ${monthName})</strong></td>
+                        <td class="num" style="font-size: 8.5px; color: #4338ca;">${intervalCalories} kcal</td>
+                        <td class="num" style="font-size: 8.5px;">${intervalBmr} kcal</td>
+                        <td class="num" style="font-size: 8.5px;">${intervalTef} kcal</td>
+                        <td class="num" style="font-size: 8.5px; color: #059669;">-${intervalBurnedSport} kcal</td>
+                        <td class="num" style="font-size: 8.5px; color: #0f172a;">${intervalExpended} kcal</td>
+                        <td class="num" style="font-size: 8.5px; color: ${intervalNetBalance >= 0 ? '#b91c1c' : '#15803d'};">
+                            ${intervalNetBalance >= 0 ? '+' : ''}${intervalNetBalance} kcal
                         </td>
-                        <td class="num font-bold" style="color:#1e1b4b;">${stat.dayTotalExpenditure} kcal</td>
-                        <td class="num" style="${stat.dayNetBalance > 0 ? 'color:#b91c1c;' : (stat.dayNetBalance < 0 ? 'color:#15803d;' : '')}">
-                            ${netFormatted}
+                        <td class="status-cell">
+                            <span class="${intervalNetBalance <= 0 ? 'badge-opt' : 'badge-def'}">
+                                ${intervalNetBalance <= 0 ? `Deficit Total (${Math.abs(intervalNetBalance)} kcal)` : `Surplus Total (+${intervalNetBalance} kcal)`}
+                            </span>
                         </td>
-                        <td class="status-cell">${statusBadge}</td>
+                    </tr>
+                    <tr style="background: #ffffff; font-weight: 600; border-bottom: 2px solid #94a3b8;">
+                        <td class="nut-name" style="color: #475569;"><strong>MEDIE ZILNICĂ INTERVAL (${daysInReportInterval} zile)</strong></td>
+                        <td class="num" style="color: #4338ca;">${avgDailyConsumed} kcal/zi</td>
+                        <td class="num">${avgDailyBmr} kcal/zi</td>
+                        <td class="num">${avgDailyTef} kcal/zi</td>
+                        <td class="num" style="color: #059669;">-${avgDailySport} kcal/zi</td>
+                        <td class="num">${avgDailyExpenditure} kcal/zi</td>
+                        <td class="num" style="color: ${avgDailyNet >= 0 ? '#b91c1c' : '#15803d'};">
+                            ${avgDailyNet >= 0 ? '+' : ''}${avgDailyNet} kcal/zi
+                        </td>
+                        <td class="status-cell">
+                            <small style="color: #64748b; font-weight: bold;">TDEE Țintă: ${userMetrics.targetCalories || 2000} kcal</small>
+                        </td>
                     </tr>
                 `;
-            });
-
-            // Monthly Total & Average Rows for Metabolic Table
-            const avgDailyConsumed = Math.round(totalMonthlyCalories / activeDays);
-            const avgDailyBmr = Math.round(totalMonthlyBmr / daysInMonth);
-            const avgDailyTef = Math.round(totalMonthlyTef / activeDays);
-            const avgDailySport = Math.round(totalMonthlyBurnedSport / activeDays);
-            const avgDailyExpenditure = Math.round(totalMonthlyExpended / daysInMonth);
-            const avgDailyNet = Math.round(totalMonthlyNetBalance / daysInMonth);
-
-            metabolicFooterHTML = `
-                <tr style="background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
-                    <td class="nut-name" style="font-size: 8.5px; color: #0f172a;"><strong>TOTAL LUNAR (${daysInMonth} zile)</strong></td>
-                    <td class="num" style="font-size: 8.5px; color: #4338ca;">${totalMonthlyCalories} kcal</td>
-                    <td class="num" style="font-size: 8.5px;">${totalMonthlyBmr} kcal</td>
-                    <td class="num" style="font-size: 8.5px;">${totalMonthlyTef} kcal</td>
-                    <td class="num" style="font-size: 8.5px; color: #059669;">-${totalMonthlyBurnedSport} kcal</td>
-                    <td class="num" style="font-size: 8.5px; color: #0f172a;">${totalMonthlyExpended} kcal</td>
-                    <td class="num" style="font-size: 8.5px; color: ${totalMonthlyNetBalance >= 0 ? '#b91c1c' : '#15803d'};">
-                        ${totalMonthlyNetBalance >= 0 ? '+' : ''}${totalMonthlyNetBalance} kcal
-                    </td>
-                    <td class="status-cell">
-                        <span class="${totalMonthlyNetBalance <= 0 ? 'badge-opt' : 'badge-def'}">
-                            ${totalMonthlyNetBalance <= 0 ? `Deficit Total (${Math.abs(totalMonthlyNetBalance)} kcal)` : `Surplus Total (+${totalMonthlyNetBalance} kcal)`}
-                        </span>
-                    </td>
-                </tr>
-                <tr style="background: #ffffff; font-weight: 600; border-bottom: 2px solid #94a3b8;">
-                    <td class="nut-name" style="color: #475569;"><strong>MEDIE ZILNICĂ (${activeDays} zile active)</strong></td>
-                    <td class="num" style="color: #4338ca;">${avgDailyConsumed} kcal/zi</td>
-                    <td class="num">${avgDailyBmr} kcal/zi</td>
-                    <td class="num">${avgDailyTef} kcal/zi</td>
-                    <td class="num" style="color: #059669;">-${avgDailySport} kcal/zi</td>
-                    <td class="num">${avgDailyExpenditure} kcal/zi</td>
-                    <td class="num" style="color: ${avgDailyNet >= 0 ? '#b91c1c' : '#15803d'};">
-                        ${avgDailyNet >= 0 ? '+' : ''}${avgDailyNet} kcal/zi
-                    </td>
-                    <td class="status-cell">
-                        <small style="color: #64748b; font-weight: bold;">TDEE Țintă: ${userMetrics.targetCalories || 2000} kcal</small>
-                    </td>
-                </tr>
-            `;
+            }
         }
 
         // =========================================================================
-        // 3) Build Nutrient Needs vs Consumed Analysis Table (Necesar vs Consumat)
+        // 3) Build Nutrient Needs vs Consumed Analysis Table (Necesar Total Interval)
         // =========================================================================
         let nutrientRowsHTML = '';
         const allTrackedKeys = new Set([...Object.keys(DAILY_RDA), ...Object.keys(monthlyNutrients)]);
         const criticalAlerts = [];
+        const intervalDaysCount = daysInReportInterval > 0 ? daysInReportInterval : 1;
 
         allTrackedKeys.forEach(nutName => {
             const rdaInfo = DAILY_RDA[nutName];
@@ -411,24 +435,32 @@ export const PDFReport = {
             if (nutName === "Calorii") totalConsumed = totalMonthlyCalories;
             else if (loggedInfo) totalConsumed = loggedInfo.totalQty;
 
-            const dailyAvg = totalConsumed / activeDays;
+            const dailyAvg = hasMealsInMonth ? (totalConsumed / intervalDaysCount) : 0;
             const rdaDaily = rdaInfo ? (rdaInfo.rda || rdaInfo.qty) : null;
-            const rdaMonthly = rdaDaily ? (rdaDaily * daysInMonth) : null;
-            const percentDaily = rdaDaily ? ((dailyAvg / rdaDaily) * 100) : null;
+            const rdaInterval = (rdaDaily && hasMealsInMonth) ? (rdaDaily * intervalDaysCount) : null;
+            const percentDaily = (rdaDaily && hasMealsInMonth) ? ((dailyAvg / rdaDaily) * 100) : null;
 
             let statusBadge = '<span class="badge-neutral">-</span>';
             let rowStyle = '';
 
-            if (percentDaily !== null) {
+            if (percentDaily !== null && hasMealsInMonth) {
                 if (totalConsumed === 0 || percentDaily === 0) {
                     statusBadge = '<span class="badge-critical">🚨 Lipsă Totală (0%)</span>';
                     rowStyle = 'background-color: #fff1f2;';
-                    criticalAlerts.push({ name: nutName, type: 'total_lack', message: `Lipsă totală înregistrată în această lună (0 ${unit} din ${rdaDaily} ${unit}/zi recomandat).` });
+                    criticalAlerts.push({ 
+                        name: nutName, 
+                        type: 'total_lack', 
+                        message: `Lipsă totală înregistrată pe intervalul ${firstMealDay}-${lastMealDay} ${monthName} (0 ${unit} din ${rdaDaily} ${unit}/zi recomandat).` 
+                    });
                 } else if (percentDaily < 50) {
                     const deficitPercent = Math.max(0, 100 - percentDaily);
                     statusBadge = `<span class="badge-critical">⚠️ Deficit Sever (-${deficitPercent.toFixed(0)}%)</span>`;
                     rowStyle = 'background-color: #fff7ed;';
-                    criticalAlerts.push({ name: nutName, type: 'severe', message: `Nivel critic scăzut (${dailyAvg.toFixed(1)} ${unit}/zi vs ${rdaDaily} ${unit}/zi DZR - acoperire doar ${percentDaily.toFixed(0)}%).` });
+                    criticalAlerts.push({ 
+                        name: nutName, 
+                        type: 'severe', 
+                        message: `Nivel critic scăzut (${dailyAvg.toFixed(1)} ${unit}/zi vs ${rdaDaily} ${unit}/zi DZR - acoperire doar ${percentDaily.toFixed(0)}% pe intervalul de ${intervalDaysCount} zile).` 
+                    });
                 } else if (percentDaily < 85) {
                     const deficitPercent = Math.max(0, 100 - percentDaily);
                     statusBadge = `<span class="badge-def">▼ Deficit (-${deficitPercent.toFixed(0)}%)</span>`;
@@ -447,7 +479,7 @@ export const PDFReport = {
                         <td class="num">${totalConsumed.toFixed(1)} ${unit}</td>
                         <td class="num font-bold">${dailyAvg.toFixed(1)} ${unit}</td>
                         <td class="num text-muted">${rdaDaily ? `${rdaDaily} ${unit}` : 'N/A'}</td>
-                        <td class="num text-muted">${rdaMonthly ? `${rdaMonthly.toFixed(0)} ${unit}` : 'N/A'}</td>
+                        <td class="num text-muted">${rdaInterval ? `${rdaInterval.toFixed(0)} ${unit}` : 'N/A'}</td>
                         <td class="num">${percentDaily !== null ? `<b>${percentDaily.toFixed(0)}%</b>` : '-'}</td>
                         <td class="status-cell">${statusBadge}</td>
                     </tr>
@@ -603,8 +635,8 @@ export const PDFReport = {
             sectionBlocks.push(`
                 <div class="summary-section ${needsPageBreak ? 'page-break' : ''}">
                     <div class="section-header" style="background: #1e1b4b;">
-                        <h2>⚡ Tabel Balanță Metabolică & Cheltuieli Energetice (Consum vs Necesar Zilnic)</h2>
-                        <span>Metabolism Bazal (BMR Mifflin-St Jeor) + Activitate Fizică + Digestie (TEF) + Factor Termic</span>
+                        <h2>⚡ Tabel Balanță Metabolică & Cheltuieli Energetice (${intervalTitleText})</h2>
+                        <span>Interval activ: zilele ${hasMealsInMonth ? `${firstMealDay} - ${lastMealDay}` : '-'} • Metabolism Bazal + Activitate Fizică + TEF</span>
                     </div>
                     <table class="summary-table">
                         <thead>
@@ -630,23 +662,23 @@ export const PDFReport = {
             `);
         }
 
-        // 3. Nutrient Needs Table Section
+        // 3. Nutrient Needs Table Section (Necesar Total Interval)
         if (showNutrients) {
             const needsPageBreak = sectionBlocks.length > 0 && !showMetabolic;
             sectionBlocks.push(`
                 <div class="summary-section ${needsPageBreak ? 'page-break' : ''}">
                     <div class="section-header">
-                        <h2>🔬 Raport Necesar Nutrițional vs Cantitate Consumată</h2>
-                        <span>Analiză raportată la Doza Zilnică Recomandată (DZR / RDA) • Evidențiere Lipsuri & Carențe</span>
+                        <h2>🔬 Raport Necesar Nutrițional vs Cantitate Consumată (${intervalTitleText})</h2>
+                        <span>Analiză raportată la Doza Zilnică Recomandată (DZR / RDA) pe intervalul de ${intervalDaysCount} zile</span>
                     </div>
                     <table class="summary-table">
                         <thead>
                             <tr>
                                 <th>Nutrient</th>
-                                <th style="text-align: right;">Total Consumat (${monthName})</th>
-                                <th style="text-align: right;">Medie / Zi Activă</th>
+                                <th style="text-align: right;">Total Consumat</th>
+                                <th style="text-align: right;">Medie / Zi Interval</th>
                                 <th style="text-align: right;">DZR Zilnic Recomandat</th>
-                                <th style="text-align: right;">Necesar Total Lună</th>
+                                <th style="text-align: right;">Necesar Total Interval</th>
                                 <th style="text-align: right;">% Realizat / Zi</th>
                                 <th style="text-align: center;">Evaluare Balanță</th>
                             </tr>
@@ -673,7 +705,7 @@ export const PDFReport = {
                 </div>
                 ` : `
                 <div style="margin-top: 8px; padding: 4px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 7.5px; color: #166534;">
-                    <strong>✓ Atenție Medicală - Niciun deficit critic detectat:</strong> Toți micronutrienții esențiali au un aport înregistrat de peste 50% din DZR recomandat.
+                    <strong>✓ Atenție Medicală - Niciun deficit critic detectat:</strong> Toți micronutrienții esențiali au un aport înregistrat de peste 50% din DZR recomandat pe intervalul activ.
                 </div>
                 `}
 
@@ -692,7 +724,7 @@ export const PDFReport = {
                 <div class="summary-section ${needsPageBreak ? 'page-break' : ''}">
                     <div class="section-header" style="background: #064e3b;">
                         <h2>🥗 Lista Alimente Consumate & Totaluri Agregate (${totalUniqueFoodsCount} alimente)</h2>
-                        <span>Totaluri cantitative, frecvență de consum, aport caloric și macronutrienți per aliment</span>
+                        <span>Totaluri cantitative, frecvență de consum, aport caloric și macronutrienți pe intervalul ${intervalTitleText}</span>
                     </div>
                     <table class="summary-table">
                         <thead>
@@ -734,7 +766,7 @@ export const PDFReport = {
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Raport Nutrițional Lunar - ${monthName} ${year}</title>
+            <title>Raport Nutrițional - ${intervalTitleText}</title>
             <style>
                 @page {
                     size: A4 landscape;
@@ -1106,15 +1138,16 @@ export const PDFReport = {
                 <!-- Main Header -->
                 <div class="report-header">
                     <div class="report-title-group">
-                        <h1>Asistent <span>Nutriție</span> — Jurnal & Raport Lunar</h1>
-                        <p>Raport de activitate, aport alimentar și analiză nutrițională • <strong>${monthName} ${year}</strong></p>
+                        <h1>Asistent <span>Nutriție</span> — Jurnal & Raport Nutrițional</h1>
+                        <p>Interval raportat: <strong>${intervalTitleText}</strong> • Activitate, aport alimentar și balanță metabolică</p>
                     </div>
                     <div class="meta-pills">
-                        <div class="meta-pill">Zile active: <b>${daysWithLoggedMeals} / ${daysInMonth}</b></div>
+                        <div class="meta-pill">Zile cu mese: <b>${daysWithMealsList.length} / ${daysInMonth}</b></div>
+                        <div class="meta-pill">Interval activ: <b>${daysInReportInterval} zile</b></div>
                         <div class="meta-pill">Consum Ingerat: <b>${totalMonthlyCalories} kcal</b></div>
-                        <div class="meta-pill">Sport Arse: <b style="color:#059669;">-${totalMonthlyBurnedSport} kcal</b></div>
-                        <div class="meta-pill">Necesar Total: <b>${totalMonthlyExpended} kcal</b></div>
-                        <div class="meta-pill">Balanță Lunară: <b style="color:${totalMonthlyNetBalance >= 0 ? '#b91c1c' : '#15803d'};">${totalMonthlyNetBalance >= 0 ? '+' : ''}${totalMonthlyNetBalance} kcal</b></div>
+                        <div class="meta-pill">Sport Arse: <b style="color:#059669;">-${intervalBurnedSport} kcal</b></div>
+                        <div class="meta-pill">Necesar Interval: <b>${intervalExpended} kcal</b></div>
+                        <div class="meta-pill">Balanță Netă: <b style="color:${intervalNetBalance >= 0 ? '#b91c1c' : '#15803d'};">${intervalNetBalance >= 0 ? '+' : ''}${intervalNetBalance} kcal</b></div>
                     </div>
                 </div>
 
