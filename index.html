@@ -1027,7 +1027,7 @@
             <div class="grid grid-cols-2 gap-3 my-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Luna</label>
-                    <select id="pdf-month-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
+                    <select id="pdf-month-select" onchange="updatePDFDaysOptions()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
                         <option value="0">Ianuarie</option>
                         <option value="1">Februarie</option>
                         <option value="2">Martie</option>
@@ -1044,11 +1044,37 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Anul</label>
-                    <select id="pdf-year-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
+                    <select id="pdf-year-select" onchange="updatePDFDaysOptions()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition-colors">
                         <option value="2025">2025</option>
                         <option value="2026" selected>2026</option>
                         <option value="2027">2027</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Interval Selection (Toată Luna vs Interval Zile) -->
+            <div class="mb-3.5 p-2.5 bg-slate-800/60 rounded-xl border border-slate-700/60 space-y-2">
+                <div class="flex items-center gap-4 text-xs">
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <input type="radio" name="pdf-range-mode" id="pdf-mode-all" value="all" checked onchange="togglePDFRangeInputs()" class="text-indigo-600 bg-slate-900 border-slate-600 focus:ring-indigo-500 cursor-pointer">
+                        <span class="font-semibold">Toată luna</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <input type="radio" name="pdf-range-mode" id="pdf-mode-custom" value="custom" onchange="togglePDFRangeInputs()" class="text-indigo-600 bg-slate-900 border-slate-600 focus:ring-indigo-500 cursor-pointer">
+                        <span class="font-semibold">Interval de zile din lună</span>
+                    </label>
+                </div>
+
+                <!-- Custom Day Range Selectors -->
+                <div id="pdf-custom-range-container" class="hidden grid grid-cols-2 gap-3 pt-2 border-t border-slate-700/50">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">De la ziua</label>
+                        <select id="pdf-start-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Până la ziua</label>
+                        <select id="pdf-end-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-500"></select>
+                    </div>
                 </div>
             </div>
 

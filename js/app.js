@@ -4397,6 +4397,46 @@ window.setAllPDFCheckboxes = (checked) => {
     });
 };
 
+window.togglePDFRangeInputs = () => {
+    const customRadio = document.getElementById('pdf-mode-custom');
+    const container = document.getElementById('pdf-custom-range-container');
+    if (container) {
+        if (customRadio && customRadio.checked) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+};
+
+window.updatePDFDaysOptions = () => {
+    const monthSelect = document.getElementById('pdf-month-select');
+    const yearSelect = document.getElementById('pdf-year-select');
+    const startSelect = document.getElementById('pdf-start-day');
+    const endSelect = document.getElementById('pdf-end-day');
+    if (!monthSelect || !yearSelect || !startSelect || !endSelect) return;
+
+    const month = parseInt(monthSelect.value);
+    const year = parseInt(yearSelect.value);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const prevStart = parseInt(startSelect.value) || 1;
+    const prevEnd = parseInt(endSelect.value) || daysInMonth;
+
+    let startOpts = '';
+    let endOpts = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+        startOpts += `<option value="${d}" ${d === Math.min(prevStart, daysInMonth) ? 'selected' : ''}>Ziua ${d}</option>`;
+        endOpts += `<option value="${d}" ${d === Math.min(prevEnd, daysInMonth) ? 'selected' : ''}>Ziua ${d}</option>`;
+    }
+    startSelect.innerHTML = startOpts;
+    endSelect.innerHTML = endOpts;
+
+    if (!prevEnd || prevEnd > daysInMonth || prevEnd === 1) {
+        endSelect.value = daysInMonth;
+    }
+};
+
 function getPDFReportOptions() {
     const showCalendar = document.getElementById('pdf-opt-calendar')?.checked ?? true;
     const showMetabolic = document.getElementById('pdf-opt-metabolic')?.checked ?? true;
@@ -4404,12 +4444,40 @@ function getPDFReportOptions() {
     const showMedical = document.getElementById('pdf-opt-medical')?.checked ?? true;
     const showFoodsSummary = document.getElementById('pdf-opt-foods-summary')?.checked ?? true;
 
+    const isCustomRange = document.getElementById('pdf-mode-custom')?.checked ?? false;
+    let startDay = 1;
+    let endDay = 31;
+
+    const monthSelect = document.getElementById('pdf-month-select');
+    const yearSelect = document.getElementById('pdf-year-select');
+    const month = parseInt(monthSelect ? monthSelect.value : new Date().getMonth());
+    const year = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear());
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    if (isCustomRange) {
+        let s = parseInt(document.getElementById('pdf-start-day')?.value) || 1;
+        let e = parseInt(document.getElementById('pdf-end-day')?.value) || daysInMonth;
+        if (s > e) {
+            const temp = s;
+            s = e;
+            e = temp;
+        }
+        startDay = Math.max(1, Math.min(daysInMonth, s));
+        endDay = Math.max(startDay, Math.min(daysInMonth, e));
+    } else {
+        startDay = 1;
+        endDay = daysInMonth;
+    }
+
     return {
         showCalendar,
         showMetabolic,
         showNutrients,
         showMedical,
-        showFoodsSummary
+        showFoodsSummary,
+        isCustomRange,
+        startDay,
+        endDay
     };
 }
 
@@ -4421,6 +4489,12 @@ window.openPDFModal = () => {
     const yearSelect = document.getElementById('pdf-year-select');
     if (monthSelect) monthSelect.value = now.getMonth();
     if (yearSelect) yearSelect.value = now.getFullYear();
+
+    const allRadio = document.getElementById('pdf-mode-all');
+    if (allRadio) allRadio.checked = true;
+    window.togglePDFRangeInputs();
+    window.updatePDFDaysOptions();
+
     modal.classList.remove('hidden');
     refreshIcons();
 };
