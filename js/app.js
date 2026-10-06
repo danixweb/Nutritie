@@ -2387,10 +2387,11 @@ window.editHistoryMeal = (id) => {
         mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
     }
     window.ensureHeaderVisible();
-    if (nameInput) {
+    const foodNameInput = document.getElementById('food-name');
+    if (foodNameInput) {
         setTimeout(() => {
-            nameInput.focus({ preventScroll: true });
-            nameInput.select();
+            foodNameInput.focus({ preventScroll: true });
+            foodNameInput.select();
             window.ensureHeaderVisible();
         }, 150);
     }
@@ -2975,8 +2976,8 @@ function renderHistory() {
 
     filteredDays.forEach((dateKey, dayIdx) => {
         const dayMeals = mealsByDate[dateKey];
-        // Sort day's meals chronologically
-        dayMeals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        // Sort day's meals descending by time (latest meal first)
+        dayMeals.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
         // Calculate day nutritional totals
         let dayTotalCals = 0;
