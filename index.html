@@ -12,6 +12,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN for Cardio Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- html2pdf.js CDN for direct PDF downloads -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
@@ -81,6 +83,13 @@
                             <div>
                                 <div class="font-semibold">Situație deficiențe</div>
                                 <div class="text-[10px] text-slate-400">Analiză aport nutrienți vs DZR</div>
+                            </div>
+                        </button>
+                        <button onclick="closeTopMenu(); switchMainTab('cardio'); switchCardioSubTab('files');" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-rose-950/60 hover:text-rose-200 transition-colors text-left">
+                            <i data-lucide="heart-pulse" class="w-4 h-4 text-rose-400 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold text-rose-200">Raport Cardio & TA</div>
+                                <div class="text-[10px] text-slate-400">Tensiune, puls, ABI & export PDF</div>
                             </div>
                         </button>
                     </div>
@@ -222,14 +231,20 @@
         <main class="w-full p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative bg-slate-950">
             <!-- Main Ergonomic Navigation Tabs -->
             <div class="max-w-3xl mx-auto mb-4 flex gap-2">
-                <button onclick="switchMainTab('meals')" id="main-tab-meals-btn" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500">
+                <button onclick="switchMainTab('meals')" id="main-tab-meals-btn" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500">
                     <i data-lucide="utensils" class="w-4 h-4"></i>
                     <span>Editor Mese</span>
                 </button>
-                <button onclick="switchMainTab('activities')" id="main-tab-activities-btn" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">
+                <button onclick="switchMainTab('activities')" id="main-tab-activities-btn" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">
                     <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
-                    <span>Activitate Zilnică</span>
+                    <span class="hidden xs:inline sm:inline">Activitate Zilnică</span>
+                    <span class="xs:hidden sm:hidden">Activități</span>
                     <span id="activities-badge-count" class="hidden text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-800 font-mono">0</span>
+                </button>
+                <button onclick="switchMainTab('cardio')" id="main-tab-cardio-btn" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">
+                    <i data-lucide="heart-pulse" class="w-4 h-4 text-rose-400"></i>
+                    <span>Cardio & TA</span>
+                    <span id="cardio-badge-count" class="hidden text-[10px] bg-rose-950 text-rose-300 px-2 py-0.5 rounded-full border border-rose-800 font-mono">0</span>
                 </button>
             </div>
 
@@ -580,6 +595,295 @@
                         <div id="day-activities-list" class="space-y-2.5">
                             <!-- Populated dynamically -->
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: CARDIO & MONITOR TENSIUNE -->
+            <div id="cardio-tab-content" class="hidden max-w-3xl mx-auto space-y-4 mb-10">
+                <!-- Hidden Plac file input for fallback import -->
+                <input type="file" id="cardio-plac-file-input" accept=".plac,.json" class="hidden" onchange="handlePlacInputUpload(this)">
+
+                <!-- Cardio Header & Sub-Navigation Tabs -->
+                <div class="bg-slate-900 rounded-2xl p-2 sm:p-2.5 border border-slate-800 shadow-xl flex gap-1.5 flex-wrap sm:flex-nowrap">
+                    <button onclick="switchCardioSubTab('timer')" id="cardio-nav-timer" class="flex-1 py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 transition-all flex items-center justify-center gap-1.5">
+                        <i data-lucide="timer" class="w-3.5 h-3.5"></i>
+                        <span>Repaus</span>
+                    </button>
+                    <button onclick="switchCardioSubTab('data')" id="cardio-nav-data" class="flex-1 py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-600 text-white shadow-md border border-rose-500 transition-all flex items-center justify-center gap-1.5">
+                        <i data-lucide="heart-pulse" class="w-3.5 h-3.5"></i>
+                        <span>Măsurători</span>
+                    </button>
+                    <button onclick="switchCardioSubTab('charts')" id="cardio-nav-charts" class="flex-1 py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 transition-all flex items-center justify-center gap-1.5">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        <span>Grafice</span>
+                    </button>
+                    <button onclick="switchCardioSubTab('files')" id="cardio-nav-files" class="flex-1 py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 transition-all flex items-center justify-center gap-1.5">
+                        <i data-lucide="folder-archive" class="w-3.5 h-3.5"></i>
+                        <span>Dosar & Istoric</span>
+                    </button>
+                    <button onclick="switchCardioSubTab('ai')" id="cardio-nav-ai" class="flex-1 py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold bg-slate-900 hover:bg-slate-800 text-indigo-400 hover:text-indigo-300 border border-slate-800 transition-all flex items-center justify-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>Analiză AI</span>
+                    </button>
+                </div>
+
+                <!-- SUBTAB 1: REPAUS / TIMER -->
+                <div id="cardio-subtab-timer" class="hidden bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-800 shadow-xl flex flex-col items-center justify-center space-y-6 text-center">
+                    <div>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-300 border border-rose-800">Protocol Ghid ESC / ESH</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-white mt-2">Repaus & Relaxare Pre-Măsurătoare</h2>
+                        <p class="text-xs text-slate-400 max-w-md mx-auto mt-1">Stai liniștit, pe scaun, cu spatele sprijinit și picioarele pe podea, timp de 5 minute înainte de măsurare.</p>
+                    </div>
+
+                    <!-- Circular Progress Timer -->
+                    <div class="relative flex items-center justify-center">
+                        <svg width="220" height="220">
+                            <circle cx="110" cy="110" r="100" stroke="#1e293b" stroke-width="10" fill="transparent" />
+                            <circle id="cardioTimerCircle" cx="110" cy="110" r="100" stroke="#f43f5e" stroke-width="10" fill="transparent" stroke-dasharray="628" stroke-dashoffset="0" class="progress-ring" stroke-linecap="round" />
+                        </svg>
+                        <div class="absolute flex flex-col items-center">
+                            <div id="cardioTimerDisplay" class="font-mono text-4xl sm:text-5xl font-black text-white">05:00</div>
+                            <span class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Minute : Secunde</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full max-w-xs space-y-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Durată Recomandată</label>
+                            <select id="cardioTimerDuration" onchange="resetCardioTimer()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-white outline-none focus:border-rose-500">
+                                <option value="60">1 Minut (Rapid)</option>
+                                <option value="180">3 Minute (Standard)</option>
+                                <option value="300" selected>5 Minute (Ghid Oficial Cardiologie)</option>
+                                <option value="600">10 Minute (Repaus Prelungit)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <button onclick="toggleCardioTimer()" id="cardioTimerBtn" class="py-2.5 px-4 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                <span>Start Repaus</span>
+                            </button>
+                            <button onclick="resetCardioTimer()" class="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                <span>Reset</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBTAB 2: MĂSURĂTORI (DATA) -->
+                <div id="cardio-subtab-data" class="space-y-4">
+                    <!-- Edit Alert Badge -->
+                    <div id="cardioEditBadge" class="hidden bg-amber-500/20 border border-amber-500/60 p-3 rounded-2xl text-xs text-amber-300 font-bold flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i data-lucide="edit-3" class="w-4 h-4"></i> Mod Editare Înregistrare</span>
+                        <button onclick="cancelCardioEdit()" class="underline hover:text-white text-[11px]">Anulează</button>
+                    </div>
+
+                    <!-- Patient & Datetime Bar -->
+                    <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nume Pacient / Utilizator</label>
+                            <input type="text" id="cardioPatientName" placeholder="Ex: Popescu Ion..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold text-white focus:border-rose-500 outline-none uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Dată & Oră Măsurătoare</label>
+                            <input type="datetime-local" id="cardio_datetime" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold text-white focus:border-rose-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Card 1: Blood Pressure & Biometrics -->
+                    <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 border-l-4 border-l-emerald-500 shadow-xl space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="heart-pulse" class="w-4 h-4"></i>
+                                <span>Tensiune Arterială (TA) & Biometrie</span>
+                            </h3>
+                            <span class="text-[10px] text-slate-400">ESC/ESH 2024</span>
+                        </div>
+
+                        <!-- TA Inputs -->
+                        <div class="grid grid-cols-3 gap-2.5">
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase mb-1">Sistolică (Max)</label>
+                                <input type="number" id="cardio_sys" placeholder="120" oninput="updateLiveBPFeedback()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-base font-black text-white focus:border-emerald-500 outline-none font-mono text-center">
+                                <span class="block text-[8px] text-slate-500 text-center mt-0.5">mmHg</span>
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase mb-1">Diastolică (Min)</label>
+                                <input type="number" id="cardio_dia" placeholder="80" oninput="updateLiveBPFeedback()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-base font-black text-white focus:border-emerald-500 outline-none font-mono text-center">
+                                <span class="block text-[8px] text-slate-500 text-center mt-0.5">mmHg</span>
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase mb-1">Puls</label>
+                                <input type="number" id="cardio_pulse" placeholder="72" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-base font-black text-rose-300 focus:border-rose-500 outline-none font-mono text-center">
+                                <span class="block text-[8px] text-slate-500 text-center mt-0.5">bpm</span>
+                            </div>
+                        </div>
+
+                        <!-- Live Classification Badge -->
+                        <div id="cardio-bp-feedback" class="hidden"></div>
+
+                        <!-- Biometrics Row -->
+                        <div class="grid grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80">
+                            <div>
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Vârstă</label>
+                                <input type="number" id="cardio_age" placeholder="Ani" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none font-mono text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Înălțime</label>
+                                <input type="number" id="cardio_height" placeholder="cm" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none font-mono text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Greutate</label>
+                                <input type="number" step="0.1" id="cardio_weight" placeholder="kg" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none font-mono text-center">
+                            </div>
+                        </div>
+
+                        <!-- Optional Note -->
+                        <div>
+                            <input type="text" id="cardio_note" placeholder="Notă opțională (ex: dimineața pe nemâncate, după cafea, după plimbare...)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 placeholder:text-slate-500 outline-none">
+                        </div>
+
+                        <button onclick="saveCardioEntry('BP')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span>Salvează Măsurătoarea TA</span>
+                        </button>
+                    </div>
+
+                    <!-- Card 2: Ankle-Brachial Index (ABI) -->
+                    <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 border-l-4 border-l-blue-500 shadow-xl space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xs sm:text-sm font-black text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="activity" class="w-4 h-4"></i>
+                                <span>Indice Gleznă-Braț (ABI / Indice Oscilometric)</span>
+                            </h3>
+                            <span class="text-[10px] text-slate-400">Screening Arterial</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2">
+                                <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">Membru Drept</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[8px] text-slate-500 uppercase mb-0.5">Gleznă (mmHg)</label>
+                                        <input type="number" id="cardio_abi_leg_d" placeholder="Gleznă" oninput="updateLiveABIFeedback()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono text-center outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] text-slate-500 uppercase mb-0.5">Braț (mmHg)</label>
+                                        <input type="number" id="cardio_abi_arm_d" placeholder="Braț" oninput="updateLiveABIFeedback()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono text-center outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2">
+                                <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Membru Stâng</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[8px] text-slate-500 uppercase mb-0.5">Gleznă (mmHg)</label>
+                                        <input type="number" id="cardio_abi_leg_s" placeholder="Gleznă" oninput="updateLiveABIFeedback()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono text-center outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] text-slate-500 uppercase mb-0.5">Braț (mmHg)</label>
+                                        <input type="number" id="cardio_abi_arm_s" placeholder="Braț" oninput="updateLiveABIFeedback()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono text-center outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live ABI feedback -->
+                        <div id="cardio-abi-feedback" class="hidden"></div>
+
+                        <button onclick="saveCardioEntry('ABI')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span>Salvează Indicele ABI</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SUBTAB 3: GRAFICE (CHARTS) -->
+                <div id="cardio-subtab-charts" class="hidden space-y-4">
+                    <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                                <button onclick="setCardioChartMode('BP')" id="btn-cardio-chart-bp" class="py-1.5 px-3 text-xs font-bold rounded-lg bg-rose-600 text-white shadow transition-all">TA & Puls</button>
+                                <button onclick="setCardioChartMode('ABI')" id="btn-cardio-chart-abi" class="py-1.5 px-3 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all">Indice ABI</button>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-slate-400">
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Optim/Normal</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Gr. 1</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Gr. 2/3</span>
+                            </div>
+                        </div>
+
+                        <div class="h-80 sm:h-96 w-full bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 relative">
+                            <canvas id="cardioMainChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBTAB 4: DOSAR & ISTORIC (FILES) -->
+                <div id="cardio-subtab-files" class="hidden space-y-4">
+                    <!-- Actions Toolbar -->
+                    <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xl flex flex-wrap gap-2.5 justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <button onclick="openLocalPlacFile()" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-blue-400 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm" title="Deschide fișier .plac compatibil CardioTracker">
+                                <i data-lucide="folder-open" class="w-4 h-4"></i>
+                                <span>Deschide .PLAC</span>
+                            </button>
+                            <button onclick="saveLocalPlacFile()" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-400 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm" title="Salvează dosar în format .plac">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                <span>Salvează .PLAC</span>
+                            </button>
+                        </div>
+                        <button onclick="exportCardioFullPDF()" class="py-2 px-4 bg-white hover:bg-slate-100 active:scale-95 text-slate-900 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-xl flex items-center gap-1.5">
+                            <i data-lucide="file-down" class="w-4 h-4 text-rose-600"></i>
+                            <span>Export PDF (A4 Portrait)</span>
+                        </button>
+                    </div>
+
+                    <!-- Records List -->
+                    <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="list" class="w-4 h-4 text-rose-400"></i>
+                                <span>Istoric Măsurători</span>
+                            </h3>
+                            <span class="text-[10px] text-slate-500">Cronologic</span>
+                        </div>
+                        <div id="cardioRecordsList" class="space-y-2.5 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBTAB 5: ANALIZĂ AI (AI CLINICAL CORRELATION) -->
+                <div id="cardio-subtab-ai" class="hidden space-y-4">
+                    <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-sm font-black text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+                                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                    <span>Raport Clinic & Corelație Nutrițională AI</span>
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Corelează tensiunea arterială cu aportul de Sodiu, Potasiu și stilul de viață.</p>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono">Gemini AI</span>
+                        </div>
+
+                        <!-- API Key Status Indicator -->
+                        <div id="cardioAiStatus"></div>
+
+                        <!-- AI Response Container -->
+                        <div id="cardioAiResponse" class="min-h-[140px] max-h-[460px] overflow-y-auto custom-scrollbar p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                            <div class="text-center py-8 text-slate-500 space-y-2">
+                                <i data-lucide="stethoscope" class="w-8 h-8 mx-auto opacity-40"></i>
+                                <p>Apasă butonul de mai jos pentru a genera analiza clinică completă bazată pe măsurătorile tale și aportul de minerale din jurnal.</p>
+                            </div>
+                        </div>
+
+                        <button onclick="runCardioAiAnalysis()" id="cardioAiBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl transition-all shadow-xl flex items-center justify-center gap-2">
+                            <i data-lucide="wand-2" class="w-4 h-4"></i>
+                            <span>Generează Raport AI Complet (Cardio + Nutriție)</span>
+                        </button>
                     </div>
                 </div>
             </div>

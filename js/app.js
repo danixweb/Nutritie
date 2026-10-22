@@ -4,6 +4,7 @@
 import { Storage, localFoodDB, localActivityDB, estimateFoodLocally, parseRomanianFoodVoiceInput, CANONICAL_NUTRIENTS, normalizeNutrientName, normalizeNutrientsArray, removeDiacritics } from './storage.js';
 import { AI } from './ai.js';
 import { PDFReport } from './pdf.js';
+import { initCardioModule, autoFillCardioBiometrics, renderCardioRecordsList, updateCardioBadgeCount } from './cardio.js';
 
 // Application State
 let currentMeal = { id: null, date: '', name: '', foods: [] };
@@ -231,36 +232,50 @@ function initActivityStatsState() {
     }
 }
 
-// --- Main Tab Navigation (Editor Mese vs Activitate Zilnică) ---
+// --- Main Tab Navigation (Editor Mese vs Activitate Zilnică vs Cardio) ---
 window.switchMainTab = (tabName) => {
     const mealsBtn = document.getElementById('main-tab-meals-btn');
     const actBtn = document.getElementById('main-tab-activities-btn');
+    const cardioBtn = document.getElementById('main-tab-cardio-btn');
     const mealsContent = document.getElementById('meals-tab-content');
     const actContent = document.getElementById('activities-tab-content');
+    const cardioContent = document.getElementById('cardio-tab-content');
+
+    const inactiveBtnClass = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800";
 
     if (tabName === 'activities') {
-        if (mealsBtn) {
-            mealsBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800";
-        }
-        if (actBtn) {
-            actBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-lg border border-emerald-500";
-        }
+        if (mealsBtn) mealsBtn.className = inactiveBtnClass;
+        if (actBtn) actBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-emerald-600 text-white shadow-lg border border-emerald-500";
+        if (cardioBtn) cardioBtn.className = inactiveBtnClass;
+
         if (mealsContent) mealsContent.classList.add('hidden');
         if (actContent) actContent.classList.remove('hidden');
+        if (cardioContent) cardioContent.classList.add('hidden');
 
         populateActivityTypeSelect();
         initActivityDate();
         renderDayActivities();
         recalcActivityPreview();
+    } else if (tabName === 'cardio') {
+        if (mealsBtn) mealsBtn.className = inactiveBtnClass;
+        if (actBtn) actBtn.className = inactiveBtnClass;
+        if (cardioBtn) cardioBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-rose-600 text-white shadow-lg border border-rose-500";
+
+        if (mealsContent) mealsContent.classList.add('hidden');
+        if (actContent) actContent.classList.add('hidden');
+        if (cardioContent) cardioContent.classList.remove('hidden');
+
+        autoFillCardioBiometrics();
+        renderCardioRecordsList();
+        updateCardioBadgeCount();
     } else {
-        if (mealsBtn) {
-            mealsBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500";
-        }
-        if (actBtn) {
-            actBtn.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800";
-        }
+        if (mealsBtn) mealsBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500";
+        if (actBtn) actBtn.className = inactiveBtnClass;
+        if (cardioBtn) cardioBtn.className = inactiveBtnClass;
+
         if (mealsContent) mealsContent.classList.remove('hidden');
         if (actContent) actContent.classList.add('hidden');
+        if (cardioContent) cardioContent.classList.add('hidden');
         updateDynamicCaloricGauge();
     }
     refreshIcons();
@@ -5124,8 +5139,10 @@ function initApp() {
     initActivityStatsState();
     updateDynamicCaloricGauge();
     initFoodSuggestionsEvents();
+    initCardioModule();
+    updateCardioBadgeCount();
     refreshIcons();
-    console.log("Nutriție Pro 2.2 Ready with Categorized Top Menu, User Profile, Health Metrics & Daily Activities.");
+    console.log("Nutriție Pro 2.5 Ready with Full Cardio & Blood Pressure Tracker, Categorized Top Menu, User Profile, Health Metrics & Daily Activities.");
 }
 
 // Start once DOM is ready

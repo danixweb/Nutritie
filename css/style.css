@@ -26,6 +26,13 @@ body {
     background: #475569;
 }
 
+/* Cardio Relaxation Timer Progress Ring */
+.progress-ring {
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 0.3s linear;
+}
+
 /* Sidebar & Chat transitions */
 #analysis-sidebar {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);

@@ -7,6 +7,7 @@ import { DEFAULT_ANALYZED_FOODS } from './defaultFoods.js';
 const STORAGE_KEYS = {
     MEALS: 'nutritie_meals_history_v2',
     ACTIVITIES: 'nutritie_activities_v2',
+    CARDIO: 'nutritie_cardio_records_v1',
     HEALTH_PROFILE: 'health_profile',
     USER_PROFILE: 'nutritie_user_profile',
     API_KEY: 'gemini_api_key',
@@ -1009,6 +1010,99 @@ export const Storage = {
         }
     },
 
+    // --- Cardio (Blood Pressure & ABI) Records CRUD ---
+    getCardioRecords() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEYS.CARDIO);
+            if (data) {
+                return JSON.parse(data);
+            }
+            // Auto-migration from legacy standalone CardioTracker V31
+            const legacy = localStorage.getItem('cardiotracker_v31');
+            if (legacy) {
+                const parsed = JSON.parse(legacy);
+                if (Array.isArray(parsed.records) && parsed.records.length > 0) {
+                    const migrated = parsed.records.map((r, idx) => ({
+                        id: r.id || ('cardio_legacy_' + idx + '_' + (r.date ? new Date(r.date).getTime() : Date.now())),
+                        ...r
+                    }));
+                    localStorage.setItem(STORAGE_KEYS.CARDIO, JSON.stringify(migrated));
+                    return migrated;
+                }
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to read cardio records", e);
+            return [];
+        }
+    },
+
+    saveCardioRecord(record) {
+        try {
+            const list = this.getCardioRecords();
+            const recordToSave = {
+                ...record,
+                id: record.id || ('cardio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
+                date: record.date || new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            const existingIndex = list.findIndex(r => r.id === recordToSave.id);
+            if (existingIndex >= 0) {
+                list[existingIndex] = recordToSave;
+            } else {
+                list.unshift(recordToSave);
+            }
+
+            localStorage.setItem(STORAGE_KEYS.CARDIO, JSON.stringify(list));
+
+            // Sync with legacy key to maintain compatibility if Tensiune.html is opened standalone
+            try {
+                const legacy = localStorage.getItem('cardiotracker_v31');
+                const legacyState = legacy ? JSON.parse(legacy) : { name: record.pacientName || '', records: [], chartMode: 'BP' };
+                legacyState.records = list;
+                if (record.pacientName) legacyState.name = record.pacientName;
+                localStorage.setItem('cardiotracker_v31', JSON.stringify(legacyState));
+            } catch (ignore) {}
+
+            return recordToSave;
+        } catch (e) {
+            console.error("Failed to save cardio record", e);
+            throw e;
+        }
+    },
+
+    deleteCardioRecord(id) {
+        try {
+            const list = this.getCardioRecords().filter(r => r.id !== id);
+            localStorage.setItem(STORAGE_KEYS.CARDIO, JSON.stringify(list));
+
+            // Sync with legacy key
+            try {
+                const legacy = localStorage.getItem('cardiotracker_v31');
+                if (legacy) {
+                    const legacyState = JSON.parse(legacy);
+                    legacyState.records = list;
+                    localStorage.setItem('cardiotracker_v31', JSON.stringify(legacyState));
+                }
+            } catch (ignore) {}
+
+            return true;
+        } catch (e) {
+            console.error("Failed to delete cardio record", e);
+            return false;
+        }
+    },
+
+    clearCardioRecords() {
+        try {
+            localStorage.setItem(STORAGE_KEYS.CARDIO, JSON.stringify([]));
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
     // Calculate Burned Calories via MET
     calculateBurnedCalories(activityKey, durationMin, intensityLevel = 'moderate', customWeight = null) {
         const userProf = this.getUserProfile();
@@ -1213,6 +1307,7 @@ export const Storage = {
             exportDate: new Date().toISOString(),
             meals: this.getMeals(),
             activities: this.getActivities(),
+            cardio: this.getCardioRecords(),
             healthProfile: this.getHealthProfile(),
             userProfile: this.getUserProfile(),
             settings: {
@@ -1310,8 +1405,19 @@ export const Storage = {
                             if (typeof s.aiConnected === 'boolean') Storage.setAiConnected(s.aiConnected);
                             if (typeof s.aiNutrientCalc === 'boolean') Storage.setAiNutrientCalcEnabled(s.aiNutrientCalc);
                         }
+
+                        // 7. Structured Cardio records merge
+                        let importedCardioCount = 0;
+                        if (Array.isArray(data.cardio) || Array.isArray(data.records)) {
+                            const incomingCardio = Array.isArray(data.cardio) ? data.cardio : data.records;
+                            const currentCardio = Storage.getCardioRecords();
+                            const mergedCardio = [...incomingCardio, ...currentCardio];
+                            const uniqueCardio = Array.from(new Map(mergedCardio.map(c => [c.id || (c.date + '_' + c.type), c])).values());
+                            localStorage.setItem(STORAGE_KEYS.CARDIO, JSON.stringify(uniqueCardio));
+                            importedCardioCount = incomingCardio.length;
+                        }
                     }
-                    resolve({ count: importedMealsCount, activitiesCount: importedActivitiesCount });
+                    resolve({ count: importedMealsCount, activitiesCount: importedActivitiesCount, cardioCount: importedCardioCount });
                 } catch (err) {
                     reject(new Error("Format de fișier JSON invalid."));
                 }
