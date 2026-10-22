@@ -1302,8 +1302,8 @@ export const Storage = {
     // --- Full Mirror Export / Import (100% Data, Settings, Meals, Sports & API Key) ---
     exportAllData() {
         const payload = {
-            version: '2.4',
-            appName: 'Asistent Nutritie',
+            version: '3.0',
+            appName: 'MetabolicPro',
             exportDate: new Date().toISOString(),
             meals: this.getMeals(),
             activities: this.getActivities(),
@@ -1335,7 +1335,7 @@ export const Storage = {
         const a = document.createElement('a');
         a.href = url;
         const dateStr = new Date().toISOString().slice(0, 10);
-        a.download = `asistent_nutritie_backup_complet_${dateStr}.json`;
+        a.download = `metabolicpro_backup_complet_${dateStr}.json`;
         a.click();
         URL.revokeObjectURL(url);
     },
