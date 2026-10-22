@@ -99,6 +99,9 @@ export function switchCardioSubTab(subTabId) {
         }
     });
 
+    if (subTabId === 'data' && !cardioState.editId) {
+        autoFillCardioBiometrics(true);
+    }
     if (subTabId === 'charts') {
         setTimeout(updateCardioChart, 100);
     }
@@ -183,13 +186,13 @@ export function updateCardioTimerUI() {
 }
 
 // --- Biometric Autofill & State Management ---
-export function autoFillCardioBiometrics() {
+export function autoFillCardioBiometrics(force = false) {
     const userProf = Storage.getUserProfile();
     const records = Storage.getCardioRecords();
 
     // Patient Name
     const nameInput = document.getElementById('cardioPatientName');
-    if (nameInput && !nameInput.value) {
+    if (nameInput && (!nameInput.value || force)) {
         const lastWithPatient = records.find(r => r.pacientName);
         if (lastWithPatient) {
             nameInput.value = lastWithPatient.pacientName;
@@ -198,25 +201,30 @@ export function autoFillCardioBiometrics() {
         }
     }
 
-    // Biometrics (from profile first, then most recent record)
+    // Biometrics: User Profile is the single source of truth for current age, height, weight
     const ageInput = document.getElementById('cardio_age');
     const heightInput = document.getElementById('cardio_height');
     const weightInput = document.getElementById('cardio_weight');
 
-    if (ageInput && !ageInput.value && userProf.age) ageInput.value = userProf.age;
-    if (heightInput && !heightInput.value && userProf.height) heightInput.value = userProf.height;
-    if (weightInput && !weightInput.value && userProf.weight) weightInput.value = userProf.weight;
+    const isEditing = Boolean(cardioState.editId);
 
-    const lastBP = records.find(r => r.type === 'BP');
-    if (lastBP) {
-        if (ageInput && !ageInput.value && lastBP.age) ageInput.value = lastBP.age;
-        if (heightInput && !heightInput.value && lastBP.height) heightInput.value = lastBP.height;
-        if (weightInput && !weightInput.value && lastBP.weight) weightInput.value = lastBP.weight;
+    if (!isEditing || force) {
+        if (ageInput && (userProf.age || force)) ageInput.value = userProf.age || '';
+        if (heightInput && (userProf.height || force)) heightInput.value = userProf.height || '';
+        if (weightInput && (userProf.weight || force)) weightInput.value = userProf.weight || '';
+
+        // If user profile doesn't have them yet, fallback to the latest BP record
+        const lastBP = records.find(r => r.type === 'BP');
+        if (lastBP) {
+            if (ageInput && !ageInput.value && lastBP.age) ageInput.value = lastBP.age;
+            if (heightInput && !heightInput.value && lastBP.height) heightInput.value = lastBP.height;
+            if (weightInput && !weightInput.value && lastBP.weight) weightInput.value = lastBP.weight;
+        }
     }
 
     // Default current date & time
     const dtInput = document.getElementById('cardio_datetime');
-    if (dtInput && !dtInput.value) {
+    if (dtInput && (!dtInput.value || force)) {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -1141,4 +1149,5 @@ if (typeof window !== 'undefined') {
     window.saveLocalPlacFile = saveLocalPlacFile;
     window.exportCardioFullPDF = exportCardioFullPDF;
     window.runCardioAiAnalysis = runCardioAiAnalysis;
+    window.autoFillCardioBiometrics = autoFillCardioBiometrics;
 }

@@ -265,9 +265,8 @@ window.switchMainTab = (tabName) => {
         if (actContent) actContent.classList.add('hidden');
         if (cardioContent) cardioContent.classList.remove('hidden');
 
-        autoFillCardioBiometrics();
+        autoFillCardioBiometrics(true);
         renderCardioRecordsList();
-        updateCardioBadgeCount();
     } else {
         if (mealsBtn) mealsBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 bg-indigo-600 text-white shadow-lg border border-indigo-500";
         if (actBtn) actBtn.className = inactiveBtnClass;
@@ -870,6 +869,9 @@ window.saveUserProfileForm = () => {
     renderHealthTags();
     window.recalcProfilePreview();
     updateDynamicCaloricGauge();
+    if (typeof autoFillCardioBiometrics === 'function') {
+        autoFillCardioBiometrics(true);
+    }
     alert("Datele personale au fost salvate cu succes!");
 };
 
